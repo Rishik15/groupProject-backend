@@ -1,16 +1,14 @@
-/* =========================================================
+/* 
    Exercise App - MySQL 8 Schema (Rubric-aligned)
    - Drops/recreates schema
-   - Well-commented
-   - FKs + sensible cascades / set null
    - created_at / updated_at on EVERY table
    - Audit logging + triggers
    - Basic mock data included
-   ========================================================= */
+*/
 
--- -------------------------
+
 -- Schema reset
--- -------------------------
+
 DROP DATABASE IF EXISTS exercise_app;
 CREATE DATABASE exercise_app
   CHARACTER SET utf8mb4
