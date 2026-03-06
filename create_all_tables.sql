@@ -1,7 +1,7 @@
 
--- -------------------------
+
 -- Schema reset
--- -------------------------
+
 DROP DATABASE IF EXISTS exercise_app;
 CREATE DATABASE exercise_app
   CHARACTER SET utf8mb4
