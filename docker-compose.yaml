@@ -1,16 +1,15 @@
-name: βfit
+name: betafit
 
 services:
   db:
     image: mysql:8.0
-    container_name: βfit-db
-    ports:
-      - "3306:3306"
+    container_name: betafit-db
     environment:
       MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: exercise_app
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./database:/docker-entrypoint-initdb.d
+      - ./database/data:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
       interval: 5s
@@ -20,9 +19,9 @@ services:
     build: 
       context: backend
       dockerfile: Dockerfile
-    container_name: βfit-backend
+    container_name: betafit-backend
     ports:
-      -8080:8000
+      - "8080:8000"
     volumes:
       - ./backend:/app
       - /app/.venv
@@ -35,20 +34,20 @@ services:
       --bind 0.0.0.0:8000
       app.main:app   
   frontend:
-    build:
+    build: 
       context: frontend
       dockerfile: Dockerfile
-    container_name: βfit-frontend
+    container_name: betafit-frontend
     ports:
       - "5173:5173"
     depends_on:
-      - server
+      - backend
     volumes:
       - ./frontend:/app
       - /app/node_modules
     stdin_open: true
     tty: true
-    command: npm run dev
+    command: npm run dev --host
 
 volumes:
   mysql_data:
