@@ -1,0 +1,54 @@
+name: βfit
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: βfit-db
+    ports:
+      - "3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  backend:
+    build: 
+      context: backend
+      dockerfile: Dockerfile
+    container_name: βfit-backend
+    ports:
+      -8080:8000
+    volumes:
+      - ./backend:/app
+      - /app/.venv
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      gunicorn
+      --reload
+      --bind 0.0.0.0:8000
+      app.main:app   
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    container_name: βfit-frontend
+    ports:
+      - "5173:5173"
+    depends_on:
+      - server
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    stdin_open: true
+    tty: true
+    command: npm run dev
+
+volumes:
+  mysql_data:
