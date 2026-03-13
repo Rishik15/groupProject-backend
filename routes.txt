@@ -1,0 +1,6 @@
+prefix - localhost:8080/
+
+Routes:
+
+/test/             - Test to see if backend is running
+/test/tables       - Displays all the tables in the database

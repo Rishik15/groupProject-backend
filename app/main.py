@@ -1,24 +1,24 @@
-from flask import Flask, jsonify
+from flask import Flask
 from flask_cors import CORS
-from app.routes.test import test_bp
 from app.config import Config
+from . import db
 
 
-
-def create_app():  
-    app = Flask(__name__)  
-    app.config.from_object(Config)  
+def create_app():
+    app = Flask(__name__)
+    app.config.from_object(Config)
     CORS(app, origins="http://localhost:5173")
 
-    @app.route("/")
-    def health():
-        return jsonify({"status": "ok", "message": "Backend is working"})
+    db.init_app(
+        app
+    )  # This actually connects the mysql server to the backend and initializes the db object to actually manage our database.
 
-    app.register_blueprint(test_bp, url_prefix="/test")
+    with app.app_context():
+        from app.routes import register_routes
 
-    return app  
+        register_routes(app)
+
+    return app
 
 
-app = create_app() 
-# app.run(debug=True)
-
+app = create_app()
