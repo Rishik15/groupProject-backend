@@ -1,10 +1,10 @@
-from sqlalchemy import text
 from app import db
+from app.services import run_query
 
 
 def tservice():
-    sql = text("SHOW TABLES")
+    query = "SHOW TABLES"
 
-    result = db.session.execute(sql)
+    result = run_query(query, params={}, fetch=True, commit=False)
 
-    return [dict(row._mapping) for row in result]
+    return result
