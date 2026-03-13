@@ -16,12 +16,17 @@ def run_query(query, params=None, fetch=True, commit=False):
         list[dict] | None
     """
 
-    result = db.session.execute(text(query), params or {})
+    try:
+        result = db.session.execute(text(query), params or {})
 
-    if commit:
-        db.session.commit()
+        if commit:
+            db.session.commit()
 
-    if fetch:
-        return [dict(row) for row in result.mappings().all()]
+        if fetch:
+            return [dict(row) for row in result.mappings()]
 
-    return None
+        return None
+
+    except Exception as e:
+        db.session.rollback()
+        raise e
