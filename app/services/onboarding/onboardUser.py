@@ -29,10 +29,10 @@ def onboardCoachSurvey(user_id: int, desc: str, price : float ):
             """
             UPDATE coach
             SET  
-                coach_description = :desc
+                coach_description = :desc,
                 price = :price
             WHERE 
-                user_id = :user_id; 
+                coach_id = :user_id; 
         """,
             {"user_id": user_id, "desc": desc, "price": price},
             fetch=False,

@@ -8,11 +8,28 @@ from app.services.onboarding import onboardUser
 def onboardSurvey():
 
     data = request.get_json()
-    u_id = session["user_id"]
+
+    u_id = session.get("user_id")
+    role = session.get("role")
+
+    if not u_id or not role:
+        return jsonify({"error": "Unauthorized"}), 401
     u_id = int(u_id)
 
-    role = session["role"]
-    if role == 'client':
+
+    if role == 'client' or role == 'admin':
+        try:
+            onboardUser.onboardClientSurvey(
+                u_id, 
+                data["profile_picture"], 
+                data["weight"],
+                data["height"],
+                data["goal_weight"]
+                )
+            return jsonify({"message": "Onboarding completed successfully"}), 200
+        except Exception as e: 
+            raise e
+    elif role == 'coach':
         try:
             onboardUser.onboardClientSurvey(
                 u_id, 
@@ -20,17 +37,16 @@ def onboardSurvey():
                 data["weight"],
                 data["height"],
                 data["goal_weight"]
-                )
-        except Exception as e: 
-            raise e
-    elif role == 'coach':
-        try:
+            )
+
             onboardUser.onboardCoachSurvey(
                 u_id, 
-                data["profile_picture"],
-                data["weight"],
-                data["height"],
-                data["goal_weight"]
-                )
+                data["coach_description"],
+                data["price"]
+            )
+            return jsonify({"message": "Onboarding completed successfully"}), 200
         except Exception as e: 
             raise e
+ 
+    else: 
+        return jsonify({"error": "Invalid role"}), 400
