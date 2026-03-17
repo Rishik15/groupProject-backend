@@ -1,4 +1,3 @@
-from app import db
 from app.services import run_query
 
 
