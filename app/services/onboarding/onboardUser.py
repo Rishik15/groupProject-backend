@@ -23,7 +23,7 @@ def onboardCoachSurvey(user_id: int, desc: str, price : float ):
 
         run_query(
             """
-            INSERT INTO users_mutables (user_id, coach_description, price)
+            INSERT INTO coach (user_id, coach_description, price)
             VALUES (:user_id, :desc, :price)
         """,
             {"user_id": user_id, "desc": desc, "price": price},
