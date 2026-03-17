@@ -1,8 +1,8 @@
 from . import topCoaches_bp
 from flask import jsonify
-from app.services.coach.topCoaches import topFiveCoaches
+from app.services.coach.topCoaches.topFiveCoaches import  getTopFiveCoaches
 
 
 @topCoaches_bp.route("/", methods=["GET"])
 def topFiveCoaches():
-    jsonify(topFiveCoaches.topFiveCoaches())
+    return jsonify(getTopFiveCoaches())

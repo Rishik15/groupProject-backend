@@ -1,5 +1,5 @@
 from app.services import run_query
-def topFiveCoaches(): 
+def getTopFiveCoaches(): 
     try: 
         return run_query(
             """
