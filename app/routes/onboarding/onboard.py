@@ -17,7 +17,7 @@ def onboardSurvey():
     u_id = int(u_id)
 
 
-    if role == 'client' or role == 'admin':
+    if role == 'client':
         try:
             onboardUser.onboardClientSurvey(
                 u_id, 
