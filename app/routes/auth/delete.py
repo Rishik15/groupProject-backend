@@ -1,9 +1,8 @@
-# app/routes/client/delete.py
-from . import client_bp 
-from app.services.client.accountService import delete_account_service
+from . import auth_bp   
+from app.services.auth.deleteUser import delete_account_service
 from flask import jsonify, session
 
-@client_bp.route("/delete", methods=["DELETE"])
+@auth_bp.route("/delete", methods=["DELETE"])
 def delete_user_account():
     u_id = session.get('user_id')
 
