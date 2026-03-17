@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, jsonify
 from flask_cors import CORS
 from app.config import Config
 from . import db, bcrypt
@@ -19,5 +19,5 @@ def create_app():
 
     return app
 
-
 app = create_app()
+
