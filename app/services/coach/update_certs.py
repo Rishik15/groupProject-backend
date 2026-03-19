@@ -1,4 +1,4 @@
-from backend.app.services import run_query
+from app.services import run_query
 
 def add_coach_certification(coach_id, incoming_json):
 
@@ -9,7 +9,7 @@ def add_coach_certification(coach_id, incoming_json):
     expires_date = incoming_json.get("expires_date")
 
     query = """
-        INSERT INTO certifications (coach_id, cert_name, provider_name, description, issued_date, expired_date)
+        INSERT INTO certifications (coach_id, cert_name, provider_name, description, issued_date, expires_date)
         VALUES (:id, :name, :org, :desc, :issued_date, :expires_date)
     """
     

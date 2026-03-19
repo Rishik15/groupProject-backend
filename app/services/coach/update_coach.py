@@ -1,4 +1,4 @@
-from backend.app.services import run_query
+from app.services import run_query
 
 
 def update_coach_profile(coach_id, update_json):
