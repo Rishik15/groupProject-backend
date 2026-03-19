@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify, session
-from backend.app.services.coach.update_certs import add_coach_certification
+from app.services.coach.update_certs import add_coach_certification
 from . import coach_bp
 
 @coach_bp.route("/certificates", methods=["POST"])
