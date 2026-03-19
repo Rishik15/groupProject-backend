@@ -4,19 +4,21 @@ from app.services import run_query
 def search_coaches(name, filters, is_certified=False, max_price=None, min_rating=None, sort_by=False):
     #  Base Query..if no filters are applied this will return all coaches. 
     #  We use DISTINCT to avoid getting the same coach multiple times if they several certs.
+    
     query = """
         SELECT 
-            u.user_id, u.first_name, c.price, c.coach_description, 
+            u.user_id, u.first_name, u.last_name, c.price, c.coach_description, 
             ROUND(AVG(cr.rating), 1) as avg_rating,
-            COUNT(cr.review_id) as review_count
+            COUNT(cr.review_id) as review_count,
+            GROUP_CONCAT(DISTINCT cf.cert_name SEPARATOR ', ') as certifications
         FROM users_immutables u 
         JOIN coach c ON u.user_id = c.coach_id
         LEFT JOIN coach_review cr ON c.coach_id = cr.coach_id
+        LEFT JOIN certifications cf ON c.coach_id = cf.coach_id
     """
-    
     if is_certified:
-        query += " JOIN certifications cf ON cf.coach_id = c.coach_id"
-
+        query += " AND cf.cert_name IS NOT NULL"
+    
     query += " WHERE 1=1"
     params = {}
 
