@@ -24,9 +24,9 @@ def logWorkoutInformation(
     session_id: int,
     exercise_id: int,
     set_number: int,
-    reps: int,
-    weight: float,
-    rpe: float,
+    reps: int | None,
+    weight: float | None,
+    rpe: float | None,
     datetimeFinished=None,
 ):
     try:

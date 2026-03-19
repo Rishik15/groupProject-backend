@@ -7,6 +7,10 @@ from datetime import datetime
 @exerciseLog_bp.route("/", methods=["POST"])
 def logSets():
     try:
+        u_id = session.get("user_id")
+        if not u_id:
+            return jsonify({"error": "Unauthorized"}), 401
+
         data = request.get_json() or {}
 
         session_id = data.get("session_id")
@@ -21,16 +25,35 @@ def logSets():
         if any(field is None for field in required_fields):
             return jsonify({"error": "session_id, exercise_id, and set_number are required"}), 400
 
+        session_id = int(session_id)
+        exercise_id = int(exercise_id)
+        set_number = int(set_number)
+        reps = int(reps) if reps is not None else None
+        weight = float(weight) if weight is not None else None
+        rpe = float(rpe) if rpe is not None else None
+
+        if set_number < 1:
+            return jsonify({"error": "set_number must be at least 1"}), 400
+
+        if reps is not None and reps < 0:
+            return jsonify({"error": "reps cannot be negative"}), 400
+
+        if weight is not None and weight < 0:
+            return jsonify({"error": "weight cannot be negative"}), 400
+
+        if rpe is not None and rpe < 0:
+            return jsonify({"error": "rpe cannot be negative"}), 400
+
         if datetimeFinished:
             datetimeFinished = datetime.fromisoformat(datetimeFinished)
 
         workoutLogging.logWorkoutInformation(
-            session_id=int(session_id),
-            exercise_id=int(exercise_id),
-            set_number=int(set_number),
-            reps=int(reps) if reps is not None else None,
-            weight=float(weight) if weight is not None else None,
-            rpe=float(rpe) if rpe is not None else None,
+            session_id=session_id,
+            exercise_id=exercise_id,
+            set_number=set_number,
+            reps=reps,
+            weight=weight,
+            rpe=rpe,
             datetimeFinished=datetimeFinished
         )
 
