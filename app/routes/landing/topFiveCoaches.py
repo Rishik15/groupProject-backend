@@ -1,4 +1,4 @@
-from .topCoaches import topCoaches_bp
+from . import topCoaches_bp
 from flask import jsonify
 from app.services.coach.topCoaches.topFiveCoaches import  getTopFiveCoaches
 
