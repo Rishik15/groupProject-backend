@@ -1,6 +1,6 @@
 from flask import jsonify, request, session
 
-from backend.app.services.coach.update_coach import update_coach_profile
+from app.services.coach.update_coach import update_coach_profile
 from . import coach_bp
 
 @coach_bp.route("/update", methods=["PATCH"])
