@@ -1,4 +1,4 @@
-from backend.app.services import run_query
+from app.services import run_query
 
 def add_coach_certification(coach_id, incoming_json):
 
