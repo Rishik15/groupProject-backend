@@ -1,8 +1,19 @@
 from app.services import run_query
 from datetime import datetime
-def onboardClientSurvey(user_id: int,  profile_picture: str, weight: float, height: float, goal_weight: float, dob = datetime.now()):
-    #In the future we may optionally accept the users skill (this will require a schema update)
-    try: 
+
+
+def onboardClientSurvey(
+    user_id: int,
+    profile_picture: str,
+    weight: float,
+    height: float,
+    goal_weight: float,
+    dob=None
+):
+    if dob is None:
+        dob = datetime.now()
+
+    try:
         run_query(
             """
             UPDATE user_mutables 
@@ -13,7 +24,13 @@ def onboardClientSurvey(user_id: int,  profile_picture: str, weight: float, heig
                 goal_weight = :goal_weight
             WHERE user_id = :user_id; 
             """,
-            {"user_id": user_id, "profile_picture": profile_picture, "weight": weight, "height": height, "goal_weight": goal_weight },
+            {
+                "user_id": user_id,
+                "profile_picture": profile_picture,
+                "weight": weight,
+                "height": height,
+                "goal_weight": goal_weight
+            },
             fetch=False,
             commit=True,
         )
@@ -22,7 +39,7 @@ def onboardClientSurvey(user_id: int,  profile_picture: str, weight: float, heig
             """
             UPDATE user_immutables 
             SET  
-                dob = :dob,
+                dob = :dob
             WHERE user_id = :user_id; 
             """,
             {"user_id": user_id, "dob": dob},
@@ -31,11 +48,10 @@ def onboardClientSurvey(user_id: int,  profile_picture: str, weight: float, heig
         )
     except Exception as e:
         raise e
-    
-def onboardCoachSurvey(user_id: int, desc: str, price : float ):
 
+
+def onboardCoachSurvey(user_id: int, desc: str, price: float):
     try:
-
         run_query(
             """
             UPDATE coach
@@ -44,26 +60,24 @@ def onboardCoachSurvey(user_id: int, desc: str, price : float ):
                 price = :price
             WHERE 
                 coach_id = :user_id; 
-        """,
+            """,
             {"user_id": user_id, "desc": desc, "price": price},
             fetch=False,
             commit=True,
         )
-
     except Exception as e:
         raise e
 
 
-
 def insertCoachCert(
-    coach_id : int,
-    cert_name :  str,
-    provider_name : str, 
-    description : str,
+    coach_id: int,
+    cert_name: str,
+    provider_name: str,
+    description: str,
     issued_date,
     expires_date,
 ):
-    try: 
+    try:
         run_query(
             """
             INSERT INTO certifications
@@ -73,7 +87,7 @@ def insertCoachCert(
                 provider_name, 
                 description,
                 issued_date,
-                expires_date,
+                expires_date
             )
             VALUES
             (
@@ -85,55 +99,61 @@ def insertCoachCert(
                 :ed
             )
             """,
-            {"cid":coach_id, "certN":cert_name, 
-             "provN":provider_name, "desc": description, 
-             "id": issued_date, "ed": expires_date},
-            fetch=False, 
+            {
+                "cid": coach_id,
+                "certN": cert_name,
+                "provN": provider_name,
+                "desc": description,
+                "id": issued_date,
+                "ed": expires_date
+            },
+            fetch=False,
             commit=True
         )
-    except Exception as e: 
+    except Exception as e:
         raise e
-    
+
+
 def coachAvailability(
     coach_id,
     dow,
     st,
-    et, 
-    rec, 
+    et,
+    rec,
     active
-): 
-    try: 
+):
+    try:
         run_query(
             """
-                INSERT INTO coach_availability
-                (
+            INSERT INTO coach_availability
+            (
                 coach_id, 
                 day_of_week,
                 start_time,
                 end_time,
                 recurring,
                 active
-                )
-                VALUES 
-                (
+            )
+            VALUES 
+            (
                 :cid, 
                 :dow, 
                 :st,
                 :et, 
-                :rec , 
+                :rec, 
                 :active
-                )
+            )
             """,
-        {    
-            "cid": coach_id,
-            "dow" : dow,
-            "st" : st,
-            "et" : et, 
-            "rec": rec, 
-            "active" : active
-        },
-            fetch=False, 
+            {
+                "cid": coach_id,
+                "dow": dow,
+                "st": st,
+                "et": et,
+                "rec": rec,
+                "active": active
+            },
+            fetch=False,
             commit=True
         )
-    except Exception as e: 
+    except Exception as e:
         raise e
