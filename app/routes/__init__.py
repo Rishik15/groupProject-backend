@@ -2,7 +2,7 @@ from .test import test_bp
 from .auth import auth_bp
 from .client import client_bp
 from .onboarding import onboard_bp
-from .exercises import exerciseLog_bp, markExerciseDone_bp, workoutSession_bp, cardioLog_bp
+from .workouts import exerciseLog_bp, workoutAction_bp
 
 
 def register_routes(app):
@@ -10,7 +10,5 @@ def register_routes(app):
     app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(client_bp, url_prefix="/client")
     app.register_blueprint(onboard_bp, url_prefix="/onboard")
-    app.register_blueprint(workoutSession_bp, url_prefix="/workoutSession")
-    app.register_blueprint(exerciseLog_bp, url_prefix="/logExercise")
-    app.register_blueprint(markExerciseDone_bp, url_prefix="/markworkoutdone")
-    app.register_blueprint(cardioLog_bp, url_prefix="/logCardio")
+    app.register_blueprint(workoutAction_bp, url_prefix="/workoutAction")
+    app.register_blueprint(exerciseLog_bp, url_prefix="/exerciseLog")

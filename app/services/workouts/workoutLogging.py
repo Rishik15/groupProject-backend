@@ -144,7 +144,7 @@ def sessionIsOpen(user_id: int, session_id: int) -> bool:
 
 def endWorkoutSession(user_id: int, session_id: int):
     if not sessionBelongsToUser(user_id, session_id):
-        return {"success": False, "reason": "not_found"}
+        return {"success": False, "reason": "session does not belong to user"}
 
     if not sessionIsOpen(user_id, session_id):
         return {"success": False, "reason": "already_ended"}
@@ -178,7 +178,7 @@ def logWorkoutInformation(
     datetimeFinished=None,
 ):
     if not sessionBelongsToUser(user_id, session_id):
-        return {"success": False, "reason": "not_found"}
+        return {"success": False, "reason": "session does not belong to user"}
 
     if not sessionIsOpen(user_id, session_id):
         return {"success": False, "reason": "ended"}
@@ -236,7 +236,7 @@ def logCardioActivity(
 ):
     if session_id is not None:
         if not sessionBelongsToUser(user_id, session_id):
-            return {"success": False, "reason": "not_found"}
+            return {"success": False, "reason": "session does not belong to user"}  
 
         if not sessionIsOpen(user_id, session_id):
             return {"success": False, "reason": "ended"}
@@ -287,7 +287,7 @@ def logCardioActivity(
 
 def getSessionSets(user_id: int, session_id: int):
     if not sessionBelongsToUser(user_id, session_id):
-        return None
+        return {"success": False, "reason": "session does not belong to user"}
 
     return run_query(
         """
@@ -312,7 +312,7 @@ def getSessionSets(user_id: int, session_id: int):
 
 def getSessionCardio(user_id: int, session_id: int):
     if not sessionBelongsToUser(user_id, session_id):
-        return None
+        return {"success": False, "reason": "session does not belong to user"}
 
     return run_query(
         """
