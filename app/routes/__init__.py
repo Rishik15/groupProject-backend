@@ -2,6 +2,7 @@ from .test import test_bp
 from .auth import auth_bp
 from .client import client_bp
 from .onboarding import onboard_bp
+from .landing import topCoaches_bp
 from .coach import coach_bp
 
 def register_routes(app):
