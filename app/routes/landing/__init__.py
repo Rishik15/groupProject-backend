@@ -1,5 +1,5 @@
 from flask import Blueprint
 
-topCoaches_bp = Blueprint("topCoaches", __name__)
+landing_bp = Blueprint("landing", __name__)
 
 from . import topFiveCoaches

@@ -3,7 +3,7 @@ from flask import jsonify
 from app.services.coach.topCoaches.topFiveCoaches import  getTopFiveCoaches
 
 
-@topCoaches_bp.route("/", methods=["GET"])
+@topCoaches_bp.route("/topCoaches", methods=["GET"])
 def topFiveCoaches():
     try: 
         return jsonify(getTopFiveCoaches()),  200
