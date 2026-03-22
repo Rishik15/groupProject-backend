@@ -1,11 +1,11 @@
-from . import topCoaches_bp
+from . import landing_bp
 from flask import jsonify
-from app.services.coach.topCoaches.topFiveCoaches import  getTopFiveCoaches
+from app.services.coach.topCoaches.topFiveCoaches import getTopFiveCoaches
 
 
-@topCoaches_bp.route("/topCoaches", methods=["GET"])
+@landing_bp.route("/topCoaches", methods=["GET"])
 def topFiveCoaches():
-    try: 
-        return jsonify(getTopFiveCoaches()),  200
-    except Exception as e: 
-        return {"error": str(e)}, 500 
+    try:
+        return jsonify(getTopFiveCoaches()), 200
+    except Exception as e:
+        return {"error": str(e)}, 500
