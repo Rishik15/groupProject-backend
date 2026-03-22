@@ -1,6 +1,6 @@
 from . import workoutAction_bp
 from flask import jsonify, request, session
-from app.services.workouts import workoutLogging
+from app.services.workouts import workoutLogging, workoutActionsFuncs
 
 
 @workoutAction_bp.route("/getSWPids", methods=["GET"])
@@ -24,7 +24,7 @@ def getPlanid_sessionId():
             return jsonify({"error": "Unauthorized"}), 401
 
         u_id = int(u_id)
-        obj = workoutLogging.getPlanNamesAndIds(u_id)
+        obj = workoutActionsFuncs.getPlanNamesAndIds(u_id)
 
         return jsonify({
             "message": "successful",
@@ -67,7 +67,7 @@ def getExerciseInfo():
             return jsonify({"error": "workout_plan_id is required"}), 400
 
         plan_id = int(plan_id)
-        exercise_info = workoutLogging.get_ExerciseInfo(plan_id)
+        exercise_info = workoutActionsFuncs.get_ExerciseInfo(plan_id)
 
         return jsonify({
             "message": "success",
@@ -89,7 +89,7 @@ def getActiveWorkoutSession():
 
         u_id = int(u_id)
 
-        workout_session = workoutLogging.getActiveWorkoutSession(u_id)
+        workout_session = workoutActionsFuncs.getActiveWorkoutSession(u_id)
         if not workout_session:
             return jsonify({
                 "message": "No active workout session",
@@ -97,8 +97,8 @@ def getActiveWorkoutSession():
             }), 200
 
         session_id = int(workout_session["session_id"])
-        sets = workoutLogging.getSessionSets(u_id, session_id)
-        cardio = workoutLogging.getSessionCardio(u_id, session_id)
+        sets = workoutActionsFuncs.getSessionSets(u_id, session_id)
+        cardio = workoutActionsFuncs.getSessionCardio(u_id, session_id)
 
         return jsonify({
             "session": workout_session,
@@ -125,7 +125,7 @@ def startWorkoutSession():
         if workout_plan_id is not None:
             workout_plan_id = int(workout_plan_id)
 
-        created = workoutLogging.startWorkoutSession(
+        created = workoutActionsFuncs.startWorkoutSession(
             user_id=int(u_id),
             workout_plan_id=workout_plan_id,
             notes=notes
@@ -158,12 +158,12 @@ def getWorkoutSession():
         session_id = int(session_id)
         u_id = int(u_id)
 
-        workout_session = workoutLogging.getWorkoutSessionById(u_id, session_id)
+        workout_session = workoutActionsFuncs.getWorkoutSessionById(u_id, session_id)
         if not workout_session:
             return jsonify({"error": "Workout session not found"}), 404
 
-        sets = workoutLogging.getSessionSets(u_id, session_id)
-        cardio = workoutLogging.getSessionCardio(u_id, session_id)
+        sets = workoutActionsFuncs.getSessionSets(u_id, session_id)
+        cardio = workoutActionsFuncs.getSessionCardio(u_id, session_id)
 
         return jsonify({
             "session": workout_session,
@@ -190,7 +190,7 @@ def markDone():
         if session_id is None:
             return jsonify({"error": "session_id is required"}), 400
 
-        result = workoutLogging.endWorkoutSession(int(u_id), int(session_id))
+        result = workoutActionsFuncs.endWorkoutSession(int(u_id), int(session_id))
 
         if not result["success"]:
             if result["reason"] == "not_found":
