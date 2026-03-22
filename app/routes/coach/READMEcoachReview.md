@@ -116,9 +116,9 @@ You must provide the following fields in JSON via Axios:
 
 ## Error Cases
 
-- 401 Unauthorized → missing session  
-- 400 Bad Request → invalid or missing input  
-- 403 Forbidden → user not allowed to review coach  
-- 404 Not Found → coach does not exist ("coach not found")  
-- 409 Conflict → user already reviewed this coach  
-- 500 Internal Server Error → unexpected failure  
+- 401 Unauthorized:   missing session  
+- 400 Bad Request : invalid or missing input  
+- 403 Forbidden :user not allowed to review coach  
+- 404 Not Found : coach does not exist ("coach not found")  
+- 409 Conflict : user already reviewed this coach  
+- 500 Internal Server Error : unexpected failure  
