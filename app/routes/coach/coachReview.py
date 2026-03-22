@@ -48,7 +48,7 @@ def leaveCoachReview():
         return jsonify({"error": "only clients who have worked with a coach can leave a review"}) , 500
     
     rate = data.get("rating")
-    if rate > 5 or rate < 1 or isinstance(rate, int): 
+    if rate > 5 or rate < 1 or not isinstance(rate, int): 
         return jsonify({"error": "you must provide an integer value 1 <= rating <= 5"}) , 500
     review = data.get("review_text")
     u_id = int(u_id)
