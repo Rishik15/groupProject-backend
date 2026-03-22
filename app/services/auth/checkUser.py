@@ -8,7 +8,6 @@ def checkUserExists(user_id=None, email=None):
         SELECT user_id
         FROM users_immutables
         WHERE user_id = :value
-        LIMIT 1
         """
         params = {"value": user_id}
 
@@ -17,7 +16,6 @@ def checkUserExists(user_id=None, email=None):
         SELECT user_id
         FROM users_immutables
         WHERE email = :value
-        LIMIT 1
         """
         params = {"value": email}
 
