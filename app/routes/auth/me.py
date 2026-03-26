@@ -1,6 +1,7 @@
 from . import auth_bp
 from flask import session
 from app.services.auth.checkUser import checkUserExists
+from app.services.auth.getUser import getUserInfo
 
 
 @auth_bp.route("/me", methods=["GET"])
@@ -12,4 +13,6 @@ def me():
         session.clear()
         return {"authenticated": False}, 401
 
-    return {"authenticated": True, "role": session.get("role")}, 200
+    user = getUserInfo(session.get("user_id"))
+
+    return {"authenticated": True, "role": session.get("role"), "user": user}, 200
