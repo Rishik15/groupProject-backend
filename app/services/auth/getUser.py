@@ -22,7 +22,26 @@ def getUserCreds(email):
         """,
         {"email": email},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     return result[0] if result else None
+
+
+def getUserInfo(user_id):
+    try:
+        user = run_query(
+            """
+            SELECT
+                ui.first_name, ui.last_name, ui.email
+            FROM users_immutables ui
+            WHERE ui.user_id = :user_id
+            """,
+            {"user_id": user_id},
+            fetch=True,
+            commit=False,
+        )
+    except Exception as e:
+        raise e
+
+    return user[0] if user else None
