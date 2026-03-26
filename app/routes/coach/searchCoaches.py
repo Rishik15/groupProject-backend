@@ -7,8 +7,8 @@ def search_coaches_route():
     data = request.get_json()
 
     name = data.get("name", "")
-    filters = data.get("tags", [])
-    is_certified = data.get("certified", False) 
+    filters = data.get("filters", [])
+    is_certified = data.get("is_certified", False) 
 
     max_price = data.get("max_price")
     min_rating = data.get("min_rating")
@@ -20,7 +20,7 @@ def search_coaches_route():
             max_price = float(max_price)
         if min_rating is not None:
             min_rating = float(min_rating)
-        # Pass the new min_rating and sort_by to your service
+
         coaches = search_coaches(
             name=name, 
             filters=filters, 
