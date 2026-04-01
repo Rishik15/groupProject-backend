@@ -4,6 +4,7 @@
 
 - localhost:8080/coach/get_review  
 - localhost:8080/coach/leave_review  
+- localhost:8080/coach/get_coach_info
 
 ---
 
@@ -122,3 +123,19 @@ You must provide the following fields in JSON via Axios:
 - 404 Not Found → coach does not exist ("coach not found")  
 - 409 Conflict → user already reviewed this coach  
 - 500 Internal Server Error → unexpected failure  
+
+# later addition get coach information : 
+
+
+```json
+    Response:
+    {
+        "first_name": str,
+        "last_name": str,
+        "price": number,
+        "coach_description": str,
+        "profile_picture": str,
+        "weight": number,
+        "height": number
+    }
+```
