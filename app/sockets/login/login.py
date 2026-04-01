@@ -24,7 +24,7 @@ def register_login_socket_events(socketio):
         if sid in socket_to_user:
             user_id = socket_to_user[sid]
 
-            del online_users[user_id]
-            del socket_to_user[sid]
+            online_users.pop(user_id, None)
+            socket_to_user.pop(sid, None)
 
             print(f"{user_id} went offline")
