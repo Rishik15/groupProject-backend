@@ -1,9 +1,9 @@
 from . import coach_bp
-from services.coach.rateCoaches import (
+from app.services.coach.rateCoaches import (
     getReviews,
     postReview,
     clientKnowsCoach,
-    hasExistingReview
+    hasExistingReview,
 )
 from services.coach.getCoachInfo import getCoachInformation
 from flask import session, request, jsonify
@@ -134,14 +134,26 @@ def leaveCoachReview():
             return jsonify({"error": "invalid user session"}), 401
 
         if not clientKnowsCoach(u_id, c_id):
-            return jsonify({"error": "only clients who have worked with a coach can leave a review"}), 403
+            return (
+                jsonify(
+                    {
+                        "error": "only clients who have worked with a coach can leave a review"
+                    }
+                ),
+                403,
+            )
 
         if hasExistingReview(u_id, c_id):
             return jsonify({"error": "you have already reviewed this coach"}), 409
 
         rate = data.get("rating")
         if not isinstance(rate, int) or rate < 1 or rate > 5:
-            return jsonify({"error": "you must provide an integer value 1 <= rating <= 5"}), 400
+            return (
+                jsonify(
+                    {"error": "you must provide an integer value 1 <= rating <= 5"}
+                ),
+                400,
+            )
 
         review = data.get("review_text", "")
         if review is None:
