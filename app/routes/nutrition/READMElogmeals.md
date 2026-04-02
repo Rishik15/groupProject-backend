@@ -316,21 +316,22 @@ image_url: str(url)
 
 
 All of the following fields are required from the frontend 
-        you can populate unchanged entries in the json object using the current value of the 
-        food item
+you can populate unchanged entries in the json object using the current value of the 
+food item
 
-        data = 
+data = 
 
-        ```json { 
-        "food_id": int   (default = /getFoodItems @ "food_id")       
-        "name": str      (default = /getFoodItems @ "name")   
-        "calories": int  (default = /getFoodItems @ "calories")           
-        "protein": int   (default = /getFoodItems @ "protein")       
-        "carbs": int     (default = /getFoodItems @ "carbs")       
-        "fats": int      (default = /getFoodItems @ "fats")           
-        "image_url": str (default = /getFoodItems @ "image_url")       
-        
-        }  ```       
+```json 
+{ 
+"food_id": int   ,//(default = /getFoodItems @ "food_id")       
+"name": str      ,//(default = /getFoodItems @ "name")   
+"calories": int  ,//(default = /getFoodItems @ "calories")           
+"protein": int   ,//(default = /getFoodItems @ "protein")       
+"carbs": int     ,//(default = /getFoodItems @ "carbs")       
+"fats": int      ,//(default = /getFoodItems @ "fats")           
+"image_url": str ,//(default = /getFoodItems @ "image_url")       
 
-        
-        localhost:8080/nutrition/updateFoodItem
+}  ```       
+
+
+localhost:8080/nutrition/updateFoodItem
