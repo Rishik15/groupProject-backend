@@ -2,6 +2,60 @@ from . import nutrition_bp
 from flask import request, session, jsonify
 from app.services import mealLogging
 
+@nutrition_bp.route("/updateFoodItem", methods=["PATCH"])
+def updateFoodItem(): 
+    try:
+        u_id = session.get("user_id")
+        data = request.get_json() 
+        if not u_id:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        u_id = int(u_id)
+
+        """
+        All of the following fields are required from the frontend 
+        you can populate unchanged entries in the json object using the current value of the 
+        food item
+
+        data = 
+
+        json { 
+        "food_id": int   (default = /getFoodItems @ "food_id")       
+        "name": str      (default = /getFoodItems @ "name")   
+        "calories": int  (default = /getFoodItems @ "calories")           
+        "protein": int   (default = /getFoodItems @ "protein")       
+        "carbs": int     (default = /getFoodItems @ "carbs")       
+        "fats": int      (default = /getFoodItems @ "fats")           
+        "image_url": str (default = /getFoodItems @ "image_url")       
+        
+        }         
+
+        
+        localhost:8080/nutrition/updateFoodItem
+        
+        """
+        
+        fid         = data.get("food_id")
+        name        = data.get("name")
+        cals        = data.get("calories")
+        protein     = data.get("protein")
+        carbs       = data.get("carbs")
+        fats        = data.get("fats")
+        image_u     = data.get("image_url")
+
+        mealLogging.partialFoodItemUpdate(
+                                        u_id, 
+                                        fid,
+                                        name,
+                                        cals,
+                                        protein,
+                                        carbs,
+                                        fats,
+                                        image_u)
+    
+    except Exception as e:
+        raise e
+
 
 @nutrition_bp.route("/getFoodItems", methods=["GET"])
 def getUserFoodItem():

@@ -14,6 +14,36 @@ def _coerce_db_datetime(value):
 
     raise TypeError("unsupported datetime value returned from db")
 
+def partialFoodItemUpdate(user_id, food_id, name, calories, protein, carbs, fats, image_url):
+    try:
+        run_query(
+            """
+                UPDATE food_item 
+                SET 
+                    name = :name
+                    calories = :calories
+                    protein = :protein
+                    carbs = :carbs
+                    fats = :fats
+                    image_url = :image_url    
+                WHERE user_id = :uid AND food_item_id = :food_id
+                ; 
+            """,
+            {"uid":         user_id, 
+             "food_id":     food_id,
+              "name":       name, 
+              "calories":   calories, 
+              "protein":    protein, 
+              "carbs":      carbs, 
+              "fats":       fats, 
+              "image_url":  image_url
+             },
+            commit=True, 
+            fetch=False
+        )
+
+    except Exception as e: 
+        raise e
 
 def getFoodItem(user_id: int):
     try:
