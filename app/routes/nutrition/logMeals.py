@@ -42,7 +42,9 @@ def updateFoodItem():
         carbs       = data.get("carbs")
         fats        = data.get("fats")
         image_u     = data.get("image_url")
-
+        required_fields = [fid, name, cals, protein, carbs, fats, image_u]
+        if any(v is None for v in required_fields):
+            return jsonify({"error": "missing required fields"}), 400
         mealLogging.partialFoodItemUpdate(
                                         u_id, 
                                         fid,
