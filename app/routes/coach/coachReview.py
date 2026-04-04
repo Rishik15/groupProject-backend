@@ -5,7 +5,8 @@ from app.services.coach.rateCoaches import (
     clientKnowsCoach,
     hasExistingReview,
 )
-from services.coach.getCoachInfo import getCoachInformation
+from app.services.coach.getCoachInfo import getCoachInformation
+
 from flask import session, request, jsonify
 
 
