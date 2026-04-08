@@ -17,13 +17,17 @@ and also need a terminate contract endpoint, setting active to inactive
 
 @contract_bp("getAllCoachSideContracts", methods=["GET"])
 def getAllCoachSideContracts():
-
-    results = []
-    validResult = {}
-    contracts = getCoachContractsService(c_id) if getCoachContractsService(c_id) is not None else None 
-    for contract in contracts: 
-        getUsersPerContract(contract.get("user_id"))
-
+    c_id = session.get("user_id") if  session.get("user_id") is not None else return jsonify({"unauthorized access": "error no coach credential provided" }), 400
+    c_id = int(c_id)
     
-    return jsonify(validResult), 200
+
+
+    contracts = getCoachContractsService(c_id) if getCoachContractsService(c_id) is not None else None 
+    
+    for contract in contracts: 
+        first, last = getUsersPerContract(contract.get("user_id"))
+        contract["first_name"] = first
+        contract["last_name"] = last
+    
+    return jsonify(contracts), 200
 
