@@ -15,7 +15,7 @@ and also need a terminate contract endpoint, setting active to inactive
 
 """
 
-@contract_bp("getAllCoachSideContracts", methods=[])
+@contract_bp("getAllCoachSideContracts", methods=["GET"])
 def getAllCoachSideContracts():
 
     results = []
