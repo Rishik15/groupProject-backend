@@ -1,6 +1,52 @@
 from . import contract_bp
 from flask import session, request, jsonify
-from app.services.contracts.coachContractActions import getCoachContractsService
+import app.services.contracts.coachContractActions as cca
+@contract_bp.route("/getAllCoachSideContracts", methods=["GET"])
+def getAllCoachSideContracts():
+    c_id = session.get("user_id")  
+    if c_id is None: 
+        return jsonify({"error": "unauthorized access:  no coach credential provided" }), 400
+    c_id = int(c_id)
+    
+    contracts = cca.getCoachContractsService(c_id) or []
+    
+    for contract in contracts: 
+        user_rows = cca.getUsersPerContract(contract["user_id"])
+        if user_rows:
+            contract["first_name"] = user_rows[0]["first_name"]
+            contract["last_name"] = user_rows[0]["last_name"]
+        else:  
+            contract["first_name"] = None
+            contract["last_name"] = None
+    return jsonify({"Response": contracts}), 200
+
+
+@contract_bp.route("/getCoachActiveContracts", methods=["GET"])
+def getCoachActiveContractsRoute():
+    c_id = session.get("user_id")  
+    if c_id is None: 
+        return jsonify({"error": "unauthorized access:  no coach credential provided" }), 400
+    c_id = int(c_id)
+    activeContracts = cca.getCoachActiveContractsService(c_id, 1) or []
+    return jsonify({"Response":activeContracts}), 200
+
+@contract_bp.route("/getCoachInactiveContracts", methods=["GET"])
+def getCoachInactiveContractsRoute():
+    c_id = session.get("user_id")  
+    if c_id is None: 
+        return jsonify({"error": "unauthorized access:  no coach credential provided" }), 400
+    c_id = int(c_id)
+    activeContracts = cca.getCoachActiveContractsService(c_id, 0) or []
+    return jsonify({"Response":activeContracts}), 200
+
+@contract_bp.route("/coachAcceptContract", methods=["PATCH"])
+def coachAcceptContractRoute():
+    c_id = session.get("user_id")  
+    if c_id is None: 
+        return jsonify({"error": "unauthorized access:  no coach credential provided" }), 400
+    c_id = int(c_id)
+
+
 """
 
 For all contracts: 
@@ -14,20 +60,3 @@ and also need a terminate contract endpoint, setting active to inactive
 
 
 """
-
-@contract_bp("getAllCoachSideContracts", methods=["GET"])
-def getAllCoachSideContracts():
-    c_id = session.get("user_id") if  session.get("user_id") is not None else return jsonify({"unauthorized access": "error no coach credential provided" }), 400
-    c_id = int(c_id)
-    
-
-
-    contracts = getCoachContractsService(c_id) if getCoachContractsService(c_id) is not None else None 
-    
-    for contract in contracts: 
-        first, last = getUsersPerContract(contract.get("user_id"))
-        contract["first_name"] = first
-        contract["last_name"] = last
-    
-    return jsonify(contracts), 200
-

@@ -11,6 +11,8 @@ returns
     "repsonseList": 
     [
         {
+        "user_id": int,
+        "active": int in range(0,1)
         "contract_id" : int, 
         "created_at": datetime obj  , //iso format 
         "start_date": datetime obj  , //iso format , 
