@@ -1,6 +1,6 @@
 from . import nutrition_bp
 from flask import request, session, jsonify
-from app.services import mealLogging
+from app.services.nutrition import mealLogging
 
 @nutrition_bp.route("/updateFoodItem", methods=["PATCH"])
 def updateFoodItem(): 
@@ -9,7 +9,7 @@ def updateFoodItem():
         data = request.get_json() 
         if not u_id:
             return jsonify({"error": "Unauthorized"}), 401
-
+ 
         u_id = int(u_id)
 
         """
