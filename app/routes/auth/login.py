@@ -13,6 +13,7 @@ def login():
     email = data.get("email")
     password = data.get("password")
 
+    print(email, password)
     user = getUserCreds(email)
 
     if not user:

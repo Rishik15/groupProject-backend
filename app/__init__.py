@@ -6,6 +6,7 @@ db = SQLAlchemy()
 bcrypt = Bcrypt()
 socketio = SocketIO(cors_allowed_origins="http://localhost:5173") 
 
-online_users = {}
+online_users = {}      
+chat_online_users = {}   
 socket_to_user = {}
-current_chat = {} 
+presence_subscribers = {}
