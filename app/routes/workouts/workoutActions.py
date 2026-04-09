@@ -1,6 +1,7 @@
 from . import workoutAction_bp
 from flask import jsonify, request, session
-from app.services.workouts import workoutLogging, workoutActionsFuncs
+from app.services.workouts import workoutLogging, workoutActionsFuncs, workoutSchedule
+from datetime import datetime
 
 
 @workoutAction_bp.route("/getSWPids", methods=["GET"])
@@ -97,8 +98,8 @@ def getActiveWorkoutSession():
             }), 200
 
         session_id = int(workout_session["session_id"])
-        sets = workoutActionsFuncs.getSessionSets(u_id, session_id)
-        cardio = workoutActionsFuncs.getSessionCardio(u_id, session_id)
+        sets = workoutActionsFuncs.getSessionSets(u_id, session_id) or []
+        cardio = workoutActionsFuncs.getSessionCardio(u_id, session_id) or []
 
         return jsonify({
             "session": workout_session,
@@ -149,8 +150,7 @@ def getWorkoutSession():
         if not u_id:
             return jsonify({"error": "Unauthorized"}), 401
 
-        data = request.get_json() or {}
-        session_id = data.get("session_id")
+        session_id = request.args.get("session_id")
 
         if session_id is None:
             return jsonify({"error": "session_id is required"}), 400
@@ -162,8 +162,8 @@ def getWorkoutSession():
         if not workout_session:
             return jsonify({"error": "Workout session not found"}), 404
 
-        sets = workoutActionsFuncs.getSessionSets(u_id, session_id)
-        cardio = workoutActionsFuncs.getSessionCardio(u_id, session_id)
+        sets = workoutActionsFuncs.getSessionSets(u_id, session_id) or []
+        cardio = workoutActionsFuncs.getSessionCardio(u_id, session_id) or []
 
         return jsonify({
             "session": workout_session,
@@ -202,5 +202,184 @@ def markDone():
 
     except ValueError:
         return jsonify({"error": "Invalid session_id"}), 400
+    except Exception:
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@workoutAction_bp.route("/schedule", methods=["GET"])
+def getWorkoutSchedule():
+    try:
+        u_id = session.get("user_id")
+        if not u_id:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        start_date = request.args.get("start_date")
+        end_date = request.args.get("end_date")
+
+        if not start_date or not end_date:
+            return jsonify({"error": "start_date and end_date are required"}), 400
+
+        start_date = datetime.strptime(start_date, "%Y-%m-%d").date()
+        end_date = datetime.strptime(end_date, "%Y-%m-%d").date()
+
+        if end_date < start_date:
+            return jsonify({"error": "end_date cannot be before start_date"}), 400
+
+        events = workoutSchedule.getWorkoutScheduleEventsForRange(
+            int(u_id),
+            start_date,
+            end_date
+        )
+
+        return jsonify({
+            "events": events
+        }), 200
+
+    except ValueError:
+        return jsonify({"error": "Invalid date format. Use YYYY-MM-DD"}), 400
+    except Exception:
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@workoutAction_bp.route("/schedule", methods=["POST"])
+def createWorkoutScheduleEvent():
+    try:
+        u_id = session.get("user_id")
+        if not u_id:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        data = request.get_json() or {}
+
+        title = (data.get("title") or "").strip()
+        event_date = data.get("event_date")
+        start_time = data.get("start_time")
+        end_time = data.get("end_time")
+        session_type = (data.get("session_type") or "strength").strip()
+        status = (data.get("status") or "scheduled").strip()
+        notes = data.get("notes")
+        workout_plan_id = data.get("workout_plan_id")
+
+        if not title or not event_date or not start_time or not end_time:
+            return jsonify({
+                "error": "title, event_date, start_time, and end_time are required"
+            }), 400
+
+        event_date = datetime.strptime(event_date, "%Y-%m-%d").date()
+
+        try:
+            start_time = datetime.strptime(start_time, "%H:%M:%S").time()
+        except ValueError:
+            start_time = datetime.strptime(start_time, "%H:%M").time()
+
+        try:
+            end_time = datetime.strptime(end_time, "%H:%M:%S").time()
+        except ValueError:
+            end_time = datetime.strptime(end_time, "%H:%M").time()
+
+        if workout_plan_id is not None:
+            workout_plan_id = int(workout_plan_id)
+
+        created = workoutSchedule.createWorkoutScheduleEvent(
+            user_id=int(u_id),
+            title=title,
+            event_date=event_date,
+            start_time=start_time,
+            end_time=end_time,
+            session_type=session_type,
+            status=status,
+            notes=notes,
+            workout_plan_id=workout_plan_id
+        )
+
+        return jsonify({
+            "message": "Workout schedule event created successfully",
+            "event": created
+        }), 201
+
+    except ValueError:
+        return jsonify({"error": "Invalid date, time, or workout_plan_id format"}), 400
+    except Exception:
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@workoutAction_bp.route("/schedule/<int:event_id>", methods=["PATCH"])
+def updateWorkoutScheduleEvent(event_id):
+    try:
+        u_id = session.get("user_id")
+        if not u_id:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        data = request.get_json() or {}
+
+        title = data.get("title")
+        event_date = data.get("event_date")
+        start_time = data.get("start_time")
+        end_time = data.get("end_time")
+        session_type = data.get("session_type")
+        status = data.get("status")
+        notes = data.get("notes")
+        workout_plan_id = data.get("workout_plan_id")
+
+        if event_date is not None:
+            event_date = datetime.strptime(event_date, "%Y-%m-%d").date()
+
+        if start_time is not None:
+            try:
+                start_time = datetime.strptime(start_time, "%H:%M:%S").time()
+            except ValueError:
+                start_time = datetime.strptime(start_time, "%H:%M").time()
+
+        if end_time is not None:
+            try:
+                end_time = datetime.strptime(end_time, "%H:%M:%S").time()
+            except ValueError:
+                end_time = datetime.strptime(end_time, "%H:%M").time()
+
+        if workout_plan_id is not None:
+            workout_plan_id = int(workout_plan_id)
+
+        updated = workoutSchedule.updateWorkoutScheduleEvent(
+            user_id=int(u_id),
+            event_id=event_id,
+            title=title,
+            event_date=event_date,
+            start_time=start_time,
+            end_time=end_time,
+            session_type=session_type,
+            status=status,
+            notes=notes,
+            workout_plan_id=workout_plan_id
+        )
+
+        if not updated:
+            return jsonify({"error": "Workout schedule event not found"}), 404
+
+        return jsonify({
+            "message": "Workout schedule event updated successfully",
+            "event": updated
+        }), 200
+
+    except ValueError:
+        return jsonify({"error": "Invalid date, time, or workout_plan_id format"}), 400
+    except Exception:
+        return jsonify({"error": "Internal server error"}), 500
+
+
+@workoutAction_bp.route("/schedule/<int:event_id>", methods=["DELETE"])
+def deleteWorkoutScheduleEvent(event_id):
+    try:
+        u_id = session.get("user_id")
+        if not u_id:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        deleted = workoutSchedule.deleteWorkoutScheduleEvent(int(u_id), event_id)
+
+        if not deleted:
+            return jsonify({"error": "Workout schedule event not found"}), 404
+
+        return jsonify({
+            "message": "Workout schedule event deleted successfully"
+        }), 200
+
     except Exception:
         return jsonify({"error": "Internal server error"}), 500
