@@ -8,3 +8,5 @@ from . import updateCoach
 from . import updateCerts
 from . import updateAvailability
 from . import coachReview
+from . import getClients
+from . import assignClientPlan
