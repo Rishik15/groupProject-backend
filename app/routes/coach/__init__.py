@@ -4,3 +4,10 @@ from flask import Blueprint
 coach_bp = Blueprint("coach", __name__)
 
 from . import searchCoaches
+from . import updateCoach
+from . import updateCerts
+from . import updateAvailability
+from . import coachReview
+from . import getClients
+from . import assignClientPlan 
+from . import getCoachProfile

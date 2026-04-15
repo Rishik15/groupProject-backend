@@ -1,10 +1,11 @@
 from flask import Blueprint
 
-# 1. Initialize the Blueprint for this folder
-workouts_bp = Blueprint("workouts", __name__)
-
-# 2. Import your route files at the bottom
-# This ensures Flask registers the decorators (like @workoutLib_bp.route)
+workoutAction_bp = Blueprint("workoutAction", __name__)
+exerciseLog_bp =   Blueprint("exerciseLog", __name__)
+workouts_bp =      Blueprint("workouts", __name__)
+from . import exerciseLogging
+from . import workoutActions
 from . import predefinedPlans
 from . import assignPlan
 from . import exercisesInPlan
+

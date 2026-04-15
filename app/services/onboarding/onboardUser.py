@@ -37,7 +37,7 @@ def onboardClientSurvey(
 
         run_query(
             """
-            UPDATE user_immutables 
+            UPDATE users_immutables 
             SET  
                 dob = :dob
             WHERE user_id = :user_id; 
@@ -114,6 +114,7 @@ def insertCoachCert(
         raise e
 
 
+
 def coachAvailability(
     coach_id,
     dow,
@@ -122,6 +123,16 @@ def coachAvailability(
     rec,
     active
 ):
+    DAY_MAP = {
+    "Monday": "Mon",
+    "Tuesday": "Tue",
+    "Wednesday": "Wed",
+    "Thursday": "Thu",
+    "Friday": "Fri",
+    "Saturday": "Sat",
+    "Sunday": "Sun",}
+    dow = DAY_MAP.get(dow, dow)
+
     try:
         run_query(
             """

@@ -16,7 +16,7 @@ def register():
     name = data.get("name")
     role = data.get("role")
 
-    if checkUserExists(email):
+    if checkUserExists(email=email):
         return {"error": "User already exists"}, 409
 
     password_hash = bcrypt.generate_password_hash(password).decode("utf-8")
