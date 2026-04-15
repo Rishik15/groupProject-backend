@@ -7,3 +7,4 @@ workouts_bp = Blueprint("workouts", __name__)
 # This ensures Flask registers the decorators (like @workoutLib_bp.route)
 from . import predefinedPlans
 from . import assignPlan
+from . import exercisesInPlan
