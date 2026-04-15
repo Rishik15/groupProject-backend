@@ -3,6 +3,7 @@ from .auth import auth_bp
 from .client import client_bp
 from .onboarding import onboard_bp
 from .workouts import workouts_bp
+from .coach import coach_bp
 
 def register_routes(app):
     app.register_blueprint(test_bp, url_prefix="/test")
@@ -10,3 +11,4 @@ def register_routes(app):
     app.register_blueprint(client_bp, url_prefix="/client")
     app.register_blueprint(onboard_bp, url_prefix="/onboard")
     app.register_blueprint(workouts_bp, url_prefix="/workouts")
+    app.register_blueprint(coach_bp, url_prefix="/coach")
