@@ -7,7 +7,7 @@ from app.services.contracts.client_Contracts import requestContract
 @contract_bp.route("/requestContract", methods=["POST"])
 def requestContractRoute():
     data = request.get_json()
-    user_id = session.get("user_id") or data.get("user_id")  
+    user_id = session.get("user_id") 
     if not user_id:
         return jsonify({"error": "unauthorized"}), 401
 
