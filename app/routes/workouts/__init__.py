@@ -7,4 +7,5 @@ from . import exerciseLogging
 from . import workoutActions
 from . import predefinedPlans
 from . import assignPlan
+from . import exercisesInPlan
 
