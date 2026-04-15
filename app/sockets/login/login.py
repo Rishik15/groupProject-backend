@@ -23,7 +23,7 @@ def register_login_socket_events(socketio):
         sid = request.sid
 
         if sid not in socket_to_user:
-            return
+            return "No Socket Connection found", 404
 
         user_id = socket_to_user[sid]
 
