@@ -10,3 +10,4 @@ online_users = {}
 chat_online_users = {}   
 socket_to_user = {}
 presence_subscribers = {}
+user_active_conversation = {}

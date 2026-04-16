@@ -1,6 +1,11 @@
 from flask_socketio import emit, join_room
 from flask import session, request
-from app import online_users, socket_to_user, chat_online_users
+from app import (
+    online_users,
+    socket_to_user,
+    chat_online_users,
+    user_active_conversation,
+)
 from app.services.chat.notify_users import notify_presence_change
 
 
@@ -40,5 +45,8 @@ def register_login_socket_events(socketio):
                 chat_online_users.pop(user_id)
 
                 notify_presence_change(user_id, "chat_offline")
+
+        if user_id in user_active_conversation:
+            user_active_conversation.pop(user_id)
 
         socket_to_user.pop(sid)
