@@ -17,7 +17,7 @@ def search_coaches(name, filters, is_certified=False, max_price=None, min_rating
         LEFT JOIN certifications cf ON c.coach_id = cf.coach_id
     """
 
-    query += " WHERE 1=1"
+    query += " WHERE u.user_id != 1"
     params = {}
 
     if is_certified:
