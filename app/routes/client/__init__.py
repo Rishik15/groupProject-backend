@@ -7,3 +7,4 @@ client_bp = Blueprint("client", __name__)
 # This ensures Flask registers the decorators (like @client_bp.route)
 from . import mentalSurvey
 from . import updateProfile
+from . import getInfo
