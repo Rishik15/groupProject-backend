@@ -23,6 +23,6 @@ def search_exercises(name, filters):
             query += f" AND equipment LIKE :equip_{equip}"
             params[f"equip_{equip}"] = f"%{equip}%"
 
-    query += " ORDER BY exercise_name ASC"
+    query += " ORDER BY exercise_id ASC"
 
     return run_query(query, params=params, fetch=True, commit=False)
