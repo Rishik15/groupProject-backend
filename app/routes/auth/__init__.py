@@ -7,3 +7,4 @@ from . import login
 from . import delete
 from . import logout
 from . import me
+from . import googleOauth
