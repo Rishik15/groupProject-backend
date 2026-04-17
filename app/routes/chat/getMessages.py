@@ -1,6 +1,7 @@
 from . import chat_bp
 from flask import session, request, jsonify
 from app.services.chat.getConvMessages import getConvMessages
+from app.services.chat.markRead import markAsRead
 
 
 @chat_bp.route("/getMessages", methods=["GET"])
@@ -12,9 +13,11 @@ def getMessages():
 
     messages = getConvMessages(conv_id, user_id)
 
+    markAsRead(user_id, conv_id)
+
     if not user_id:
         print("Error")
         return {"error": "Unauthorized"}, 401
-    
+
     print(messages)
     return jsonify(messages), 200

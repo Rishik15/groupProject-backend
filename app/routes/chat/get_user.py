@@ -23,7 +23,12 @@ def get_users():
         user["conversationId"] = chat_data["conversationId"]
 
         uid = user["id"]
-        user["unreadCount"] = getUnreadCount(user_id)
+
+        conv_id = user["conversationId"]
+
+        count = getUnreadCount(user_id, conv_id)
+
+        user["unreadCount"] = count
 
         user["status"] = "online" if uid in chat_online_users else "offline"
 
