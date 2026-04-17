@@ -1,7 +1,9 @@
+# app/services/workouts/checkForDuplicate.py
 from app.services import run_query
 
+
 def get_plan_conflict(user_id, exercises, plan_name):
-    # Check name conflict
+    # Check name conflict against plans this user authored
     name_conflict = run_query(
         """
         SELECT 1
@@ -19,11 +21,10 @@ def get_plan_conflict(user_id, exercises, plan_name):
     if name_conflict:
         return "name"
 
-    # Check structure conflict
+    # Check structure conflict: fetch all plans authored by this user
     user_plans = run_query(
         """
-        SELECT plan_id
-        FROM workout_plan_template
+        SELECT plan_id FROM workout_plan_template
         WHERE author_user_id = :user_id
         """,
         {"user_id": user_id},
@@ -32,12 +33,15 @@ def get_plan_conflict(user_id, exercises, plan_name):
     )
 
     for plan in user_plans:
+        # Join through workout_day to get exercises — plan_exercise no longer
+        # has plan_id directly (3NF: plan_id lives only in workout_day)
         existing_exercises = run_query(
             """
-            SELECT exercise_id, sets_goal, reps_goal, order_in_workout
-            FROM plan_exercise
-            WHERE plan_id = :plan_id
-            ORDER BY order_in_workout ASC
+            SELECT pe.exercise_id, pe.sets_goal, pe.reps_goal, pe.order_in_workout
+            FROM workout_day wd
+            JOIN plan_exercise pe ON pe.day_id = wd.day_id
+            WHERE wd.plan_id = :plan_id
+            ORDER BY wd.day_order ASC, pe.order_in_workout ASC
             """,
             {"plan_id": plan["plan_id"]},
             fetch=True,
@@ -56,7 +60,8 @@ def same_exercise_structure(existing_exercises, incoming_exercises):
 
     for existing_ex, incoming_ex in zip(existing_exercises, incoming_exercises):
         if (
-            existing_ex["exercise_id"] != incoming_ex["exercise_id"] or existing_ex["sets_goal"] != incoming_ex.get("sets") 
+            existing_ex["exercise_id"] != incoming_ex["exercise_id"]
+            or existing_ex["sets_goal"] != incoming_ex.get("sets")
             or existing_ex["reps_goal"] != incoming_ex.get("reps")
         ):
             return False
