@@ -8,7 +8,6 @@ plan_exercise — what exercises are in it and in what order
 exercise — what are those exercises actually called and what equipment do they need
 '''
 
-
 def get_predefined_plans(category=None, days_per_week=None, duration=None, level=None):
     # fetch all public system-authored plans with their exercise count
     # author_user_id = 1 means system, is_public = 1 means visible in browse screen
@@ -20,15 +19,16 @@ def get_predefined_plans(category=None, days_per_week=None, duration=None, level
             COUNT(pe.exercise_id) as exercise_count
         FROM workout_plan wp
         JOIN workout_plan_template wpt ON wp.plan_id = wpt.plan_id
-        JOIN plan_exercise pe ON wp.plan_id = pe.plan_id
+        JOIN workout_day wd ON wp.plan_id = wd.plan_id
+        JOIN plan_exercise pe ON wd.day_id = pe.day_id
         WHERE wpt.author_user_id = 1
         AND wpt.is_public = 1
     """
 
     params = {}
 
-    # The description in the workout plan template is formatted specifically like shown : {Category} | {X} days/week | {Duration} min | {Level}
-    # each filter uses LIKE against the description 
+    # The description in the workout plan template is formatted specifically: 
+    # {Category} | {X} days/week | {Duration} min | {Level}
     if category:
         query += " AND wpt.description LIKE :category"
         params["category"] = f"%{category}%"
