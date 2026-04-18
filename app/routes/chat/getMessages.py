@@ -19,5 +19,4 @@ def getMessages():
         print("Error")
         return {"error": "Unauthorized"}, 401
 
-    print(messages)
     return jsonify(messages), 200
