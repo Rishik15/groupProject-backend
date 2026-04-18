@@ -3,6 +3,7 @@ from flask import jsonify, request, session
 from app.services.workouts import workoutLogging
 from datetime import datetime
 
+
 @exerciseLog_bp.route("/log_weights", methods=["POST"])
 def logSets():
     try:
@@ -67,8 +68,8 @@ def logSets():
 
     except ValueError:
         return jsonify({"error": "Invalid numeric or datetime format"}), 400
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        return jsonify({"error": "Internal server error"}), 500
 
 
 @exerciseLog_bp.route("/log_cardio", methods=["POST"])
@@ -141,5 +142,5 @@ def logCardio():
 
     except ValueError:
         return jsonify({"error": "Invalid numeric or datetime format"}), 400
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    except Exception:
+        return jsonify({"error": "Internal server error"}), 500

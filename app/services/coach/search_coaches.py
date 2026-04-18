@@ -4,7 +4,7 @@ from app.services import run_query
 def search_coaches(name, filters, is_certified=False, max_price=None, min_rating=None, sort_by=False):
     #  Base Query..if no filters are applied this will return all coaches. 
     #  We use DISTINCT to avoid getting the same coach multiple times if they have several certs.
-    print("received filters:", filters)
+    # print("received filters:", filters)
     query = """
         SELECT 
             u.user_id as coach_id, u.first_name, u.last_name, c.price, c.coach_description, 
@@ -17,15 +17,15 @@ def search_coaches(name, filters, is_certified=False, max_price=None, min_rating
         LEFT JOIN certifications cf ON c.coach_id = cf.coach_id
     """
 
-    query += " WHERE 1=1"
+    query += " WHERE u.user_id != 1"
     params = {}
 
     if is_certified:
         query += " AND cf.cert_name IS NOT NULL"
 
     if name:
-        query += " AND u.first_name LIKE :name"
-        params["name"] = f"%{name}%"
+        query += " AND CONCAT(u.first_name, ' ', u.last_name) LIKE :full_name"
+        params["full_name"] = f"%{name}%"
 
     if max_price is not None:
         query += " AND c.price <= :max_price"
