@@ -31,11 +31,13 @@ services:
       db:
         condition: service_healthy
     command: >
-      gunicorn
-      --worker-class eventlet
-      --workers 1
-      --bind 0.0.0.0:8000
-      app.main:app   
+       gunicorn
+        --worker-class eventlet
+        --workers 1
+        --bind 0.0.0.0:8000
+        --log-level debug
+        --access-logfile -
+        app.main:app  
   frontend:
     build: 
       context: frontend
@@ -55,3 +57,6 @@ services:
 volumes:
   mysql_data:
   node_modules:
+
+
+
