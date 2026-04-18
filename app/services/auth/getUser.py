@@ -93,7 +93,9 @@ def getUserInfo(user_id):
         user = run_query(
             """
             SELECT
-                ui.first_name, ui.last_name, ui.email
+                ui.first_name,
+                ui.last_name,
+                ui.email
             FROM users_immutables ui
             WHERE ui.user_id = :user_id
             """,
@@ -105,3 +107,88 @@ def getUserInfo(user_id):
         raise e
 
     return user[0] if user else None
+
+
+def getUserOnboardingStatus(user_id: int, role: str):
+    try:
+        if role == "coach":
+            result = run_query(
+                """
+                SELECT
+                    ui.dob,
+                    um.weight,
+                    um.height,
+                    um.goal_weight,
+                    c.coach_description,
+                    c.price
+                FROM users_immutables ui
+                INNER JOIN user_mutables um
+                    ON ui.user_id = um.user_id
+                LEFT JOIN coach c
+                    ON ui.user_id = c.coach_id
+                WHERE ui.user_id = :user_id
+                LIMIT 1
+                """,
+                {"user_id": user_id},
+                fetch=True,
+                commit=False,
+            )
+
+            if not result:
+                return True
+
+            row = result[0]
+
+            missing_description = (
+                row.get("coach_description") is None
+                or str(row.get("coach_description")).strip() == ""
+            )
+
+            needs_onboarding = any([
+                row.get("dob") is None,
+                row.get("weight") is None,
+                row.get("height") is None,
+                row.get("goal_weight") is None,
+                missing_description,
+                row.get("price") is None,
+            ])
+
+            return needs_onboarding
+
+        if role == "client":
+            result = run_query(
+                """
+                SELECT
+                    ui.dob,
+                    um.weight,
+                    um.height,
+                    um.goal_weight
+                FROM users_immutables ui
+                INNER JOIN user_mutables um
+                    ON ui.user_id = um.user_id
+                WHERE ui.user_id = :user_id
+                LIMIT 1
+                """,
+                {"user_id": user_id},
+                fetch=True,
+                commit=False,
+            )
+
+            if not result:
+                return True
+
+            row = result[0]
+
+            needs_onboarding = any([
+                row.get("dob") is None,
+                row.get("weight") is None,
+                row.get("height") is None,
+                row.get("goal_weight") is None,
+            ])
+
+            return needs_onboarding
+
+        return False
+
+    except Exception as e:
+        raise e

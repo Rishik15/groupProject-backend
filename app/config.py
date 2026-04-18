@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 load_dotenv("/app/.env")
 load_dotenv()
 
+
 class Config:
     SQLALCHEMY_DATABASE_URI = os.getenv(
         "DATABASE_URL", "mysql+pymysql://root:root@db:3306/exercise_app"
@@ -20,6 +21,10 @@ class Config:
     SESSION_COOKIE_SAMESITE = "Lax"
 
     MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", 16 * 1024 * 1024))
+
+    MEDIA_ROOT = os.getenv("MEDIA_ROOT", "/app/media")
+    MEDIA_URL_PREFIX = os.getenv("MEDIA_URL_PREFIX", "/uploads")
+    MEAL_IMAGES_SUBDIR = os.getenv("MEAL_IMAGES_SUBDIR", "meal_images")
 
     GOOGLE_OAUTH_CLIENT_SECRETS_FILE = os.getenv(
         "GOOGLE_OAUTH_CLIENT_SECRETS_FILE",

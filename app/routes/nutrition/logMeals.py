@@ -3,8 +3,8 @@ import json
 from flask import request, session, jsonify
 
 from . import nutrition_bp
+from app.services.media import save_meal_image_for_user
 from app.services.nutrition import mealLogging
-from app.services.google_drive import upload_meal_image_for_user
 
 
 def _parse_food_item_ids(raw_value):
@@ -168,7 +168,7 @@ def logMeal():
             return jsonify({"error": "food_item_ids must be a non-empty list"}), 400
 
         try:
-            upload_result = upload_meal_image_for_user(
+            upload_result = save_meal_image_for_user(
                 user_id=u_id,
                 uploaded_file=photo,
             )
@@ -188,14 +188,10 @@ def logMeal():
         return jsonify({
             "message": "success",
             "photo_url": upload_result["photo_url"],
-            "file_id": upload_result["file_id"],
-            "folder_id": upload_result["folder_id"],
-            "credential_source": upload_result.get("credential_source"),
         }), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 @nutrition_bp.route("/getLoggedMeals", methods=["POST"])
 def getLoggedMeals():

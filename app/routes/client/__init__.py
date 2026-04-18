@@ -9,3 +9,4 @@ from . import mentalSurvey
 from . import getInfo
 from . import checkSurvey
 from . import updateProfile
+from . import progressPhotos

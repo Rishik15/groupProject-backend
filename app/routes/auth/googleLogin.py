@@ -104,7 +104,10 @@ def google_login_callback():
     session.pop("google_login_state", None)
     session.pop("google_login_code_verifier", None)
 
-    return redirect(current_app.config["GOOGLE_LOGIN_FRONTEND_REDIRECT_URI"])
+    base = current_app.config["GOOGLE_LOGIN_FRONTEND_REDIRECT_URI"].rstrip("/")
+    redirect_url = f"{base}/auth/complete"
+
+    return redirect(redirect_url)
 
 
 @auth_bp.route("/googleLogin/status", methods=["GET"])
