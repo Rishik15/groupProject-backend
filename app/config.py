@@ -25,6 +25,24 @@ class Config:
         "GOOGLE_OAUTH_CLIENT_SECRETS_FILE",
         "/app/client_secret.json"
     )
+
+    GOOGLE_LOGIN_REDIRECT_URI = os.getenv(
+        "GOOGLE_LOGIN_REDIRECT_URI",
+        "http://localhost:8080/auth/googleLogin/callback"
+    )
+    GOOGLE_LOGIN_SCOPES = [
+        scope.strip()
+        for scope in os.getenv(
+            "GOOGLE_LOGIN_SCOPES",
+            "openid,https://www.googleapis.com/auth/userinfo.email,https://www.googleapis.com/auth/userinfo.profile"
+        ).split(",")
+        if scope.strip()
+    ]
+    GOOGLE_LOGIN_FRONTEND_REDIRECT_URI = os.getenv(
+        "GOOGLE_LOGIN_FRONTEND_REDIRECT_URI",
+        "http://localhost:5173"
+    )
+
     GOOGLE_OAUTH_REDIRECT_URI = os.getenv(
         "GOOGLE_OAUTH_REDIRECT_URI",
         "http://localhost:8080/auth/googleOauth/callback"
@@ -33,7 +51,7 @@ class Config:
         scope.strip()
         for scope in os.getenv(
             "GOOGLE_OAUTH_SCOPES",
-            "https://www.googleapis.com/auth/drive"
+            "https://www.googleapis.com/auth/drive,https://www.googleapis.com/auth/userinfo.email"
         ).split(",")
         if scope.strip()
     ]

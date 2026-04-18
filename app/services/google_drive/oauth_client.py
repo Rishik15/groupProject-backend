@@ -10,7 +10,10 @@ from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from googleapiclient.http import MediaIoBaseUpload
 
-from .oauth_storage import get_google_drive_connection, save_google_drive_connection
+from .oauth_storage import (
+    get_effective_google_drive_connection,
+    save_google_drive_connection,
+)
 
 
 def build_google_auth_flow(state: str | None = None):
@@ -32,10 +35,10 @@ def build_google_auth_flow(state: str | None = None):
     return flow
 
 
-def _get_credentials():
-    connection = get_google_drive_connection()
+def _get_credentials_for_user(user_id: int):
+    connection = get_effective_google_drive_connection(user_id)
     if connection is None:
-        raise ValueError("Google Drive is not connected")
+        raise ValueError("No Google Drive connection is configured for uploads")
 
     creds = Credentials(
         token=connection["access_token"],
@@ -49,6 +52,8 @@ def _get_credentials():
         creds.refresh(Request())
 
         save_google_drive_connection(
+            account_scope=connection["account_scope"],
+            owner_user_id=connection.get("owner_user_id"),
             connected_by_user_id=connection["connected_by_user_id"],
             google_email=connection["google_email"],
             access_token=creds.token,
@@ -59,12 +64,13 @@ def _get_credentials():
             root_folder_id=connection.get("root_folder_id"),
         )
 
-    return creds
+    return creds, connection
 
 
-def _get_drive_service():
-    creds = _get_credentials()
-    return build("drive", "v3", credentials=creds)
+def _get_drive_service_for_user(user_id: int):
+    creds, connection = _get_credentials_for_user(user_id)
+    service = build("drive", "v3", credentials=creds)
+    return service, connection
 
 
 def _escape_drive_query_value(value: str) -> str:
@@ -92,11 +98,7 @@ def _find_child_folder(service, parent_folder_id: str, folder_name: str):
     return files[0]["id"] if files else None
 
 
-def _find_root_folder(service):
-    connection = get_google_drive_connection()
-    if connection is None:
-        raise ValueError("Google Drive is not connected")
-
+def _find_root_folder(service, connection):
     existing_root_folder_id = connection.get("root_folder_id")
     if existing_root_folder_id:
         return existing_root_folder_id
@@ -133,6 +135,8 @@ def _find_root_folder(service):
         root_folder_id = created["id"]
 
     save_google_drive_connection(
+        account_scope=connection["account_scope"],
+        owner_user_id=connection.get("owner_user_id"),
         connected_by_user_id=connection["connected_by_user_id"],
         google_email=connection["google_email"],
         access_token=connection["access_token"],
@@ -159,8 +163,8 @@ def _create_folder(service, parent_folder_id: str, folder_name: str):
     return created["id"]
 
 
-def _get_or_create_user_folder(service, user_id: int):
-    root_folder_id = _find_root_folder(service)
+def _get_or_create_user_folder(service, user_id: int, connection):
+    root_folder_id = _find_root_folder(service, connection)
     prefix = current_app.config["GOOGLE_DRIVE_USER_FOLDER_PREFIX"]
     folder_name = f"{prefix}{user_id}"
 
@@ -200,8 +204,8 @@ def upload_meal_image_for_user(user_id: int, uploaded_file):
     if not getattr(uploaded_file, "filename", None):
         raise ValueError("uploaded file must have a filename")
 
-    service = _get_drive_service()
-    user_folder_id = _get_or_create_user_folder(service, user_id)
+    service, connection = _get_drive_service_for_user(user_id)
+    user_folder_id = _get_or_create_user_folder(service, user_id, connection)
 
     file_bytes = uploaded_file.read()
     if not file_bytes:
@@ -236,4 +240,5 @@ def upload_meal_image_for_user(user_id: int, uploaded_file):
         "file_name": created["name"],
         "photo_url": _build_public_url(file_id),
         "folder_id": user_folder_id,
+        "credential_source": connection["account_scope"],
     }

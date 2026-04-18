@@ -167,10 +167,13 @@ def logMeal():
         if len(food_item_ids) == 0:
             return jsonify({"error": "food_item_ids must be a non-empty list"}), 400
 
-        upload_result = upload_meal_image_for_user(
-            user_id=u_id,
-            uploaded_file=photo,
-        )
+        try:
+            upload_result = upload_meal_image_for_user(
+                user_id=u_id,
+                uploaded_file=photo,
+            )
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 400
 
         mealLogging.mealLogInsert(
             user_id=u_id,
@@ -187,6 +190,7 @@ def logMeal():
             "photo_url": upload_result["photo_url"],
             "file_id": upload_result["file_id"],
             "folder_id": upload_result["folder_id"],
+            "credential_source": upload_result.get("credential_source"),
         }), 200
 
     except Exception as e:

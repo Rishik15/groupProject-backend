@@ -200,33 +200,23 @@ def _createMeal(
                 "fats": fats
             },
             fetch=False,
-            commit=True
+            commit=False
         )
 
         created = run_query(
-            query="""
-                SELECT
-                    meal_id,
-                    created_at
-                FROM meal
-                WHERE name = :name
-                ORDER BY meal_id DESC
-                LIMIT 1
-            """,
-            params={"name": meal_name},
+            query="SELECT LAST_INSERT_ID() AS meal_id",
+            params={},
             fetch=True,
             commit=False
         )
 
-        if not created:
-            raise Exception("failed to fetch created meal")
+        if not created or created[0]["meal_id"] is None:
+            raise Exception("failed to fetch created meal id")
 
         return created[0]["meal_id"]
 
     except Exception as e:
         raise e
-
-
 def mealLogInsert(
     user_id: int,
     meal_name: str,
