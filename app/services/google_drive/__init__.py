@@ -4,10 +4,7 @@ from .oauth_storage import (
     save_google_drive_connection,
     clear_google_drive_connection,
 )
-from .oauth_client import (
-    build_google_auth_flow,
-    upload_meal_image_for_user,
-)
+from .oauth_client import build_google_auth_flow
 
 __all__ = [
     "get_google_drive_connection",
@@ -15,5 +12,4 @@ __all__ = [
     "save_google_drive_connection",
     "clear_google_drive_connection",
     "build_google_auth_flow",
-    "upload_meal_image_for_user",
 ]

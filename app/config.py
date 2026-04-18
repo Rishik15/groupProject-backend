@@ -60,12 +60,3 @@ class Config:
         ).split(",")
         if scope.strip()
     ]
-
-    GOOGLE_DRIVE_ROOT_FOLDER_NAME = os.getenv(
-        "GOOGLE_DRIVE_ROOT_FOLDER_NAME",
-        "Users"
-    )
-    GOOGLE_DRIVE_USER_FOLDER_PREFIX = os.getenv(
-        "GOOGLE_DRIVE_USER_FOLDER_PREFIX",
-        "user_"
-    )
