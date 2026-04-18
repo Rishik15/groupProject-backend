@@ -8,6 +8,7 @@ from .coach import coach_bp
 from .exercises import exercise_bp
 from .chat import chat_bp
 from .metrics import metric_bp
+from .notifications import notify_bp
 
 
 def register_routes(app):
@@ -22,3 +23,4 @@ def register_routes(app):
     app.register_blueprint(exercise_bp, url_prefix="/exercise")
     app.register_blueprint(chat_bp, url_prefix="/chat")
     app.register_blueprint(metric_bp, url_prefix="/metrics")
+    app.register_blueprint(notify_bp, url_prefix="/notifications")

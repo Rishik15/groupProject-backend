@@ -2,7 +2,7 @@ from flask_socketio import emit
 from app import socketio, online_users, chat_online_users, user_active_conversation
 from app.services import run_query
 from datetime import datetime
-import json
+from app.services.chat.handleChatNotification import handle_chat_notification
 
 
 def handle_emit_message(message, sender_id, conv_id):
@@ -39,68 +39,38 @@ def handle_emit_message(message, sender_id, conv_id):
         is_online = user_id in online_users
 
         if is_viewing:
+            socketio.emit("new_message", message, room=str(user_id))
+            continue
+
+        run_query(
+            """
+            UPDATE conversation_member
+            SET unread_count = unread_count + 1
+            WHERE conversation_id = :conv_id
+            AND user_id = :user_id
+            """,
+            {"conv_id": conv_id, "user_id": user_id},
+            fetch=False,
+            commit=True,
+        )
+
+        notif_payload, is_updated = handle_chat_notification(
+            user_id, conv_id, sender_name, message
+        )
+
+        if is_chat_online:
             socketio.emit(
-                "new_message",
-                message,
+                "conversation_update",
+                {
+                    "conversationId": conv_id,
+                    "message": message,
+                },
                 room=str(user_id),
             )
 
-        else:
-            run_query(
-                """
-                UPDATE conversation_member
-                SET unread_count = unread_count + 1
-                WHERE conversation_id = :conv_id
-                AND user_id = :user_id
-                """,
-                {"conv_id": conv_id, "user_id": user_id},
-                fetch=False,
-                commit=True,
+        elif is_online:
+            socketio.emit(
+                "update_notification" if is_updated else "new_notification",
+                notif_payload,
+                room=str(user_id),
             )
-
-            run_query(
-                """
-                    INSERT INTO notification (user_id, type, conversation_id, title, body, metadata)
-                    VALUES (:user_id, 'chat', :conv_id, :title, :body, :metadata)
-                    """,
-                {
-                    "user_id": user_id,
-                    "conv_id": conv_id,
-                    "title": sender_name,
-                    "body": message["content"][:100],
-                    "metadata": json.dumps({"sender_name": sender_name}),
-                },
-                fetch=False,
-                commit=True,
-            )
-
-            notif_id = run_query(
-                "SELECT LAST_INSERT_ID() AS id",
-                {},
-            )[
-                0
-            ]["id"]
-
-            if is_chat_online:
-                socketio.emit(
-                    "conversation_update",
-                    {
-                        "conversationId": conv_id,
-                        "message": message,
-                    },
-                    room=str(user_id),
-                )
-
-            elif is_online:
-                socketio.emit(
-                    "new_notification",
-                    {
-                        "id": notif_id,
-                        "type": "chat",
-                        "conversationId": conv_id,
-                        "title": f"{sender_name} sent a message",
-                        "body": message["content"][:100],
-                        "is_read": False,
-                    },
-                    room=str(user_id),
-                )
