@@ -9,3 +9,4 @@ from . import logout
 from . import me
 from . import googleOauth
 from . import googleLogin
+from . import settings

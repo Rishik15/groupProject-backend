@@ -95,8 +95,11 @@ def getUserInfo(user_id):
             SELECT
                 ui.first_name,
                 ui.last_name,
-                ui.email
+                ui.email,
+                um.profile_picture
             FROM users_immutables ui
+            LEFT JOIN user_mutables um
+                ON ui.user_id = um.user_id
             WHERE ui.user_id = :user_id
             """,
             {"user_id": user_id},
