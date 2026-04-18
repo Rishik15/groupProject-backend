@@ -8,4 +8,4 @@ from . import workoutActions
 from . import predefinedPlans
 from . import assignPlan
 from . import exercisesInPlan
-
+from . import myWorkouts
