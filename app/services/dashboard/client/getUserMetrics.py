@@ -30,11 +30,12 @@ def userMetrics(user_id):
 
     workouts = run_query(
         """
-        SELECT COUNT(*) AS total
-        FROM workout_session
-        WHERE user_id = :user_id
-        AND DATE(started_at) = CURDATE()
-    """,
+    SELECT COUNT(*) AS total
+    FROM workout_session
+    WHERE user_id = :user_id
+    AND ended_at IS NOT NULL
+    AND DATE(ended_at) = CURDATE()
+""",
         {"user_id": user_id},
     )[0]["total"]
 
