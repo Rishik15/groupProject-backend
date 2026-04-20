@@ -19,17 +19,17 @@ def get_calories_metrics_service(user_id: int):
         {"user_id": user_id},
     )
 
-    data_map = {row["day"]: float(row["calories"]) for row in rows}
+    data_map = {str(row["day"]): float(row["calories"]) for row in rows}
 
     today = datetime.today()
     start_of_week = today - timedelta(days=today.weekday())
 
     result = []
 
-    for i in range(today.weekday() + 1):
+    for i in range(7):
         current_day = (start_of_week + timedelta(days=i)).date()
 
-        calories = data_map.get(current_day, 0)
+        calories = data_map.get(str(current_day), 0)
 
         result.append({"day": current_day.strftime("%a"), "calories": calories})
 

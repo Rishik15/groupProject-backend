@@ -90,3 +90,7 @@ dist/
 *.pid.lock
 
 gunicorn.ctl
+
+*.json
+
+media
