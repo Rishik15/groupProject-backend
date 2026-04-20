@@ -32,3 +32,4 @@ def register_routes(app):
     app.register_blueprint(notify_bp, url_prefix="/notifications")
     app.register_blueprint(contract_bp, url_prefix="/contract")
     app.register_blueprint(admin_bp, url_prefix="/admin")
+    app.register_blueprint(dashboard_bp, url_prefix="/dashboard")
