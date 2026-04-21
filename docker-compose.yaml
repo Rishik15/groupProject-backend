@@ -17,8 +17,9 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
   backend:
-    build: 
+    build:
       context: backend
       dockerfile: Dockerfile
     container_name: betafit-backend
@@ -27,16 +28,20 @@ services:
     volumes:
       - ./backend:/app
       - /app/.venv
+      - backend_media:/app/media
     depends_on:
       db:
         condition: service_healthy
     command: >
-      gunicorn
-      --reload
-      --bind 0.0.0.0:8000
-      app.main:app   
+       gunicorn
+        --worker-class eventlet
+        --workers 1
+        --bind 0.0.0.0:8000
+        --log-level debug
+        --access-logfile -
+        app.main:app  
   frontend:
-    build: 
+    build:
       context: frontend
       dockerfile: Dockerfile
     container_name: betafit-frontend
@@ -54,6 +59,4 @@ services:
 volumes:
   mysql_data:
   node_modules:
-
-
-
+  backend_media:
