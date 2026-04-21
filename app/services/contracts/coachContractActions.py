@@ -59,6 +59,8 @@ def getUserGivenContract(contract_id: int):
             commit= False, fetch=True
 
         )
+
+        return ret
     except Exception as e : 
         raise e
 
