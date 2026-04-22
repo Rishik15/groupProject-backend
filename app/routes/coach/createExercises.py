@@ -23,7 +23,7 @@ def create_exercise_route():
 
     try:
         exercise = create_exercise(
-            coach_id=coach_id,
+            coach_id=int(coach_id),
             exercise_name=exercise_name,
             equipment=equipment,
             description=description,

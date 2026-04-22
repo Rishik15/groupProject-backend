@@ -1,7 +1,6 @@
 from app.services import run_query
 from app.services.media_storage import save_exercise_video
 
-
 def create_exercise(coach_id, exercise_name, equipment, description=None, video_file=None):
 
     existing = run_query(
@@ -23,12 +22,13 @@ def create_exercise(coach_id, exercise_name, equipment, description=None, video_
 
     run_query(
         """
-        INSERT INTO exercise (exercise_name, equipment, video_url, created_by)
-        VALUES (:exercise_name, :equipment, :video_url, :created_by)
+        INSERT INTO exercise (exercise_name, equipment, description, video_url, created_by)
+        VALUES (:exercise_name, :equipment, :description, :video_url, :created_by)
         """,
         {
             "exercise_name": exercise_name,
             "equipment": equipment,
+            "description": description,
             "video_url": video_url,
             "created_by": coach_id
         },
@@ -36,8 +36,19 @@ def create_exercise(coach_id, exercise_name, equipment, description=None, video_
     )
 
     result = run_query(
-        "SELECT exercise_id, exercise_name, equipment, video_url, created_by FROM exercise WHERE exercise_name = :name",
+        """
+        SELECT 
+            exercise_id, 
+            exercise_name, 
+            equipment, 
+            description, 
+            video_url, 
+            created_by 
+        FROM exercise 
+        WHERE exercise_name = :name
+        """,
         {"name": exercise_name},
         fetch=True, commit=False
     )
+    
     return result[0]
