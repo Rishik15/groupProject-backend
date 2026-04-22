@@ -84,8 +84,8 @@ def coachAcceptContractRoute():
     if contract["active"] == 1:
         return jsonify({"error": "contract is already active"}), 400
 
-    client_id = cca.getUserGivenContract(contract_id)
-
+    client_id = cca.getUserGivenContract(contract_id)[0].get("user_id")
+    client_id = int(client_id)
     cca.coachAcceptsContractService(
         contract_id=contract_id, coach_id=c_id, user_id=client_id
     )

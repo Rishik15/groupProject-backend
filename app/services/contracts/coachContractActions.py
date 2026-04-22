@@ -53,18 +53,20 @@ def getUserGivenContract(contract_id: int):
     try:
         ret = run_query(
             """
-                SELECT user_id from user_coach_contract where contract_id = :contract_id;
-            """
-            , {"contract_id", contract_id},
-            commit= False, fetch=True
-
+                SELECT user_id 
+                FROM user_coach_contract 
+                WHERE contract_id = :contract_id;
+            """, 
+            {"contract_id": contract_id} ,
+            commit=False,
+            fetch=True
         )
 
         return ret
     except Exception as e : 
         raise e
 
-def getCoachContractsByStatusService(coach_id: int, active: int):
+def getCoachContractsByStatusServie(coach_id: int, active: int):
     try:
         ret = run_query(
             """
@@ -121,6 +123,81 @@ def getSingleCoachContractService(coach_id: int, contract_id: int):
     except Exception as e:
         raise e
 
+def buildDefaultConversation(contract_id: int, coach_id: int, user_id: int):
+    try:
+    
+        run_query(
+            """
+                INSERT INTO conversation (conversation_type, created_by, title)
+                VALUES ('dm', :coach_id, NULL);
+            """,
+            {"coach_id": coach_id},
+            commit=False,
+            fetch=False
+        )
+
+  
+        conversation_id_raw = run_query(
+            """
+                SELECT LAST_INSERT_ID() AS conversation_id;
+            """,
+            {},
+            commit=False,
+            fetch=True
+        )
+
+        if not conversation_id_raw or conversation_id_raw[0].get("conversation_id") is None:
+            raise ValueError("Error inserting into conversation table")
+
+        conversation_id = int(conversation_id_raw[0]["conversation_id"])
+
+        # print(f"\n\n\n\n\n\nconversation_id is ::: {conversation_id}\n\n\n\n\n\n")
+
+        run_query(
+            """
+                INSERT INTO conversation_member (conversation_id, user_id, role, unread_count)
+                VALUES (:conversation_id, :coach_id, 'owner', 1);
+            """,
+            {"conversation_id": conversation_id, "coach_id": coach_id},
+            commit=False,
+            fetch=False
+        )
+
+        run_query(
+            """
+                INSERT INTO conversation_member (conversation_id, user_id, role, unread_count)
+                VALUES (:conversation_id, :user_id, 'member', 1);
+            """,
+            {"conversation_id": conversation_id, "user_id": user_id},
+            commit=False,
+            fetch=False
+        )
+
+        dt = datetime.now().replace(microsecond=0)
+
+        run_query(
+            """
+                INSERT INTO message
+                (
+                    conversation_id, sender_user_id, content, sent_at
+                )
+                VALUES
+                (
+                    :conversation_id,
+                    1,
+                    'This is the beginning of a great relationship! Conversations can be managed here!',
+                    :dt
+                );
+            """,
+            {"conversation_id": conversation_id, "dt": dt},
+            commit=True,
+            fetch=False
+        )
+
+        return conversation_id
+
+    except Exception as e:
+        raise e
 
 def coachAcceptsContractService(contract_id: int, coach_id: int, user_id : int):
     try:
@@ -136,57 +213,10 @@ def coachAcceptsContractService(contract_id: int, coach_id: int, user_id : int):
             fetch=False,
             commit=True
         )
-        run_query(
-            """
-                INSERT INTO conversation 
-                (conversation_type, created_by, tite)              
-                VALUES ('dm', :coach_id, NULL); 
-            """,
-            {"coach_id: coach_id"},
-            commit=True, 
-            fetch=False
-        )
-        conversation_id = run_query (
-            """
-                (SELECT LAST_INSERT_ID());
-            """, {}, commit=False, fetch=True
-        )
-
-        run_query(
-            """
-                INSERT INTO conversation_member (conversation_id, user_id, role, unread_count)
-                VALUES (:conversation_id, :coach_id , 'owner', 1);
-               
-                INSERT INTO conversation_member (conversation_id, user_id, role, unread_count) 
-                VALUES (:conversation_id, :user_id , 'member', 1);
-            """,
-            {"coach_id": coach_id , "user_id":user_id, "conversation_id": conversation_id}
-
-        )
         
-        dt = datetime.now() 
-        ms = str(dt.time()).split(".")[1]
-        dt = str(dt).replace(ms, "")
-        dt = str(dt).replace(".", "")
-
-        run_query (
-            """
-                INSERT INTO message 
-                (
-                    conversation_id, sender_user_id, content, sent_at
-                ) 
-                VALUES 
-                (
-                    :conversation_id, 1, 'This is the beginning of a great relationship! Conversations can be managed here!', :dt
-                );
-            """,
-            {"conversation_id": conversation_id, "dt": dt}, 
-            commit=True, 
-            fetch=False
-        )
+        buildDefaultConversation(contract_id, coach_id, user_id)
     except Exception as e:
         raise e
-
 
 def coachRejectsContractService(contract_id: int):
     try:
