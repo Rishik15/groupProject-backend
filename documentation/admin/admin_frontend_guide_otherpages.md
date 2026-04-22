@@ -1,134 +1,160 @@
-# Frontend Integration Summary for Admin Features
+# Admin Frontend Implementation Prompt
 
-This is a backend-facing summary for the React + Vite frontend so implementation can begin before the backend is fully written.
+You are working on the React + Vite + TypeScript frontend for an existing Flask backend workout application.
 
-The frontend should assume all requests and responses are JSON unless explicitly noted otherwise.
+Your job is to implement the **admin frontend only** for the finalized backend contract described below.
 
-This summary is based on the requested backend scope and constraints already defined for the repository. :contentReference[oaicite:0]{index=0}
+Follow this prompt strictly.
 
 ---
 
-# Goal
+# Core Rules
 
-We are adding backend-only support for an admin area that covers:
+## 1. All non-GET backend input must be sent in the JSON request body
 
-1. exercise database management
-2. workout / workout-template management
+Do **not** pass editable values, action data, filters, status values, reasons, or form fields in the URL query string.
+
+Use Flask-style JSON request bodies.
+
+Good:
+```ts
+fetch("/admin/videos/reject", {
+  method: "PATCH",
+  credentials: "include",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    exercise_id: 12,
+    video_review_note: "Demonstrates the wrong movement"
+  })
+})
+```
+
+Bad:
+```ts
+fetch("/admin/videos/12/reject?reason=wrong")
+```
+
+Bad:
+```ts
+fetch("/admin/users/17/suspend?reason=spam")
+```
+
+The backend expects JSON packages from the frontend.
+
+---
+
+## 2. Session auth is cookie-based
+
+Always send requests with credentials included.
+
+Use:
+```ts
+credentials: "include"
+```
+
+or the equivalent axios configuration.
+
+---
+
+## 3. The frontend must match the finalized backend contract exactly
+
+Do not invent alternate endpoints.
+Do not invent query-string-based actions.
+Do not invent extra route variants.
+Do not assume REST nesting that is not listed here.
+
+---
+
+## 4. Keep frontend code organized using this project structure
+
+Use the existing frontend architecture style:
+
+- `services`
+- `utils`
+- `interfaces`
+- `components`
+- `main wrapper pages`
+- existing app architecture conventions
+
+---
+
+# Finalized Backend Architecture
+
+The backend admin implementation is organized around **four domains**:
+
+1. exercise management
+2. workout/template management
 3. exercise video moderation
-4. user / coach account enforcement
+4. account enforcement
 
-The frontend should prepare admin pages, interfaces, service calls, and UI flows around those features.
+The backend architecture follows these rules:
 
----
-
-# General API Behavior Assumptions
-
-The frontend should assume:
-
-- session-based auth is already in place
-- admin authorization is enforced by the backend
-- request bodies are JSON
-- response bodies are JSON
-- standard success style will usually look like:
-
-```json
-{ "message": "success", ... }
-```
-
-- standard error style will usually look like:
-
-```json
-{ "error": "..." }
-```
-
-The frontend should also assume that:
-- backend may return `401` for unauthenticated
-- backend may return `403` for authenticated but unauthorized
-- backend may return `400` for missing/invalid input
-- backend may return `404` when a target record does not exist
+- Flask blueprint: existing `admin_bp`
+- thin route files under `app/routes/admin/...`
+- business logic in `app/services/admin/...`
+- raw SQL through `run_query(...)`
+- admin access verified through database lookup, not session role alone
+- JSON request and response bodies
+- session-based auth
+- media served from `/uploads/...`
 
 ---
 
-# Recommended Frontend Architecture
+# Finalized Schema Additions
 
-Given your React + Vite structure with services, utils, interfaces, components, wrapper pages, and general architecture, the cleanest split is:
+The backend will add the following fields.
 
-## services
+## Exercise table additions
 
-Create admin API service modules such as:
+The `exercise` table will gain:
 
-- `services/adminExerciseService.ts`
-- `services/adminWorkoutService.ts`
-- `services/adminVideoModerationService.ts`
-- `services/adminAccountModerationService.ts`
+- `video_status ENUM('pending','approved','rejected') DEFAULT 'approved'`
+- `video_review_note TEXT NULL`
+- `video_reviewed_by INT NULL`
 
-Each should wrap fetch/axios calls and return typed JSON.
+### Meaning
 
-## interfaces
-
-Create shared admin-facing interfaces for:
-
-- exercises
-- workout plans / templates
-- moderated videos
-- admin-managed accounts
-- standard API responses
-
-## components
-
-Likely useful reusable components:
-
-- admin table/list view
-- row action buttons
-- approve/reject modal
-- delete confirmation modal
-- suspend/deactivate modal
-- edit/create form modal
-- status badge component
-
-## wrapper pages
-
-Suggested admin pages:
-
-- `pages/admin/AdminExercisesPage.tsx`
-- `pages/admin/AdminWorkoutsPage.tsx`
-- `pages/admin/AdminVideoModerationPage.tsx`
-- `pages/admin/AdminAccountModerationPage.tsx`
-
-## utils
-
-Useful helpers:
-
-- response error parsing
-- date formatting
-- status-to-badge mapping
-- request payload shaping
-- optimistic update helpers if desired
+- `video_url` still stores the actual media URL
+- `video_status` stores moderation state
+- `video_review_note` stores admin review reason or note
+- `video_reviewed_by` stores the admin id who reviewed it
 
 ---
 
-# Endpoint Summary
+## Users table additions
 
-Below is the likely backend contract the frontend can begin against.
+The `users_immutables` table will gain:
+
+- `account_status ENUM('active','suspended','deactivated') DEFAULT 'active'`
+- `suspension_reason TEXT NULL`
+
+### Meaning
+
+- `account_status` is the master account state
+- `suspension_reason` is required when suspending
+- `updated_at` already exists and will reflect changes automatically
+- there is **no separate suspended_until field**
+- there is **no separate reactivation endpoint**
+
+---
+
+# Finalized Endpoint Contract
+
+These are the final endpoints the frontend must use.
 
 ---
 
 # 1. Admin Exercise Management
 
-These endpoints support exercise CRUD.
-
 ## GET `/admin/exercises`
 
 ### Purpose
-
 Fetch all exercises for admin management.
 
 ### Request
-
 No body.
 
-### Expected response
-
+### Response
 ```json
 {
   "message": "success",
@@ -137,41 +163,38 @@ No body.
       "exercise_id": 1,
       "exercise_name": "Push Up",
       "equipment": "Bodyweight",
-      "video_url": "/uploads/exercises/user_12/pushup.mp4"
+      "video_url": "/uploads/exercise_videos/coach_12/file.mp4",
+      "video_status": "approved",
+      "video_review_note": null,
+      "created_by": 12
     }
   ]
 }
 ```
-
-### Frontend use
-
-- populate admin exercise table
-- support search/filter client-side initially if backend does not expose filter params yet
 
 ---
 
 ## POST `/admin/exercises`
 
 ### Purpose
-
 Create a new exercise.
 
 ### Request body
-
 ```json
 {
   "exercise_name": "Push Up",
   "equipment": "Bodyweight",
-  "video_url": "/uploads/exercises/user_12/pushup.mp4"
+  "video_url": "/uploads/exercise_videos/coach_12/file.mp4",
+  "created_by": 12
 }
 ```
 
 ### Notes
+- `video_url` is optional
+- if `video_url` is provided for a newly submitted coach video, the backend may set `video_status` to `"pending"`
+- `created_by` should be included when relevant
 
-Frontend should treat `video_url` as optional unless backend later makes it required.
-
-### Expected response
-
+### Response
 ```json
 {
   "message": "success",
@@ -179,33 +202,37 @@ Frontend should treat `video_url` as optional unless backend later makes it requ
     "exercise_id": 25,
     "exercise_name": "Push Up",
     "equipment": "Bodyweight",
-    "video_url": "/uploads/exercises/user_12/pushup.mp4"
+    "video_url": "/uploads/exercise_videos/coach_12/file.mp4",
+    "video_status": "pending",
+    "video_review_note": null,
+    "created_by": 12
   }
 }
 ```
 
 ---
 
-## PATCH `/admin/exercises/:exercise_id`
+## PATCH `/admin/exercises`
 
 ### Purpose
-
-Edit an existing exercise.
+Update an existing exercise.
 
 ### Request body
-
-Any subset of editable fields:
-
 ```json
 {
+  "exercise_id": 25,
   "exercise_name": "Incline Push Up",
   "equipment": "Bench",
-  "video_url": "/uploads/exercises/user_12/incline_pushup.mp4"
+  "video_url": "/uploads/exercise_videos/coach_12/incline_pushup.mp4"
 }
 ```
 
-### Expected response
+### Notes
+- send all edited values in JSON
+- do not put `exercise_id` in the URL
+- partial update behavior may be supported, but sending the edited fields explicitly is preferred
 
+### Response
 ```json
 {
   "message": "success",
@@ -213,205 +240,192 @@ Any subset of editable fields:
     "exercise_id": 25,
     "exercise_name": "Incline Push Up",
     "equipment": "Bench",
-    "video_url": "/uploads/exercises/user_12/incline_pushup.mp4"
+    "video_url": "/uploads/exercise_videos/coach_12/incline_pushup.mp4",
+    "video_status": "pending",
+    "video_review_note": null,
+    "created_by": 12
   }
 }
 ```
 
-### Frontend use
-
-- edit modal or side panel
-- partial updates are safest
-
 ---
 
-## DELETE `/admin/exercises/:exercise_id`
+## DELETE `/admin/exercises`
 
 ### Purpose
-
 Delete an exercise.
 
-### Request
+### Request body
+```json
+{
+  "exercise_id": 25
+}
+```
 
-No body.
+### Notes
+- do not place the id in the URL
+- backend may reject deletion if the exercise is already used in a workout plan
 
-### Expected response
-
+### Response
 ```json
 {
   "message": "success"
 }
 ```
 
-### Frontend use
-
-- destructive action with confirmation modal
-- remove item from local list after success
+### Possible error
+```json
+{
+  "error": "Cannot delete exercise in use"
+}
+```
 
 ---
 
 # 2. Admin Workout / Workout Template Management
 
-These are intended only if they fit the current backend schema cleanly. The frontend can still scaffold for them now.
-
-Because the backend already appears to use tables like `workout_plan`, `workout_plan_template`, `workout_day`, and `plan_exercise`, the frontend should expect plan/template CRUD around an object model rather than a totally flat record. :contentReference[oaicite:1]{index=1}
+These endpoints manage workout plans backed by the existing plan/template/day/exercise schema.
 
 ## GET `/admin/workouts`
 
 ### Purpose
+Fetch workout plans/templates for admin management.
 
-Fetch admin-manageable workout plans and/or templates.
+### Request
+No body.
 
-### Expected response
-
-Example shape:
-
+### Response
 ```json
 {
   "message": "success",
   "workouts": [
     {
-      "workout_plan_id": 3,
-      "name": "Beginner Push Pull Legs",
+      "plan_id": 3,
+      "plan_name": "Beginner Push Pull Legs",
       "description": "Starter template",
-      "is_template": true
+      "author_user_id": 1,
+      "is_public": 1,
+      "total_exercises": 9
     }
   ]
 }
 ```
-
-### Frontend note
-
-Use a normalized interface that can support either:
-- actual plans
-- templates
-- both, with an `is_template` flag
 
 ---
 
 ## POST `/admin/workouts`
 
 ### Purpose
-
-Create a workout plan or template.
+Create a workout plan/template.
 
 ### Request body
-
-Example:
-
 ```json
 {
-  "name": "Beginner Push Pull Legs",
-  "description": "Starter template",
-  "is_template": true
-}
-```
-
-If the backend later accepts nested days/exercises during creation, the frontend can extend to:
-
-```json
-{
-  "name": "Beginner Push Pull Legs",
-  "description": "Starter template",
-  "is_template": true,
-  "days": [
+  "plan_name": "Beginner Push Pull Legs",
+  "description": "Strength | 3 days/week | 45 min | Beginner",
+  "author_user_id": 1,
+  "is_public": 1,
+  "exercises": [
     {
-      "day_name": "Push",
-      "exercises": [
-        {
-          "exercise_id": 1,
-          "sets": 3,
-          "reps": 12
-        }
-      ]
+      "exercise_id": 1,
+      "sets": 3,
+      "reps": 12
+    },
+    {
+      "exercise_id": 2,
+      "sets": 4,
+      "reps": 10
     }
   ]
 }
 ```
 
-### Expected response
+### Notes
+- the backend will initially follow the existing single-day creation style
+- send exercise content as JSON
+- do not encode workout content into URL parameters
 
+### Response
 ```json
 {
   "message": "success",
   "workout": {
-    "workout_plan_id": 8,
-    "name": "Beginner Push Pull Legs",
-    "description": "Starter template",
-    "is_template": true
+    "plan_id": 8,
+    "plan_name": "Beginner Push Pull Legs",
+    "description": "Strength | 3 days/week | 45 min | Beginner",
+    "author_user_id": 1,
+    "is_public": 1
   }
 }
 ```
 
 ---
 
-## PATCH `/admin/workouts/:workout_id`
+## PATCH `/admin/workouts`
 
 ### Purpose
-
-Edit a workout plan or template.
+Update workout/template metadata.
 
 ### Request body
-
 ```json
 {
-  "name": "Updated Plan Name",
-  "description": "Updated description"
+  "plan_id": 8,
+  "plan_name": "Updated Plan Name",
+  "description": "Strength | 4 days/week | 60 min | Intermediate",
+  "is_public": 0
 }
 ```
 
-### Expected response
-
+### Response
 ```json
 {
   "message": "success",
   "workout": {
-    "workout_plan_id": 8,
-    "name": "Updated Plan Name",
-    "description": "Updated description",
-    "is_template": true
+    "plan_id": 8,
+    "plan_name": "Updated Plan Name",
+    "description": "Strength | 4 days/week | 60 min | Intermediate",
+    "author_user_id": 1,
+    "is_public": 0
   }
 }
 ```
 
 ---
 
-## DELETE `/admin/workouts/:workout_id`
+## DELETE `/admin/workouts`
 
 ### Purpose
+Delete a workout plan/template.
 
-Delete a workout plan or template.
+### Request body
+```json
+{
+  "plan_id": 8
+}
+```
 
-### Expected response
-
+### Response
 ```json
 {
   "message": "success"
 }
 ```
 
-### Frontend note
-
-Use confirmation before delete because related days / exercises may also disappear depending on backend implementation.
-
 ---
 
 # 3. Admin Exercise Video Moderation
 
-The backend goal is minimal moderation support for exercise videos, preferably reusing the current `exercise.video_url` model rather than redesigning uploads. :contentReference[oaicite:2]{index=2}
-
-The frontend should assume moderation happens against exercise-linked videos.
+These endpoints moderate exercise-linked videos.
 
 ## GET `/admin/videos/pending`
 
 ### Purpose
+Fetch all exercise videos currently pending admin review.
 
-List exercise videos waiting for review.
+### Request
+No body.
 
-### Expected response
-
-Example:
-
+### Response
 ```json
 {
   "message": "success",
@@ -419,262 +433,270 @@ Example:
     {
       "exercise_id": 11,
       "exercise_name": "Barbell Row",
-      "video_url": "/uploads/exercises/user_19/barbell_row.mp4",
-      "video_status": "pending"
+      "video_url": "/uploads/exercise_videos/coach_19/barbell_row.mp4",
+      "video_status": "pending",
+      "video_review_note": null,
+      "created_by": 19
     }
   ]
 }
 ```
 
-### Frontend use
-
-- moderation queue page
-- preview player + approve/reject/remove actions
-
 ---
 
-## PATCH `/admin/videos/:exercise_id/approve`
+## PATCH `/admin/videos/approve`
 
 ### Purpose
-
-Approve an exercise video.
+Approve a pending exercise video.
 
 ### Request body
-
-Can be empty JSON:
-
 ```json
-{}
+{
+  "exercise_id": 11
+}
 ```
 
-### Expected response
-
+### Response
 ```json
 {
   "message": "success",
   "video": {
     "exercise_id": 11,
-    "video_status": "approved"
+    "video_status": "approved",
+    "video_review_note": null
   }
 }
 ```
 
 ---
 
-## PATCH `/admin/videos/:exercise_id/reject`
+## PATCH `/admin/videos/reject`
 
 ### Purpose
-
-Reject an exercise video.
+Reject a pending exercise video.
 
 ### Request body
-
-Optional reason:
-
 ```json
 {
-  "reason": "Wrong exercise demonstrated"
+  "exercise_id": 11,
+  "video_review_note": "Wrong exercise demonstrated in the clip"
 }
 ```
 
-### Expected response
+### Notes
+- the review note should be sent in JSON
+- the backend will store the note in `video_review_note`
 
+### Response
 ```json
 {
   "message": "success",
   "video": {
     "exercise_id": 11,
+    "video_status": "rejected",
+    "video_review_note": "Wrong exercise demonstrated in the clip"
+  }
+}
+```
+
+---
+
+## PATCH `/admin/videos/remove`
+
+### Purpose
+Remove the current video from an exercise.
+
+### Request body
+```json
+{
+  "exercise_id": 11
+}
+```
+
+### Response
+```json
+{
+  "message": "success",
+  "video": {
+    "exercise_id": 11,
+    "video_url": null,
     "video_status": "rejected"
   }
 }
 ```
 
-### Frontend note
-
-Build the UI to support an optional moderation note field, even if backend initially ignores it.
-
----
-
-## DELETE `/admin/videos/:exercise_id`
-
-### Purpose
-
-Remove a video from an exercise.
-
-This may either:
-- clear `video_url`
-- remove backing media file if local storage is used
-- mark it removed in moderation workflow
-
-### Request
-
-No body.
-
-### Expected response
-
-```json
-{
-  "message": "success"
-}
-```
-
-### Frontend use
-
-- destructive action
-- remove item from pending queue or update its row
-
 ---
 
 # 4. Admin Account Enforcement
 
-The backend goal is minimal support for suspension / deactivation of user and coach accounts for policy violations. :contentReference[oaicite:3]{index=3}
-
-The frontend should assume that both users and coaches can be managed through a shared admin moderation UI.
+These endpoints manage account status for users and coaches through the shared user system.
 
 ## GET `/admin/users`
 
 ### Purpose
-
 Fetch users/coaches for admin review.
 
-### Expected response
+### Request
+No body.
 
-Example:
-
+### Response
 ```json
 {
   "message": "success",
   "users": [
     {
       "user_id": 17,
-      "full_name": "Jane Doe",
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "name": "Jane Doe",
       "email": "jane@example.com",
-      "role": "coach",
+      "is_coach": true,
+      "is_admin": false,
       "account_status": "active",
       "suspension_reason": null,
-      "suspended_until": null
+      "updated_at": "2026-04-22T19:00:00"
     }
   ]
 }
 ```
 
-### Frontend note
-
-Create a shared `AdminManagedUser` interface that supports both user and coach records.
-
 ---
 
-## PATCH `/admin/users/:user_id/suspend`
+## PATCH `/admin/users/suspend`
 
 ### Purpose
-
-Suspend a user/coach.
+Suspend a user or coach account.
 
 ### Request body
-
 ```json
 {
-  "suspension_reason": "Policy violation",
-  "suspended_until": "2026-05-15T00:00:00"
+  "user_id": 17,
+  "suspension_reason": "Policy violation"
 }
 ```
 
-### Expected response
+### Notes
+- suspension reason is required
+- the backend updates:
+  - `account_status = "suspended"`
+  - `suspension_reason = ...`
+  - `updated_at` automatically through existing schema behavior
 
+### Response
 ```json
 {
   "message": "success",
   "user": {
     "user_id": 17,
     "account_status": "suspended",
-    "suspension_reason": "Policy violation",
-    "suspended_until": "2026-05-15T00:00:00"
+    "suspension_reason": "Policy violation"
   }
 }
 ```
 
-### Frontend use
-
-- suspension modal with:
-  - reason input
-  - optional date picker
-- allow empty date if backend supports indefinite suspension
-
 ---
 
-## PATCH `/admin/users/:user_id/deactivate`
+## PATCH `/admin/users/deactivate`
 
 ### Purpose
-
-Deactivate a user/coach account.
+Deactivate a user or coach account.
 
 ### Request body
-
-Optional body:
-
 ```json
 {
-  "reason": "Severe policy violation"
+  "user_id": 17,
+  "suspension_reason": "Repeated severe policy violations"
 }
 ```
 
-### Expected response
+### Notes
+- use JSON body
+- this endpoint replaces the idea of a separate reactivate route
+- if the account later needs to be made active again, that will be handled through the general update route, not a dedicated `/reactivate` endpoint
 
+### Response
 ```json
 {
   "message": "success",
   "user": {
     "user_id": 17,
-    "account_status": "deactivated"
+    "account_status": "deactivated",
+    "suspension_reason": "Repeated severe policy violations"
   }
 }
 ```
 
-### Frontend note
-
-Treat as destructive / high-friction admin action.
-
 ---
 
-## PATCH `/admin/users/:user_id/reactivate`
+## PATCH `/admin/users/status`
 
 ### Purpose
-
-Reactivate or unsuspend a previously restricted account.
+Set the final desired account status directly.
 
 ### Request body
-
-Can be empty:
-
 ```json
-{}
+{
+  "user_id": 17,
+  "account_status": "active",
+  "suspension_reason": null
+}
 ```
 
-### Expected response
+### Supported values
+- `"active"`
+- `"suspended"`
+- `"deactivated"`
 
+### Notes
+- this is the only general status-change endpoint
+- do not build or call a dedicated `/reactivate` route
+- use this route when the UI needs to restore an account to active status
+
+### Response
 ```json
 {
   "message": "success",
   "user": {
     "user_id": 17,
     "account_status": "active",
-    "suspension_reason": null,
-    "suspended_until": null
+    "suspension_reason": null
   }
 }
 ```
 
-### Frontend use
+---
 
-- show conditional button only when status is not active
+# Final Endpoint Checklist
+
+## Exercises
+- `GET /admin/exercises`
+- `POST /admin/exercises`
+- `PATCH /admin/exercises`
+- `DELETE /admin/exercises`
+
+## Workouts
+- `GET /admin/workouts`
+- `POST /admin/workouts`
+- `PATCH /admin/workouts`
+- `DELETE /admin/workouts`
+
+## Video Moderation
+- `GET /admin/videos/pending`
+- `PATCH /admin/videos/approve`
+- `PATCH /admin/videos/reject`
+- `PATCH /admin/videos/remove`
+
+## Account Enforcement
+- `GET /admin/users`
+- `PATCH /admin/users/suspend`
+- `PATCH /admin/users/deactivate`
+- `PATCH /admin/users/status`
 
 ---
 
-# Suggested TypeScript Interfaces
+# Required Frontend Interfaces
 
-These are good frontend starter contracts.
-
-## Standard API shapes
+## Standard API
 
 ```ts
 export interface ApiSuccess {
@@ -691,11 +713,16 @@ export interface ApiError {
 ## Exercise
 
 ```ts
+export type VideoStatus = "pending" | "approved" | "rejected";
+
 export interface AdminExercise {
   exercise_id: number;
   exercise_name: string;
   equipment: string | null;
   video_url: string | null;
+  video_status: VideoStatus;
+  video_review_note: string | null;
+  created_by: number;
 }
 ```
 
@@ -705,22 +732,15 @@ export interface AdminExercise {
 
 ```ts
 export interface AdminWorkout {
-  workout_plan_id: number;
-  name: string;
-  description?: string | null;
-  is_template?: boolean;
-}
-```
-
-If nested editing is later supported:
-
-```ts
-export interface AdminWorkoutDay {
-  day_name: string;
-  exercises: AdminWorkoutExercise[];
+  plan_id: number;
+  plan_name: string;
+  description: string | null;
+  author_user_id: number;
+  is_public: number;
+  total_exercises?: number;
 }
 
-export interface AdminWorkoutExercise {
+export interface AdminWorkoutExerciseInput {
   exercise_id: number;
   sets?: number | null;
   reps?: number | null;
@@ -729,212 +749,223 @@ export interface AdminWorkoutExercise {
 
 ---
 
-## Moderated video
+## Video moderation
 
 ```ts
-export type VideoStatus = "pending" | "approved" | "rejected";
-
 export interface AdminModeratedVideo {
   exercise_id: number;
   exercise_name: string;
   video_url: string | null;
   video_status: VideoStatus;
+  video_review_note: string | null;
+  created_by: number;
 }
 ```
 
 ---
 
-## Managed account
+## Account enforcement
 
 ```ts
 export type AccountStatus = "active" | "suspended" | "deactivated";
 
 export interface AdminManagedUser {
   user_id: number;
-  full_name: string;
+  first_name: string;
+  last_name: string;
+  name: string;
   email: string;
-  role: string;
+  is_coach: boolean;
+  is_admin: boolean;
   account_status: AccountStatus;
   suspension_reason: string | null;
-  suspended_until: string | null;
+  updated_at: string | null;
 }
 ```
 
 ---
 
-# Suggested Service Layer Methods
+# Required Frontend Service Modules
 
-The frontend can scaffold functions like these now.
+Create or update the following service modules.
 
-## `adminExerciseService.ts`
+## `services/adminExerciseService.ts`
 
+Implement:
 ```ts
 getExercises()
 createExercise(payload)
-updateExercise(exerciseId, payload)
-deleteExercise(exerciseId)
-```
-
-## `adminWorkoutService.ts`
-
-```ts
-getWorkouts()
-createWorkout(payload)
-updateWorkout(workoutId, payload)
-deleteWorkout(workoutId)
-```
-
-## `adminVideoModerationService.ts`
-
-```ts
-getPendingVideos()
-approveVideo(exerciseId)
-rejectVideo(exerciseId, payload?)
-removeVideo(exerciseId)
-```
-
-## `adminAccountModerationService.ts`
-
-```ts
-getUsers()
-suspendUser(userId, payload)
-deactivateUser(userId, payload?)
-reactivateUser(userId)
+updateExercise(payload)
+deleteExercise(payload)
 ```
 
 ---
 
-# Suggested Component / Page Breakdown
+## `services/adminWorkoutService.ts`
 
-## Admin Exercises Page
+Implement:
+```ts
+getWorkouts()
+createWorkout(payload)
+updateWorkout(payload)
+deleteWorkout(payload)
+```
 
-Should support:
-- table/list of exercises
+---
+
+## `services/adminVideoModerationService.ts`
+
+Implement:
+```ts
+getPendingVideos()
+approveVideo(payload)
+rejectVideo(payload)
+removeVideo(payload)
+```
+
+---
+
+## `services/adminAccountModerationService.ts`
+
+Implement:
+```ts
+getUsers()
+suspendUser(payload)
+deactivateUser(payload)
+updateUserStatus(payload)
+```
+
+---
+
+# Required Frontend UI Pages
+
+Create or update these admin pages.
+
+## `pages/admin/AdminExercisesPage.tsx`
+
+Needs:
+- list all exercises
 - create exercise modal
 - edit exercise modal
 - delete confirmation
 
-## Admin Workouts Page
+---
 
-Should support:
-- list of plans/templates
-- create/edit/delete
-- possible future nested day/exercise editor
+## `pages/admin/AdminWorkoutsPage.tsx`
 
-## Admin Video Moderation Page
+Needs:
+- list all workouts/templates
+- create workout modal
+- edit workout modal
+- delete confirmation
 
-Should support:
-- pending queue
+---
+
+## `pages/admin/AdminVideoModerationPage.tsx`
+
+Needs:
+- list pending videos
 - embedded video preview
-- approve / reject / remove buttons
-- optional rejection reason modal
-
-## Admin Account Moderation Page
-
-Should support:
-- list of users/coaches
-- status badge
-- suspend modal
-- deactivate confirmation
-- reactivate action
+- approve button
+- reject modal with review note
+- remove button
 
 ---
 
-# Important Frontend Assumptions to Keep Flexible
+## `pages/admin/AdminAccountModerationPage.tsx`
 
-Because backend implementation has not yet inspected all actual files/schema, the frontend should keep these areas flexible:
-
-## 1. Workout object details may change slightly
-
-The backend will reuse existing tables and may return either:
-- a simple top-level workout list
-- or a richer nested shape later
-
-Frontend should normalize API results in services if needed.
-
-## 2. Video moderation may be tied directly to exercises
-
-At least initially, there may not be a separate `video` entity.
-The moderation row may just be an exercise record plus moderation fields.
-
-## 3. Account moderation may use one shared user endpoint
-
-Even for coaches, the backend may expose management under `/admin/users/...` rather than separate `/admin/coaches/...`.
-
-## 4. Some optional fields may be null
-
-The frontend should safely handle nulls for:
-- `equipment`
-- `video_url`
-- `description`
-- `suspension_reason`
-- `suspended_until`
+Needs:
+- list all managed users
+- show account status badge
+- suspend modal requiring reason
+- deactivate confirmation/modal
+- restore-to-active action using `PATCH /admin/users/status`
 
 ---
 
-# Minimum Frontend Deliverables That Can Start Immediately
+# Request Construction Rules
 
-The frontend person can begin now with:
+## For GET requests
+Use normal GET with credentials included.
 
-1. TypeScript interfaces
-2. admin service modules
-3. page shells / route wiring
-4. table views for all 4 admin areas
-5. create/edit/delete modals
-6. moderation action buttons
-7. optimistic local state updates after success
-8. generic API error handling
+## For POST/PATCH/DELETE requests
+Always send:
+- `Content-Type: application/json`
+- a JSON body
+- credentials included
 
-Even if backend details shift slightly, these pieces should remain valid.
-
----
-
-# Final Endpoint Checklist
-
-## Exercises
-
-- `GET /admin/exercises`
-- `POST /admin/exercises`
-- `PATCH /admin/exercises/:exercise_id`
-- `DELETE /admin/exercises/:exercise_id`
-
-## Workouts
-
-- `GET /admin/workouts`
-- `POST /admin/workouts`
-- `PATCH /admin/workouts/:workout_id`
-- `DELETE /admin/workouts/:workout_id`
-
-## Video Moderation
-
-- `GET /admin/videos/pending`
-- `PATCH /admin/videos/:exercise_id/approve`
-- `PATCH /admin/videos/:exercise_id/reject`
-- `DELETE /admin/videos/:exercise_id`
-
-## Account Enforcement
-
-- `GET /admin/users`
-- `PATCH /admin/users/:user_id/suspend`
-- `PATCH /admin/users/:user_id/deactivate`
-- `PATCH /admin/users/:user_id/reactivate`
+Example:
+```ts
+fetch("/admin/users/suspend", {
+  method: "PATCH",
+  credentials: "include",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({
+    user_id: 17,
+    suspension_reason: "Policy violation"
+  })
+})
+```
 
 ---
 
-# Bottom Line
+# Do Not Do These Things
 
-Frontend can start building the admin area now around four domains:
+- do not pass action parameters in the URL query string
+- do not invent `/admin/users/:user_id/reactivate`
+- do not invent `/admin/videos/:exercise_id/reject`
+- do not invent `/admin/exercises/:exercise_id`
+- do not assume form-data unless specifically told otherwise
+- do not assume path-param REST style for mutable admin actions
+- do not omit `credentials: "include"`
 
-- exercises
-- workouts
-- video moderation
-- account moderation
+---
 
-The safest frontend approach is:
-- typed service wrappers
-- reusable CRUD table patterns
-- modal-driven actions
-- flexible interfaces with nullable optional fields
-- no assumptions beyond JSON request/response contracts
+# Expected Error Handling
 
-The backend implementation is explicitly intended to stay minimal, reuse existing patterns, keep route files thin, keep logic in services, preserve session auth, and match existing JSON response style. :contentReference[oaicite:4]{index=4}
+The frontend should handle these common response shapes:
+
+## Unauthorized
+```json
+{
+  "error": "Unauthorized"
+}
+```
+
+## Forbidden
+```json
+{
+  "error": "Forbidden"
+}
+```
+
+## Validation failure
+```json
+{
+  "error": "..."
+}
+```
+
+## Success
+```json
+{
+  "message": "success",
+  ...
+}
+```
+
+---
+
+# Implementation Goal
+
+Build a clean admin frontend that exactly matches this finalized backend contract.
+
+Prioritize:
+- typed interfaces
+- service wrappers
+- modal-based CRUD flows
+- JSON-body request helpers
+- no URL-param mutation patterns
+- compatibility with existing React + Vite project organization
