@@ -55,7 +55,7 @@ def getUserGivenContract(contract_id: int):
             """
                 SELECT user_id from user_coach_contract where contract_id = :contract_id;
             """
-            , {"contract_id", contract_id},
+            , {"contract_id": contract_id},
             commit= False, fetch=True
 
         )
@@ -139,29 +139,43 @@ def coachAcceptsContractService(contract_id: int, coach_id: int, user_id : int):
         run_query(
             """
                 INSERT INTO conversation 
-                (conversation_type, created_by, tite)              
+                (conversation_type, created_by, title)              
                 VALUES ('dm', :coach_id, NULL); 
             """,
-            {"coach_id: coach_id"},
+            {"coach_id": coach_id},
             commit=True, 
             fetch=False
         )
         conversation_id = run_query (
             """
-                (SELECT LAST_INSERT_ID());
+                (SELECT LAST_INSERT_ID() as conversation_id);
             """, {}, commit=False, fetch=True
+        )[0]["conversation_id"]
+
+        run_query(
+            """
+            INSERT INTO conversation_member (conversation_id, user_id, role, unread_count)
+            VALUES (:conversation_id, :coach_id, 'owner', 1);
+            """,
+            {
+                "conversation_id": conversation_id,
+                "coach_id": coach_id,
+            },
+            commit=True,
+            fetch=False
         )
 
         run_query(
             """
-                INSERT INTO conversation_member (conversation_id, user_id, role, unread_count)
-                VALUES (:conversation_id, :coach_id , 'owner', 1);
-               
-                INSERT INTO conversation_member (conversation_id, user_id, role, unread_count) 
-                VALUES (:conversation_id, :user_id , 'member', 1);
+            INSERT INTO conversation_member (conversation_id, user_id, role, unread_count)
+            VALUES (:conversation_id, :user_id, 'member', 1);
             """,
-            {"coach_id": coach_id , "user_id":user_id, "conversation_id": conversation_id}
-
+            {
+                "conversation_id": conversation_id,
+                "user_id": user_id,
+            },
+            commit=True,
+            fetch=False
         )
         
         dt = datetime.now() 
