@@ -9,6 +9,7 @@ def get_my_exercises(coach_id):
             exercise_id,
             exercise_name,
             equipment,
+            description,
             video_url,
             created_by
         FROM exercise
