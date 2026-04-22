@@ -32,24 +32,87 @@ def addClient(email, password_hash, first_name, last_name):
             fetch=False,
         )
 
-        run_query(
+        initialize_client_role(user_id, commit=True)
+
+        return user_id
+
+    except Exception as e:
+        raise e
+
+
+def initialize_client_role(user_id: int, commit: bool = True):
+    try:
+        existing_mutables = run_query(
             """
-            INSERT INTO user_mutables (user_id)
-            VALUES (:user_id)
-        """,
+            SELECT user_id
+            FROM user_mutables
+            WHERE user_id = :user_id
+            LIMIT 1
+            """,
             {"user_id": user_id},
-            fetch=False,
+            fetch=True,
+            commit=False,
         )
 
-        run_query(
+        if not existing_mutables:
+            run_query(
+                """
+                INSERT INTO user_mutables (user_id)
+                VALUES (:user_id)
+                """,
+                {"user_id": user_id},
+                fetch=False,
+                commit=False,
+            )
+
+        existing_wallet = run_query(
             """
-            INSERT INTO points_wallet (user_id, balance)
-            VALUES (:user_id, 0)
-        """,
+            SELECT user_id
+            FROM points_wallet
+            WHERE user_id = :user_id
+            LIMIT 1
+            """,
             {"user_id": user_id},
-            fetch=False,
-            commit=True,
+            fetch=True,
+            commit=False,
         )
+
+        if not existing_wallet:
+            run_query(
+                """
+                INSERT INTO points_wallet (user_id, balance)
+                VALUES (:user_id, 0)
+                """,
+                {"user_id": user_id},
+                fetch=False,
+                commit=False,
+            )
+
+        existing_coach = run_query(
+            """
+            SELECT coach_id
+            FROM coach
+            WHERE coach_id = :user_id
+            LIMIT 1
+            """,
+            {"user_id": user_id},
+            fetch=True,
+            commit=False,
+        )
+
+        if existing_coach:
+            run_query(
+                """
+                DELETE FROM coach
+                WHERE coach_id = :user_id
+                """,
+                {"user_id": user_id},
+                fetch=False,
+                commit=False,
+            )
+
+        if commit:
+            run_query("SELECT 1", fetch=False, commit=True)
 
         return user_id
 
