@@ -1,3 +1,4 @@
+UC 11.1, UC 11.2, UC 12.5, UC 12.6, UC 12.7, UC 12.8, UC 8.3, UC 5.3
 # Admin Frontend Implementation Prompt
 
 You are working on the React + Vite + TypeScript frontend for an existing Flask backend workout application.
@@ -12,7 +13,7 @@ Follow this prompt strictly.
 
 ## 1. All non-GET backend input must be sent in the JSON request body
 
-Do **not** pass editable values, action data, filters, status values, reasons, or form fields in the URL query string.
+Do **not** pass editable values, action data, filters, status values, ids for mutable actions, reasons, or form fields in the URL query string.
 
 Use Flask-style JSON request bodies.
 
@@ -59,8 +60,8 @@ or the equivalent axios configuration.
 ## 3. The frontend must match the finalized backend contract exactly
 
 Do not invent alternate endpoints.
-Do not invent query-string-based actions.
-Do not invent extra route variants.
+Do not invent query-string-based mutation flows.
+Do not invent path-param mutation routes.
 Do not assume REST nesting that is not listed here.
 
 ---
@@ -80,12 +81,17 @@ Use the existing frontend architecture style:
 
 # Finalized Backend Architecture
 
-The backend admin implementation is organized around **four domains**:
+The backend admin implementation is organized around these domains:
 
-1. exercise management
-2. workout/template management
-3. exercise video moderation
-4. account enforcement
+1. dashboard + analytics
+2. users and account enforcement
+3. active coaches listing
+4. coach-application moderation
+5. user-report moderation
+6. exercise management
+7. workout/template management
+8. exercise video moderation
+9. coach-price moderation
 
 The backend architecture follows these rules:
 
@@ -102,9 +108,11 @@ The backend architecture follows these rules:
 
 # Finalized Schema Additions
 
-The backend will add the following fields.
+The backend will add the following fields and table.
 
-## Exercise table additions
+---
+
+## 1. Exercise table additions
 
 The `exercise` table will gain:
 
@@ -121,7 +129,7 @@ The `exercise` table will gain:
 
 ---
 
-## Users table additions
+## 2. Users table additions
 
 The `users_immutables` table will gain:
 
@@ -131,10 +139,38 @@ The `users_immutables` table will gain:
 ### Meaning
 
 - `account_status` is the master account state
-- `suspension_reason` is required when suspending
+- `suspension_reason` is stored when suspending or deactivating for policy reasons
 - `updated_at` already exists and will reflect changes automatically
 - there is **no separate suspended_until field**
-- there is **no separate reactivation endpoint**
+- there is **no dedicated reactivate endpoint**
+
+---
+
+## 3. New coach price moderation table
+
+The backend will add a minimal request table for coach price changes.
+
+Expected shape:
+
+```sql
+coach_price_change_request
+- request_id
+- coach_id
+- proposed_price
+- status ENUM('pending','approved','rejected')
+- admin_action
+- reviewed_by_admin_id
+- reviewed_at
+- created_at
+- updated_at
+```
+
+### Meaning
+
+- coaches do not directly overwrite live `coach.price`
+- proposed changes go into a review queue
+- admin approves or rejects
+- approved requests update the live `coach.price`
 
 ---
 
@@ -144,7 +180,396 @@ These are the final endpoints the frontend must use.
 
 ---
 
-# 1. Admin Exercise Management
+# 1. Dashboard + Analytics
+
+## GET `/admin/dashboard/stats`
+
+### Purpose
+Fetch the main admin dashboard statistics.
+
+### Request
+No body.
+
+### Response
+```json
+{
+  "message": "success",
+  "stats": {
+    "total_users": 50,
+    "active_coaches": 12,
+    "pending_reviews": 8,
+    "pending_coach_applications": 3,
+    "open_reports": 5,
+    "monthly_revenue": 2400.0
+  }
+}
+```
+
+---
+
+## GET `/admin/analytics/engagement`
+
+### Purpose
+Fetch platform engagement analytics for admin dashboards.
+
+### Request
+No body.
+
+### Response
+```json
+{
+  "message": "success",
+  "analytics": {
+    "daily_active_users": 18,
+    "weekly_active_users": 41,
+    "monthly_active_users": 76
+  }
+}
+```
+
+### Notes
+- this endpoint exists specifically to satisfy admin engagement analytics
+- the frontend should display DAU, WAU, and MAU cards/charts
+
+---
+
+# 2. Users and Account Enforcement
+
+## GET `/admin/users`
+
+### Purpose
+Fetch users/coaches/admins for admin review.
+
+### Request
+No body.
+
+### Response
+```json
+{
+  "message": "success",
+  "users": [
+    {
+      "user_id": 17,
+      "first_name": "Jane",
+      "last_name": "Doe",
+      "name": "Jane Doe",
+      "email": "jane@example.com",
+      "phone_number": "555-555-5555",
+      "is_coach": true,
+      "is_admin": false,
+      "account_status": "active",
+      "suspension_reason": null,
+      "updated_at": "2026-04-22T19:00:00"
+    }
+  ]
+}
+```
+
+---
+
+## PATCH `/admin/users/suspend`
+
+### Purpose
+Suspend a user or coach account.
+
+### Request body
+```json
+{
+  "user_id": 17,
+  "suspension_reason": "Policy violation"
+}
+```
+
+### Notes
+- suspension reason is required
+- backend updates:
+  - `account_status = "suspended"`
+  - `suspension_reason = ...`
+  - `updated_at` automatically through existing schema behavior
+
+### Response
+```json
+{
+  "message": "success",
+  "user": {
+    "user_id": 17,
+    "account_status": "suspended",
+    "suspension_reason": "Policy violation"
+  }
+}
+```
+
+---
+
+## PATCH `/admin/users/deactivate`
+
+### Purpose
+Deactivate a user or coach account.
+
+### Request body
+```json
+{
+  "user_id": 17,
+  "suspension_reason": "Repeated severe policy violations"
+}
+```
+
+### Response
+```json
+{
+  "message": "success",
+  "user": {
+    "user_id": 17,
+    "account_status": "deactivated",
+    "suspension_reason": "Repeated severe policy violations"
+  }
+}
+```
+
+---
+
+## PATCH `/admin/users/status`
+
+### Purpose
+Set the final desired account status directly.
+
+### Request body
+```json
+{
+  "user_id": 17,
+  "account_status": "active",
+  "suspension_reason": null
+}
+```
+
+### Supported values
+- `"active"`
+- `"suspended"`
+- `"deactivated"`
+
+### Notes
+- use this route to restore an account to active
+- do not build or call a dedicated `/reactivate` endpoint
+
+### Response
+```json
+{
+  "message": "success",
+  "user": {
+    "user_id": 17,
+    "account_status": "active",
+    "suspension_reason": null
+  }
+}
+```
+
+---
+
+# 3. Active Coaches Listing
+
+## GET `/admin/coaches/active`
+
+### Purpose
+Fetch active coaches and their profile/certification details.
+
+### Request
+No body.
+
+### Response
+```json
+{
+  "message": "success",
+  "coaches": [
+    {
+      "user_id": 22,
+      "first_name": "Chris",
+      "last_name": "Smith",
+      "name": "Chris Smith",
+      "email": "chris@example.com",
+      "coach_description": "Strength coach",
+      "price": 80.0,
+      "contract_count": 5,
+      "certifications": [
+        {
+          "cert_name": "NASM CPT",
+          "provider_name": "NASM",
+          "description": null,
+          "issued_date": "2025-01-01",
+          "expires_date": "2027-01-01"
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+# 4. Coach Application Moderation
+
+## POST `/admin/coach-applications/list`
+
+### Purpose
+Fetch coach applications by moderation status.
+
+### Request body
+```json
+{
+  "status": "pending"
+}
+```
+
+### Supported values
+- `"pending"`
+- `"approved"`
+- `"rejected"`
+
+### Response
+```json
+{
+  "message": "success",
+  "applications": [
+    {
+      "id": 4,
+      "application_id": 4,
+      "user_id": 22,
+      "name": "Chris Smith",
+      "email": "chris@example.com",
+      "appliedLabel": "2026-04-22T18:00:00",
+      "status": "pending",
+      "years_experience": 3,
+      "coach_description": "Strength coach",
+      "desired_price": 80.0,
+      "admin_action": null,
+      "certifications": ["NASM CPT"]
+    }
+  ]
+}
+```
+
+---
+
+## PATCH `/admin/coach-applications/approve`
+
+### Purpose
+Approve a coach application.
+
+### Request body
+```json
+{
+  "application_id": 4,
+  "admin_action": "Approved after credential review"
+}
+```
+
+### Response
+```json
+{
+  "message": "success",
+  "application": {
+    "application_id": 4,
+    "status": "approved",
+    "admin_action": "Approved after credential review"
+  }
+}
+```
+
+---
+
+## PATCH `/admin/coach-applications/reject`
+
+### Purpose
+Reject a coach application.
+
+### Request body
+```json
+{
+  "application_id": 4,
+  "admin_action": "Missing valid certification"
+}
+```
+
+### Response
+```json
+{
+  "message": "success",
+  "application": {
+    "application_id": 4,
+    "status": "rejected",
+    "admin_action": "Missing valid certification"
+  }
+}
+```
+
+---
+
+# 5. User Report Moderation
+
+## POST `/admin/reports/list`
+
+### Purpose
+Fetch user/coach reports by status bucket.
+
+### Request body
+```json
+{
+  "status": "open"
+}
+```
+
+### Supported values
+- `"open"`
+- `"closed"`
+
+### Response
+```json
+{
+  "message": "success",
+  "reports": [
+    {
+      "id": 7,
+      "report_id": 7,
+      "reported_user_id": 33,
+      "reporter_user_id": 18,
+      "title": "Report against Jane Doe",
+      "description": "Harassment in chat",
+      "status": "open",
+      "admin_action": null
+    }
+  ]
+}
+```
+
+---
+
+## PATCH `/admin/reports/close`
+
+### Purpose
+Close a report after admin review.
+
+### Request body
+```json
+{
+  "report_id": 7,
+  "admin_action": "Closed after review and warning issued"
+}
+```
+
+### Response
+```json
+{
+  "message": "success",
+  "report": {
+    "report_id": 7,
+    "status": "resolved",
+    "admin_action": "Closed after review and warning issued"
+  }
+}
+```
+
+---
+
+# 6. Exercise Management
 
 ## GET `/admin/exercises`
 
@@ -189,11 +614,6 @@ Create a new exercise.
 }
 ```
 
-### Notes
-- `video_url` is optional
-- if `video_url` is provided for a newly submitted coach video, the backend may set `video_status` to `"pending"`
-- `created_by` should be included when relevant
-
 ### Response
 ```json
 {
@@ -227,11 +647,6 @@ Update an existing exercise.
 }
 ```
 
-### Notes
-- send all edited values in JSON
-- do not put `exercise_id` in the URL
-- partial update behavior may be supported, but sending the edited fields explicitly is preferred
-
 ### Response
 ```json
 {
@@ -262,10 +677,6 @@ Delete an exercise.
 }
 ```
 
-### Notes
-- do not place the id in the URL
-- backend may reject deletion if the exercise is already used in a workout plan
-
 ### Response
 ```json
 {
@@ -282,9 +693,7 @@ Delete an exercise.
 
 ---
 
-# 2. Admin Workout / Workout Template Management
-
-These endpoints manage workout plans backed by the existing plan/template/day/exercise schema.
+# 7. Workout / Template Management
 
 ## GET `/admin/workouts`
 
@@ -302,7 +711,7 @@ No body.
     {
       "plan_id": 3,
       "plan_name": "Beginner Push Pull Legs",
-      "description": "Starter template",
+      "description": "Strength | 3 days/week | 45 min | Beginner",
       "author_user_id": 1,
       "is_public": 1,
       "total_exercises": 9
@@ -339,11 +748,6 @@ Create a workout plan/template.
   ]
 }
 ```
-
-### Notes
-- the backend will initially follow the existing single-day creation style
-- send exercise content as JSON
-- do not encode workout content into URL parameters
 
 ### Response
 ```json
@@ -413,9 +817,7 @@ Delete a workout plan/template.
 
 ---
 
-# 3. Admin Exercise Video Moderation
-
-These endpoints moderate exercise-linked videos.
+# 8. Exercise Video Moderation
 
 ## GET `/admin/videos/pending`
 
@@ -483,10 +885,6 @@ Reject a pending exercise video.
 }
 ```
 
-### Notes
-- the review note should be sent in JSON
-- the backend will store the note in `video_review_note`
-
 ### Response
 ```json
 {
@@ -527,14 +925,12 @@ Remove the current video from an exercise.
 
 ---
 
-# 4. Admin Account Enforcement
+# 9. Coach Price Moderation
 
-These endpoints manage account status for users and coaches through the shared user system.
-
-## GET `/admin/users`
+## GET `/admin/coach-prices/pending`
 
 ### Purpose
-Fetch users/coaches for admin review.
+Fetch pending coach price change requests.
 
 ### Request
 No body.
@@ -543,18 +939,15 @@ No body.
 ```json
 {
   "message": "success",
-  "users": [
+  "requests": [
     {
-      "user_id": 17,
-      "first_name": "Jane",
-      "last_name": "Doe",
-      "name": "Jane Doe",
-      "email": "jane@example.com",
-      "is_coach": true,
-      "is_admin": false,
-      "account_status": "active",
-      "suspension_reason": null,
-      "updated_at": "2026-04-22T19:00:00"
+      "request_id": 5,
+      "coach_id": 22,
+      "coach_name": "Chris Smith",
+      "current_price": 70.0,
+      "proposed_price": 80.0,
+      "status": "pending",
+      "created_at": "2026-04-22T18:00:00"
     }
   ]
 }
@@ -562,104 +955,54 @@ No body.
 
 ---
 
-## PATCH `/admin/users/suspend`
+## PATCH `/admin/coach-prices/approve`
 
 ### Purpose
-Suspend a user or coach account.
+Approve a pending coach price change request.
 
 ### Request body
 ```json
 {
-  "user_id": 17,
-  "suspension_reason": "Policy violation"
+  "request_id": 5,
+  "admin_action": "Approved after review"
 }
 ```
-
-### Notes
-- suspension reason is required
-- the backend updates:
-  - `account_status = "suspended"`
-  - `suspension_reason = ...`
-  - `updated_at` automatically through existing schema behavior
 
 ### Response
 ```json
 {
   "message": "success",
-  "user": {
-    "user_id": 17,
-    "account_status": "suspended",
-    "suspension_reason": "Policy violation"
+  "request": {
+    "request_id": 5,
+    "status": "approved",
+    "proposed_price": 80.0
   }
 }
 ```
 
 ---
 
-## PATCH `/admin/users/deactivate`
+## PATCH `/admin/coach-prices/reject`
 
 ### Purpose
-Deactivate a user or coach account.
+Reject a pending coach price change request.
 
 ### Request body
 ```json
 {
-  "user_id": 17,
-  "suspension_reason": "Repeated severe policy violations"
+  "request_id": 5,
+  "admin_action": "Price increase exceeds policy"
 }
 ```
-
-### Notes
-- use JSON body
-- this endpoint replaces the idea of a separate reactivate route
-- if the account later needs to be made active again, that will be handled through the general update route, not a dedicated `/reactivate` endpoint
 
 ### Response
 ```json
 {
   "message": "success",
-  "user": {
-    "user_id": 17,
-    "account_status": "deactivated",
-    "suspension_reason": "Repeated severe policy violations"
-  }
-}
-```
-
----
-
-## PATCH `/admin/users/status`
-
-### Purpose
-Set the final desired account status directly.
-
-### Request body
-```json
-{
-  "user_id": 17,
-  "account_status": "active",
-  "suspension_reason": null
-}
-```
-
-### Supported values
-- `"active"`
-- `"suspended"`
-- `"deactivated"`
-
-### Notes
-- this is the only general status-change endpoint
-- do not build or call a dedicated `/reactivate` route
-- use this route when the UI needs to restore an account to active status
-
-### Response
-```json
-{
-  "message": "success",
-  "user": {
-    "user_id": 17,
-    "account_status": "active",
-    "suspension_reason": null
+  "request": {
+    "request_id": 5,
+    "status": "rejected",
+    "proposed_price": 80.0
   }
 }
 ```
@@ -667,6 +1010,28 @@ Set the final desired account status directly.
 ---
 
 # Final Endpoint Checklist
+
+## Dashboard + Analytics
+- `GET /admin/dashboard/stats`
+- `GET /admin/analytics/engagement`
+
+## Users
+- `GET /admin/users`
+- `PATCH /admin/users/suspend`
+- `PATCH /admin/users/deactivate`
+- `PATCH /admin/users/status`
+
+## Coaches
+- `GET /admin/coaches/active`
+
+## Coach Applications
+- `POST /admin/coach-applications/list`
+- `PATCH /admin/coach-applications/approve`
+- `PATCH /admin/coach-applications/reject`
+
+## Reports
+- `POST /admin/reports/list`
+- `PATCH /admin/reports/close`
 
 ## Exercises
 - `GET /admin/exercises`
@@ -680,17 +1045,16 @@ Set the final desired account status directly.
 - `PATCH /admin/workouts`
 - `DELETE /admin/workouts`
 
-## Video Moderation
+## Videos
 - `GET /admin/videos/pending`
 - `PATCH /admin/videos/approve`
 - `PATCH /admin/videos/reject`
 - `PATCH /admin/videos/remove`
 
-## Account Enforcement
-- `GET /admin/users`
-- `PATCH /admin/users/suspend`
-- `PATCH /admin/users/deactivate`
-- `PATCH /admin/users/status`
+## Coach Prices
+- `GET /admin/coach-prices/pending`
+- `PATCH /admin/coach-prices/approve`
+- `PATCH /admin/coach-prices/reject`
 
 ---
 
@@ -705,6 +1069,111 @@ export interface ApiSuccess {
 
 export interface ApiError {
   error: string;
+}
+```
+
+---
+
+## Dashboard
+
+```ts
+export interface AdminDashboardStats {
+  total_users: number;
+  active_coaches: number;
+  pending_reviews: number;
+  pending_coach_applications: number;
+  open_reports: number;
+  monthly_revenue: number;
+}
+
+export interface AdminEngagementAnalytics {
+  daily_active_users: number;
+  weekly_active_users: number;
+  monthly_active_users: number;
+}
+```
+
+---
+
+## User/account moderation
+
+```ts
+export type AccountStatus = "active" | "suspended" | "deactivated";
+
+export interface AdminManagedUser {
+  user_id: number;
+  first_name: string;
+  last_name: string;
+  name: string;
+  email: string;
+  phone_number?: string | null;
+  is_coach: boolean;
+  is_admin: boolean;
+  account_status: AccountStatus;
+  suspension_reason: string | null;
+  updated_at: string | null;
+}
+```
+
+---
+
+## Active coach listing
+
+```ts
+export interface AdminActiveCoach {
+  user_id: number;
+  first_name: string;
+  last_name: string;
+  name: string;
+  email: string;
+  coach_description: string | null;
+  price: number | null;
+  contract_count: number;
+  certifications: {
+    cert_name: string;
+    provider_name: string | null;
+    description: string | null;
+    issued_date: string | null;
+    expires_date: string | null;
+  }[];
+}
+```
+
+---
+
+## Coach applications
+
+```ts
+export interface AdminCoachApplication {
+  id: number;
+  application_id: number;
+  user_id: number;
+  name: string;
+  email: string;
+  appliedLabel: string | null;
+  status: "pending" | "approved" | "rejected";
+  years_experience: number | null;
+  coach_description: string | null;
+  desired_price: number | null;
+  admin_action: string | null;
+  certifications: string[];
+}
+```
+
+---
+
+## Reports
+
+```ts
+export interface AdminReport {
+  id: number;
+  report_id: number;
+  reported_user_id: number;
+  reporter_user_id: number;
+  title: string;
+  description: string;
+  status: string;
+  admin_action: string | null;
 }
 ```
 
@@ -764,22 +1233,17 @@ export interface AdminModeratedVideo {
 
 ---
 
-## Account enforcement
+## Coach price moderation
 
 ```ts
-export type AccountStatus = "active" | "suspended" | "deactivated";
-
-export interface AdminManagedUser {
-  user_id: number;
-  first_name: string;
-  last_name: string;
-  name: string;
-  email: string;
-  is_coach: boolean;
-  is_admin: boolean;
-  account_status: AccountStatus;
-  suspension_reason: string | null;
-  updated_at: string | null;
+export interface AdminCoachPriceRequest {
+  request_id: number;
+  coach_id: number;
+  coach_name: string;
+  current_price: number;
+  proposed_price: number;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
 }
 ```
 
@@ -788,6 +1252,50 @@ export interface AdminManagedUser {
 # Required Frontend Service Modules
 
 Create or update the following service modules.
+
+## `services/adminDashboardService.ts`
+
+Implement:
+```ts
+getDashboardStats()
+getEngagementAnalytics()
+```
+
+---
+
+## `services/adminAccountModerationService.ts`
+
+Implement:
+```ts
+getUsers()
+suspendUser(payload)
+deactivateUser(payload)
+updateUserStatus(payload)
+getActiveCoaches()
+```
+
+---
+
+## `services/adminCoachApplicationService.ts`
+
+Implement:
+```ts
+getCoachApplications(payload)
+approveCoachApplication(payload)
+rejectCoachApplication(payload)
+```
+
+---
+
+## `services/adminReportService.ts`
+
+Implement:
+```ts
+getReports(payload)
+closeReport(payload)
+```
+
+---
 
 ## `services/adminExerciseService.ts`
 
@@ -825,14 +1333,13 @@ removeVideo(payload)
 
 ---
 
-## `services/adminAccountModerationService.ts`
+## `services/adminCoachPriceService.ts`
 
 Implement:
 ```ts
-getUsers()
-suspendUser(payload)
-deactivateUser(payload)
-updateUserStatus(payload)
+getPendingCoachPriceRequests()
+approveCoachPriceRequest(payload)
+rejectCoachPriceRequest(payload)
 ```
 
 ---
@@ -840,6 +1347,55 @@ updateUserStatus(payload)
 # Required Frontend UI Pages
 
 Create or update these admin pages.
+
+## `pages/admin/AdminDashboardPage.tsx`
+
+Needs:
+- dashboard stat cards
+- engagement analytics cards/charts
+- pending review counts
+- revenue summary
+
+---
+
+## `pages/admin/AdminUsersPage.tsx`
+
+Needs:
+- list all users
+- status badge
+- suspend modal requiring reason
+- deactivate confirmation
+- restore-to-active action using `PATCH /admin/users/status`
+
+---
+
+## `pages/admin/AdminActiveCoachesPage.tsx`
+
+Needs:
+- list active coaches
+- show coach pricing
+- show certifications
+- show contract counts
+
+---
+
+## `pages/admin/AdminCoachApplicationsPage.tsx`
+
+Needs:
+- pending / approved / rejected tabs
+- application detail cards
+- approve/reject actions with admin note
+
+---
+
+## `pages/admin/AdminReportsPage.tsx`
+
+Needs:
+- open / closed tabs
+- report detail display
+- close action with admin note
+
+---
 
 ## `pages/admin/AdminExercisesPage.tsx`
 
@@ -872,14 +1428,12 @@ Needs:
 
 ---
 
-## `pages/admin/AdminAccountModerationPage.tsx`
+## `pages/admin/AdminCoachPricesPage.tsx`
 
 Needs:
-- list all managed users
-- show account status badge
-- suspend modal requiring reason
-- deactivate confirmation/modal
-- restore-to-active action using `PATCH /admin/users/status`
+- pending price request list
+- show current price vs proposed price
+- approve/reject actions with admin note
 
 ---
 
@@ -917,8 +1471,10 @@ fetch("/admin/users/suspend", {
 - do not invent `/admin/users/:user_id/reactivate`
 - do not invent `/admin/videos/:exercise_id/reject`
 - do not invent `/admin/exercises/:exercise_id`
+- do not invent `/admin/coach-applications?status=pending`
+- do not invent `/admin/reports?status=open`
 - do not assume form-data unless specifically told otherwise
-- do not assume path-param REST style for mutable admin actions
+- do not assume path-param mutation routes
 - do not omit `credentials: "include"`
 
 ---
@@ -969,3 +1525,4 @@ Prioritize:
 - JSON-body request helpers
 - no URL-param mutation patterns
 - compatibility with existing React + Vite project organization
+- full admin coverage, not just the newer CRUD endpoints
