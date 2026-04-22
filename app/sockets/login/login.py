@@ -37,7 +37,7 @@ def register_login_socket_events(socketio):
         print("user_id:", user_id)
         print("mode:", mode)
 
-        if not user_id or mode not in ["client", "coach"]:
+        if not user_id or mode not in ["client", "coach", "admin"]:
             print("REGISTER MODE FAILED")
             return
 
