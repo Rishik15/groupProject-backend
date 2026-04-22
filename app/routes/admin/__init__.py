@@ -6,3 +6,6 @@ from . import dashboard
 from . import users
 from . import reports
 from . import coach_applications
+from . import exercises
+from . import videos
+from . import workouts
