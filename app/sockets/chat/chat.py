@@ -7,6 +7,7 @@ from app import (
     user_active_conversation,
 )
 from app.services.chat.notify_users import notify_presence_change
+from app.services import run_query
 
 
 def register_chat_socket_events(socketio):
@@ -47,7 +48,41 @@ def register_chat_socket_events(socketio):
         user_id = session.get("user_id")
         conv_id = data.get("convId")
 
+        if not user_id or not conv_id:
+            return
+
         user_active_conversation[user_id] = conv_id
+
+        run_query(
+            """
+            UPDATE conversation_member
+            SET unread_count = 0
+            WHERE conversation_id = :conv_id
+            AND user_id = :user_id
+            """,
+            {"conv_id": conv_id, "user_id": user_id},
+            fetch=False,
+            commit=True,
+        )
+
+        run_query(
+            """
+            UPDATE notification
+            SET is_read = TRUE
+            WHERE user_id = :user_id
+            AND conversation_id = :conv_id
+            AND is_read = FALSE
+            """,
+            {"user_id": user_id, "conv_id": conv_id},
+            fetch=False,
+            commit=True,
+        )
+
+        emit(
+            "chat_notifications_cleared",
+            {"conversationId": conv_id},
+            room=str(user_id),
+        )
 
     @socketio.on("chat_deselected")
     def handle_deselected(data):
