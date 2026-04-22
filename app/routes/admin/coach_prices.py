@@ -1,33 +1,59 @@
 from flask import jsonify, request, session
 from . import admin_bp
-from app.services.admin.coach_applications import (
-    get_admin_coach_applications,
-    approve_coach_application,
-    reject_coach_application
+from app.services.admin.coach_prices import (
+    get_pending_coach_price_requests,
+    approve_coach_price_request,
+    reject_coach_price_request,
 )
 
 
-@admin_bp.route("/coach-applications/list", methods=["POST"])
-def admin_get_coach_applications():
+@admin_bp.route("/coach-prices/pending", methods=["GET"])
+def admin_get_pending_coach_prices():
     try:
         user_id = session.get("user_id")
 
         if not user_id:
             return jsonify({"error": "Unauthorized"}), 401
 
-        data = request.get_json() or {}
-        status = data.get("status")
-
-        if not status:
-            return jsonify({"error": "status is required"}), 400
-
         user_id = int(user_id)
 
-        applications = get_admin_coach_applications(user_id, status)
+        requests = get_pending_coach_price_requests(user_id)
 
         return jsonify({
             "message": "success",
-            "applications": applications
+            "requests": requests
+        }), 200
+
+    except PermissionError:
+        return jsonify({"error": "Forbidden"}), 403
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@admin_bp.route("/coach-prices/approve", methods=["PATCH"])
+def admin_approve_coach_price():
+    try:
+        user_id = session.get("user_id")
+
+        if not user_id:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        user_id = int(user_id)
+        data = request.get_json() or {}
+
+        request_id = data.get("request_id")
+        admin_action = data.get("admin_action")
+
+        result = approve_coach_price_request(
+            admin_user_id=user_id,
+            request_id=request_id,
+            admin_action=admin_action
+        )
+
+        return jsonify({
+            "message": "success",
+            "request": result
         }), 200
 
     except ValueError as e:
@@ -40,8 +66,8 @@ def admin_get_coach_applications():
         return jsonify({"error": str(e)}), 500
 
 
-@admin_bp.route("/coach-applications/approve", methods=["PATCH"])
-def admin_approve_coach_application():
+@admin_bp.route("/coach-prices/reject", methods=["PATCH"])
+def admin_reject_coach_price():
     try:
         user_id = session.get("user_id")
 
@@ -51,45 +77,18 @@ def admin_approve_coach_application():
         user_id = int(user_id)
         data = request.get_json() or {}
 
-        application_id = data.get("application_id")
+        request_id = data.get("request_id")
         admin_action = data.get("admin_action")
 
-        application = approve_coach_application(user_id, application_id, admin_action)
+        result = reject_coach_price_request(
+            admin_user_id=user_id,
+            request_id=request_id,
+            admin_action=admin_action
+        )
 
         return jsonify({
             "message": "success",
-            "application": application
-        }), 200
-
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
-
-    except PermissionError:
-        return jsonify({"error": "Forbidden"}), 403
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@admin_bp.route("/coach-applications/reject", methods=["PATCH"])
-def admin_reject_coach_application():
-    try:
-        user_id = session.get("user_id")
-
-        if not user_id:
-            return jsonify({"error": "Unauthorized"}), 401
-
-        user_id = int(user_id)
-        data = request.get_json() or {}
-
-        application_id = data.get("application_id")
-        admin_action = data.get("admin_action")
-
-        application = reject_coach_application(user_id, application_id, admin_action)
-
-        return jsonify({
-            "message": "success",
-            "application": application
+            "request": result
         }), 200
 
     except ValueError as e:

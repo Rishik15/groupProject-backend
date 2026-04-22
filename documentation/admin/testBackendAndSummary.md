@@ -163,5 +163,20 @@ All endpoints validated via curl.
 
 System is stable and production-ready for current scope.
 
-Next enhancement:
-- multi-day workout editing (Version 2)
+All of these endpoints were added per request on 4/22/26
+
+* GET /admin/dashboard/stats
+* GET /admin/analytics/engagement
+* GET /admin/users
+* PATCH /admin/users/suspend
+* PATCH /admin/users/deactivate
+* PATCH /admin/users/status
+* GET /admin/coaches/active
+* POST /admin/coach-applications/list
+* PATCH /admin/coach-applications/approve
+* PATCH /admin/coach-applications/reject
+* POST /admin/reports/list
+* PATCH /admin/reports/close
+* GET /admin/coach-prices/pending
+* PATCH /admin/coach-prices/approve
+* PATCH /admin/coach-prices/reject
