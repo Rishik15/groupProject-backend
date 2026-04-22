@@ -2,7 +2,7 @@ from app.services import run_query
 import json
 
 
-def handle_chat_notification(user_id, conv_id, sender_name, message):
+def handle_chat_notification(user_id, conv_id, sender_name, message, mode):
     existing = run_query(
         """
         SELECT notification_id AS id
@@ -11,9 +11,10 @@ def handle_chat_notification(user_id, conv_id, sender_name, message):
         AND conversation_id = :conv_id
         AND type = 'chat'
         AND is_read = FALSE
+        AND mode = :mode
         LIMIT 1
         """,
-        {"user_id": user_id, "conv_id": conv_id},
+        {"user_id": user_id, "conv_id": conv_id, "mode": mode},
     )
 
     title = sender_name
@@ -50,13 +51,17 @@ def handle_chat_notification(user_id, conv_id, sender_name, message):
             "title": title,
             "body": body,
             "is_read": False,
-        }, True  # updated
+        }, True
 
     else:
         run_query(
             """
-            INSERT INTO notification (user_id, type, conversation_id, title, body, metadata)
-            VALUES (:user_id, 'chat', :conv_id, :title, :body, :metadata)
+            INSERT INTO notification (
+                user_id, type, conversation_id, title, body, metadata, mode
+            )
+            VALUES (
+                :user_id, 'chat', :conv_id, :title, :body, :metadata, :mode
+            )
             """,
             {
                 "user_id": user_id,
@@ -64,6 +69,7 @@ def handle_chat_notification(user_id, conv_id, sender_name, message):
                 "title": title,
                 "body": body,
                 "metadata": metadata,
+                "mode": mode,
             },
             fetch=False,
             commit=True,
@@ -78,4 +84,4 @@ def handle_chat_notification(user_id, conv_id, sender_name, message):
             "title": title,
             "body": body,
             "is_read": False,
-        }, False  # new
+        }, False

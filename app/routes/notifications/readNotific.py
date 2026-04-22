@@ -6,6 +6,7 @@ from app.services.notifications.markNotifications import mark_notification_as_re
 @notify_bp.route("/markAsRead", methods=["POST"])
 def mark_as_read():
     user_id = session.get("user_id")
+    mode = request.args.get("mode")
 
     if not user_id:
         return {"error": "User not authenticated"}, 401
@@ -13,9 +14,9 @@ def mark_as_read():
     data = request.get_json()
     notif_id = data.get("id")
 
-    if not notif_id:
-        return {"error": "Missing notification id"}, 400
+    if not notif_id or not mode:
+        return {"error": "Missing data"}, 400
 
-    mark_notification_as_read(user_id, notif_id)
+    mark_notification_as_read(user_id, notif_id, mode)
 
     return {"message": "Marked as read"}, 200
