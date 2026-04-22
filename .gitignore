@@ -20,6 +20,8 @@ ENV/
 .env
 .env.*
 *.env
+betafit*.json
+client_secret*
 
 # -------------------------
 # Distribution / packaging
@@ -90,3 +92,5 @@ dist/
 *.pid.lock
 
 gunicorn.ctl
+
+media

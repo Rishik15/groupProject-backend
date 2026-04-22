@@ -1,4 +1,3 @@
-#app/routes/contracts/clientContracts.py
 from . import contract_bp
 from flask import session, request, jsonify
 from app.services.contracts.client_Contracts import requestContract
@@ -6,12 +5,11 @@ from app.services.contracts.client_Contracts import requestContract
 
 @contract_bp.route("/requestContract", methods=["POST"])
 def requestContractRoute():
-    data = request.get_json()
-    user_id = session.get("user_id") 
+    user_id = session.get("user_id")
     if not user_id:
         return jsonify({"error": "unauthorized"}), 401
 
-    
+    data = request.get_json()
     coach_id = data.get("coach_id")
 
     if not coach_id:

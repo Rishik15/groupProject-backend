@@ -14,35 +14,36 @@ def _coerce_db_datetime(value):
 
     raise TypeError("unsupported datetime value returned from db")
 
+
 def partialFoodItemUpdate(user_id, food_id, name, calories, protein, carbs, fats, image_url):
     try:
         run_query(
             """
-                UPDATE food_item 
-                SET 
-                    name = :name
-                    calories = :calories
-                    protein = :protein
-                    carbs = :carbs
-                    fats = :fats
-                    image_url = :image_url    
+                UPDATE food_item
+                SET
+                    name = :name,
+                    calories = :calories,
+                    protein = :protein,
+                    carbs = :carbs,
+                    fats = :fats,
+                    image_url = :image_url
                 WHERE user_id = :uid AND food_item_id = :food_id
-                ; 
             """,
-            {"uid":         user_id, 
-             "food_id":     food_id,
-              "name":       name, 
-              "calories":   calories, 
-              "protein":    protein, 
-              "carbs":      carbs, 
-              "fats":       fats, 
-              "image_url":  image_url
-             },
-            commit=True, 
-            fetch=False
+            {
+                "uid": user_id,
+                "food_id": food_id,
+                "name": name,
+                "calories": calories,
+                "protein": protein,
+                "carbs": carbs,
+                "fats": fats,
+                "image_url": image_url,
+            },
+            commit=True,
+            fetch=False,
         )
 
-    except Exception as e: 
+    except Exception as e:
         raise e
 
 def getFoodItem(user_id: int):
@@ -199,33 +200,23 @@ def _createMeal(
                 "fats": fats
             },
             fetch=False,
-            commit=True
+            commit=False
         )
 
         created = run_query(
-            query="""
-                SELECT
-                    meal_id,
-                    created_at
-                FROM meal
-                WHERE name = :name
-                ORDER BY meal_id DESC
-                LIMIT 1
-            """,
-            params={"name": meal_name},
+            query="SELECT LAST_INSERT_ID() AS meal_id",
+            params={},
             fetch=True,
             commit=False
         )
 
-        if not created:
-            raise Exception("failed to fetch created meal")
+        if not created or created[0]["meal_id"] is None:
+            raise Exception("failed to fetch created meal id")
 
         return created[0]["meal_id"]
 
     except Exception as e:
         raise e
-
-
 def mealLogInsert(
     user_id: int,
     meal_name: str,
