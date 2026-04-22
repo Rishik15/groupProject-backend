@@ -1,15 +1,21 @@
 from . import dashboard_coach_bp
 from flask import session
-from app.services.dashboard.coach.getPendingContracts import get_pending_requests
+from app.services.auth.checkUser import checkUserExists
+from app.services.dashboard.coach.getPendingContracts import getPendingRequests
 
 
-@dashboard_coach_bp.route("/pending-requests", methods=["GET"])
-def getPendingRequests():
-    coach_id = session.get("user_id")
+@dashboard_coach_bp.route("/pendingRequests", methods=["GET"])
+def pending_requests():
 
-    if not coach_id:
+    if "user_id" not in session:
         return {"error": "Unauthorized"}, 401
 
-    data = get_pending_requests(coach_id)
+    coach_id = session.get("user_id")
 
-    return {"requests": data}, 200
+    if not checkUserExists(user_id=coach_id):
+        session.clear()
+        return {"error": "Unauthorized"}, 401
+
+    requests = getPendingRequests(coach_id)
+
+    return {"pending_requests": requests, "count": len(requests)}, 200
