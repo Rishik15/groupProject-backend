@@ -1,5 +1,7 @@
+from sqlalchemy import false
+
 from app.services import run_query
-from datetime import date
+from datetime import date, datetime
 
 
 def getCoachContractsService(coach_id: int):
@@ -18,7 +20,7 @@ def getCoachContractsService(coach_id: int):
                 ucc.active
             FROM user_coach_contract AS ucc
             WHERE ucc.coach_id = :c_id
-            ORDER BY ucc.created_at DESC
+            ORDER BY ucc.created_at DESC;
             """,
             {"c_id": coach_id},
             commit=False,
@@ -37,7 +39,7 @@ def getUsersPerContract(user_id: int):
                 first_name,
                 last_name
             FROM users_immutables
-            WHERE user_id = :user_id
+            WHERE user_id = :user_id;
             """,
             {"user_id": user_id},
             commit=False,
@@ -47,8 +49,24 @@ def getUsersPerContract(user_id: int):
     except Exception as e:
         raise e
 
+def getUserGivenContract(contract_id: int):
+    try:
+        ret = run_query(
+            """
+                SELECT user_id 
+                FROM user_coach_contract 
+                WHERE contract_id = :contract_id;
+            """, 
+            {"contract_id": contract_id} ,
+            commit=False,
+            fetch=True
+        )
 
-def getCoachContractsByStatusService(coach_id: int, active: int):
+        return ret
+    except Exception as e : 
+        raise e
+
+def getCoachContractsByStatusServie(coach_id: int, active: int):
     try:
         ret = run_query(
             """
@@ -66,7 +84,7 @@ def getCoachContractsByStatusService(coach_id: int, active: int):
             FROM user_coach_contract
             WHERE coach_id = :coach_id
               AND active = :active
-            ORDER BY created_at DESC
+            ORDER BY created_at DESC;
             """,
             {"coach_id": coach_id, "active": active},
             commit=False,
@@ -95,7 +113,7 @@ def getSingleCoachContractService(coach_id: int, contract_id: int):
             FROM user_coach_contract
             WHERE coach_id = :coach_id
               AND contract_id = :contract_id
-            LIMIT 1
+            LIMIT 1;
             """,
             {"coach_id": coach_id, "contract_id": contract_id},
             commit=False,
@@ -105,8 +123,83 @@ def getSingleCoachContractService(coach_id: int, contract_id: int):
     except Exception as e:
         raise e
 
+def buildDefaultConversation(contract_id: int, coach_id: int, user_id: int):
+    try:
+    
+        run_query(
+            """
+                INSERT INTO conversation (conversation_type, created_by, title)
+                VALUES ('dm', :coach_id, NULL);
+            """,
+            {"coach_id": coach_id},
+            commit=False,
+            fetch=False
+        )
 
-def coachAcceptsContractService(contract_id: int):
+  
+        conversation_id_raw = run_query(
+            """
+                SELECT LAST_INSERT_ID() AS conversation_id;
+            """,
+            {},
+            commit=False,
+            fetch=True
+        )
+
+        if not conversation_id_raw or conversation_id_raw[0].get("conversation_id") is None:
+            raise ValueError("Error inserting into conversation table")
+
+        conversation_id = int(conversation_id_raw[0]["conversation_id"])
+
+        # print(f"\n\n\n\n\n\nconversation_id is ::: {conversation_id}\n\n\n\n\n\n")
+
+        run_query(
+            """
+                INSERT INTO conversation_member (conversation_id, user_id, role, unread_count)
+                VALUES (:conversation_id, :coach_id, 'owner', 1);
+            """,
+            {"conversation_id": conversation_id, "coach_id": coach_id},
+            commit=False,
+            fetch=False
+        )
+
+        run_query(
+            """
+                INSERT INTO conversation_member (conversation_id, user_id, role, unread_count)
+                VALUES (:conversation_id, :user_id, 'member', 1);
+            """,
+            {"conversation_id": conversation_id, "user_id": user_id},
+            commit=False,
+            fetch=False
+        )
+
+        dt = datetime.now().replace(microsecond=0)
+
+        run_query(
+            """
+                INSERT INTO message
+                (
+                    conversation_id, sender_user_id, content, sent_at
+                )
+                VALUES
+                (
+                    :conversation_id,
+                    1,
+                    'This is the beginning of a great relationship! Conversations can be managed here!',
+                    :dt
+                );
+            """,
+            {"conversation_id": conversation_id, "dt": dt},
+            commit=True,
+            fetch=False
+        )
+
+        return conversation_id
+
+    except Exception as e:
+        raise e
+
+def coachAcceptsContractService(contract_id: int, coach_id: int, user_id : int):
     try:
         today = date.today().isoformat()
         run_query(
@@ -114,15 +207,16 @@ def coachAcceptsContractService(contract_id: int):
             UPDATE user_coach_contract
             SET active = 1,
                 start_date = :today
-            WHERE contract_id = :contract_id
+            WHERE contract_id = :contract_id;
             """,
             {"contract_id": contract_id, "today": today},
             fetch=False,
             commit=True
         )
+        
+        buildDefaultConversation(contract_id, coach_id, user_id)
     except Exception as e:
         raise e
-
 
 def coachRejectsContractService(contract_id: int):
     try:
@@ -132,7 +226,7 @@ def coachRejectsContractService(contract_id: int):
             UPDATE user_coach_contract
             SET active = 0,
                 end_date = :today
-            WHERE contract_id = :contract_id
+            WHERE contract_id = :contract_id;
             """,
             {"contract_id": contract_id, "today": today},
             fetch=False,
@@ -150,7 +244,7 @@ def coachTerminatesContractService(contract_id: int):
             UPDATE user_coach_contract
             SET active = 0,
                 end_date = :today
-            WHERE contract_id = :contract_id
+            WHERE contract_id = :contract_id;
             """,
             {"contract_id": contract_id, "today": today},
             fetch=False,
