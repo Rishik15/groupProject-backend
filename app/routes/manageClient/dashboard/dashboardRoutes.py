@@ -5,7 +5,7 @@ from app.services.dashboard.client.getCalories import get_calories_metrics_servi
 from app.services.dashboard.client.getDailyNutrition import getNutrition
 from app.services.dashboard.client.getWeight import get_user_weight
 from app.services.dashboard.client.getWorkouts import get_workout_completion_service
-from app.services.manageClients.getClientId import getClientIdFromContract
+from app.utils.Contract.getClientId import getClientIdFromContract
 
 
 def get_client_id_from_contract():

@@ -5,6 +5,8 @@ from flask import request, session, jsonify
 from . import nutrition_bp
 from app.services.media import save_meal_image_for_user
 from app.services.nutrition import mealLogging
+from app import socketio, online_users
+from app.utils.Contract.getCoachId import getCoachIdFromContract
 
 
 def _parse_food_item_ids(raw_value):
@@ -29,7 +31,9 @@ def _parse_food_item_ids(raw_value):
 
         return [int(v.strip()) for v in raw_value.split(",") if v.strip()]
 
-    raise ValueError("food_item_ids must be a list, JSON array string, or comma-separated string")
+    raise ValueError(
+        "food_item_ids must be a list, JSON array string, or comma-separated string"
+    )
 
 
 @nutrition_bp.route("/updateFoodItem", methods=["PATCH"])
@@ -83,10 +87,15 @@ def getUserFoodItem():
         u_id = int(u_id)
         foodItemsList = mealLogging.getFoodItem(u_id)
 
-        return jsonify({
-            "message": "success",
-            "foodItemsList": foodItemsList if foodItemsList is not None else []
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": "success",
+                    "foodItemsList": foodItemsList if foodItemsList is not None else [],
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -113,16 +122,13 @@ def addUserFoodItem():
         req_fields = [name, cals, pro, carbs, fats, img]
         for r in req_fields:
             if r is None:
-                return jsonify({"error": "one of the required fields was not provided"}), 400
+                return (
+                    jsonify({"error": "one of the required fields was not provided"}),
+                    400,
+                )
 
         mealLogging.createFoodItem(
-            user_id=u_id,
-            name=name,
-            cals=cals,
-            pro=pro,
-            carbs=carbs,
-            fats=fats,
-            img=img
+            user_id=u_id, name=name, cals=cals, pro=pro, carbs=carbs, fats=fats, img=img
         )
 
         return jsonify({"message": "success"}), 200
@@ -185,13 +191,27 @@ def logMeal():
             food_item_ids=food_item_ids,
         )
 
-        return jsonify({
-            "message": "success",
-            "photo_url": upload_result["photo_url"],
-        }), 200
+        coach_id = getCoachIdFromContract(u_id)
+
+        if coach_id:
+            coach_room = f"{coach_id}:coach"
+
+            if coach_room in online_users:
+                socketio.emit("nutrition_updated", {"user_id": u_id}, room=coach_room)
+
+        return (
+            jsonify(
+                {
+                    "message": "success",
+                    "photo_url": upload_result["photo_url"],
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 @nutrition_bp.route("/getLoggedMeals", methods=["POST"])
 def getLoggedMeals():
@@ -208,15 +228,18 @@ def getLoggedMeals():
         end_dt = data.get("end_datetime")
 
         meals = mealLogging.getLoggedMeals(
-            user_id=u_id,
-            start_dt=start_dt,
-            end_dt=end_dt
+            user_id=u_id, start_dt=start_dt, end_dt=end_dt
         )
 
-        return jsonify({
-            "message": "success",
-            "loggedMeals": meals if meals is not None else []
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": "success",
+                    "loggedMeals": meals if meals is not None else [],
+                }
+            ),
+            200,
+        )
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
