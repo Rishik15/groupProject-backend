@@ -6,3 +6,4 @@ from . import logMeals
 from . import getMealPlans
 from . import getMealPlanDetails
 from . import assignMealPlan
+from . import createFoodItem
