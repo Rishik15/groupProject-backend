@@ -33,22 +33,16 @@ def getCoachContracts(coach_id: int):
             "user_id": r["user_id"],
             "name": f"{r['first_name']} {r['last_name']}",
             "start_date": r["start_date"],
-            "end_date": r["end_date"],
+            "end_date": r["end_date"] if r["end_date"] else None,
             "price": r["agreed_price"],
             "details": r["contract_text"],
         }
 
-        if r["active"] == 1 and r["end_date"] is None:
+        if r["active"] == 0 and r["end_date"] is None:
             pending.append(contract)
 
-        elif r["active"] == 1 and r["end_date"] is not None:
-            # check if still ongoing
-            from datetime import date
-
-            if r["end_date"] >= date.today():
-                present.append(contract)
-            else:
-                history.append(contract)
+        elif r["active"] == 1:
+            present.append(contract)
 
         else:
             history.append(contract)
