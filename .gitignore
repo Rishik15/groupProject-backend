@@ -35,6 +35,8 @@ pip-wheel-metadata/
 # Logs
 # -------------------------
 *.log
+betafit*.json
+client_secret*
 
 # -------------------------
 # Testing
