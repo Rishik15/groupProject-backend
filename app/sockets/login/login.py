@@ -1,10 +1,11 @@
-from flask_socketio import emit, join_room
+from flask_socketio import join_room
 from flask import session, request
 from app import (
     online_users,
     socket_to_user,
     chat_online_users,
     user_active_conversation,
+    socket_to_identity,
 )
 from app.services.chat.notify_users import notify_presence_change
 
@@ -15,38 +16,65 @@ def register_login_socket_events(socketio):
     def handle_connect():
         user_id = session.get("user_id")
 
+        print("CONNECT EVENT")
+        print("session user_id:", user_id)
+        print("sid:", request.sid)
+
         if not user_id:
+            print("NO USER ID → REJECT")
             return False
 
-        join_room(str(user_id))
-
-        online_users.setdefault(user_id, set()).add(request.sid)
         socket_to_user[request.sid] = user_id
+
+    @socketio.on("register_mode")
+    def register_mode(data):
+        sid = request.sid
+        user_id = socket_to_user.get(sid)
+        mode = data.get("mode")
+
+        print("REGISTER MODE EVENT")
+        print("sid:", sid)
+        print("user_id:", user_id)
+        print("mode:", mode)
+
+        if not user_id or mode not in ["client", "coach", "admin"]:
+            print("REGISTER MODE FAILED")
+            return
+
+        identity = f"{user_id}:{mode}"
+
+        print("REGISTERED IDENTITY:", identity)
+
+        socket_to_identity[sid] = identity
+        join_room(identity)
+        online_users.setdefault(identity, set()).add(sid)
+
+        print("ONLINE USERS:", online_users)
 
     @socketio.on("disconnect")
     def handle_disconnect():
         sid = request.sid
 
-        if sid not in socket_to_user:
-            return "No Socket Connection found", 404
+        identity = socket_to_identity.get(sid)
+        if not identity:
+            socket_to_user.pop(sid, None)
+            return
 
-        user_id = socket_to_user[sid]
+        user_id, mode = identity.split(":")
 
-        if user_id in online_users:
-            online_users[user_id].discard(sid)
+        if identity in online_users:
+            online_users[identity].discard(sid)
+            if not online_users[identity]:
+                online_users.pop(identity)
 
-            if not online_users[user_id]:
-                online_users.pop(user_id)
+        if identity in chat_online_users:
+            chat_online_users[identity].discard(sid)
+            if not chat_online_users[identity]:
+                chat_online_users.pop(identity)
+                notify_presence_change(int(user_id), mode, "chat_offline")
 
-        if user_id in chat_online_users:
-            chat_online_users[user_id].discard(sid)
+        if identity in user_active_conversation:
+            user_active_conversation.pop(identity, None)
 
-            if not chat_online_users[user_id]:
-                chat_online_users.pop(user_id)
-
-                notify_presence_change(user_id, "chat_offline")
-
-        if user_id in user_active_conversation:
-            user_active_conversation.pop(user_id)
-
-        socket_to_user.pop(sid)
+        socket_to_identity.pop(sid, None)
+        socket_to_user.pop(sid, None)

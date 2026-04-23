@@ -3,6 +3,8 @@ from app import bcrypt
 from flask import session, request
 from app.services.auth.checkUser import checkUserExists
 from app.services.auth.getUser import getUserCreds
+from app.services.auth.getUserRoles import getUserRoles
+from app.services.auth.getUser import getUserInfo
 
 
 @auth_bp.route("/login", methods=["POST"])
@@ -26,4 +28,8 @@ def login():
     session["user_id"] = user["user_id"]
     session["role"] = user["role"]
 
-    return {"success": True, "role": user["role"]}, 200
+    roles = getUserRoles(user["user_id"])
+
+    user_info = getUserInfo(user["user_id"])
+
+    return {"success": True, "roles": roles, "user": user_info}, 200

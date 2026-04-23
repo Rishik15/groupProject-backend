@@ -1,16 +1,16 @@
 from flask import jsonify, request, session
 from . import admin_bp
-from app.services.admin.users import (
-    get_admin_users,
-    get_active_coaches,
-    suspend_admin_user,
-    deactivate_admin_user,
-    update_admin_user_status,
+from app.services.admin.workouts import (
+    get_admin_workouts,
+    create_admin_workout,
+    update_admin_workout,
+    delete_admin_workout,
+    update_admin_workout_exercises,
 )
 
 
-@admin_bp.route("/users", methods=["GET"])
-def admin_get_users():
+@admin_bp.route("/workouts", methods=["GET"])
+def admin_get_workouts():
     try:
         user_id = session.get("user_id")
 
@@ -19,11 +19,11 @@ def admin_get_users():
 
         user_id = int(user_id)
 
-        users = get_admin_users(user_id)
+        workouts = get_admin_workouts(user_id)
 
         return jsonify({
             "message": "success",
-            "users": users
+            "workouts": workouts
         }), 200
 
     except PermissionError:
@@ -33,8 +33,8 @@ def admin_get_users():
         return jsonify({"error": str(e)}), 500
 
 
-@admin_bp.route("/users/suspend", methods=["PATCH"])
-def admin_suspend_user():
+@admin_bp.route("/workouts", methods=["POST"])
+def admin_create_workout():
     try:
         user_id = session.get("user_id")
 
@@ -44,18 +44,63 @@ def admin_suspend_user():
         user_id = int(user_id)
         data = request.get_json() or {}
 
-        target_user_id = data.get("user_id")
-        suspension_reason = data.get("suspension_reason")
+        plan_name = data.get("plan_name")
+        description = data.get("description")
+        author_user_id = data.get("author_user_id")
+        is_public = data.get("is_public", 0)
+        exercises = data.get("exercises", [])
 
-        user = suspend_admin_user(
-            admin_user_id=user_id,
-            target_user_id=target_user_id,
-            suspension_reason=suspension_reason
+        workout = create_admin_workout(
+            user_id=user_id,
+            plan_name=plan_name,
+            description=description,
+            author_user_id=author_user_id,
+            is_public=is_public,
+            exercises=exercises
         )
 
         return jsonify({
             "message": "success",
-            "user": user
+            "workout": workout
+        }), 201
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+    except PermissionError:
+        return jsonify({"error": "Forbidden"}), 403
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@admin_bp.route("/workouts", methods=["PATCH"])
+def admin_update_workout():
+    try:
+        user_id = session.get("user_id")
+
+        if not user_id:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        user_id = int(user_id)
+        data = request.get_json() or {}
+
+        plan_id = data.get("plan_id")
+        plan_name = data.get("plan_name")
+        description = data.get("description")
+        is_public = data.get("is_public")
+
+        workout = update_admin_workout(
+            user_id=user_id,
+            plan_id=plan_id,
+            plan_name=plan_name,
+            description=description,
+            is_public=is_public
+        )
+
+        return jsonify({
+            "message": "success",
+            "workout": workout
         }), 200
 
     except ValueError as e:
@@ -68,8 +113,8 @@ def admin_suspend_user():
         return jsonify({"error": str(e)}), 500
 
 
-@admin_bp.route("/users/deactivate", methods=["PATCH"])
-def admin_deactivate_user():
+@admin_bp.route("/workouts", methods=["DELETE"])
+def admin_delete_workout():
     try:
         user_id = session.get("user_id")
 
@@ -79,19 +124,14 @@ def admin_deactivate_user():
         user_id = int(user_id)
         data = request.get_json() or {}
 
-        target_user_id = data.get("user_id")
-        suspension_reason = data.get("suspension_reason")
+        plan_id = data.get("plan_id")
 
-        user = deactivate_admin_user(
-            admin_user_id=user_id,
-            target_user_id=target_user_id,
-            suspension_reason=suspension_reason
+        result = delete_admin_workout(
+            user_id=user_id,
+            plan_id=plan_id
         )
 
-        return jsonify({
-            "message": "success",
-            "user": user
-        }), 200
+        return jsonify(result), 200
 
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -103,8 +143,8 @@ def admin_deactivate_user():
         return jsonify({"error": str(e)}), 500
 
 
-@admin_bp.route("/users/status", methods=["PATCH"])
-def admin_update_user_status():
+@admin_bp.route("/workouts/exercises", methods=["PATCH"])
+def admin_update_workout_exercises_route():
     try:
         user_id = session.get("user_id")
 
@@ -114,48 +154,22 @@ def admin_update_user_status():
         user_id = int(user_id)
         data = request.get_json() or {}
 
-        target_user_id = data.get("user_id")
-        account_status = data.get("account_status")
-        suspension_reason = data.get("suspension_reason")
+        plan_id = data.get("plan_id")
+        exercises = data.get("exercises", [])
 
-        user = update_admin_user_status(
-            admin_user_id=user_id,
-            target_user_id=target_user_id,
-            account_status=account_status,
-            suspension_reason=suspension_reason
+        workout = update_admin_workout_exercises(
+            user_id=user_id,
+            plan_id=plan_id,
+            exercises=exercises
         )
 
         return jsonify({
             "message": "success",
-            "user": user
+            "workout": workout
         }), 200
 
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
-
-    except PermissionError:
-        return jsonify({"error": "Forbidden"}), 403
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@admin_bp.route("/coaches/active", methods=["GET"])
-def admin_get_active_coaches():
-    try:
-        user_id = session.get("user_id")
-
-        if not user_id:
-            return jsonify({"error": "Unauthorized"}), 401
-
-        user_id = int(user_id)
-
-        coaches = get_active_coaches(user_id)
-
-        return jsonify({
-            "message": "success",
-            "coaches": coaches
-        }), 200
 
     except PermissionError:
         return jsonify({"error": "Forbidden"}), 403

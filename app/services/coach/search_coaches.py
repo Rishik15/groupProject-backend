@@ -1,8 +1,10 @@
 from app.services import run_query
 
 
-def search_coaches(name, filters, is_certified=False, max_price=None, min_rating=None, sort_by=False):
-    #  Base Query..if no filters are applied this will return all coaches. 
+def search_coaches(
+    name, filters, is_certified=False, max_price=None, min_rating=None, sort_by=False
+):
+    #  Base Query..if no filters are applied this will return all coaches.
     #  We use DISTINCT to avoid getting the same coach multiple times if they have several certs.
     # print("received filters:", filters)
     query = """
@@ -35,8 +37,10 @@ def search_coaches(name, filters, is_certified=False, max_price=None, min_rating
         for tag in filters:
             query += f" AND LOWER(c.coach_description) LIKE LOWER(:tag_{tag})"
             params[f"tag_{tag}"] = f"%{tag}%"
-    
-    query += " GROUP BY u.user_id, u.first_name, u.last_name, c.price, c.coach_description"
+
+    query += (
+        " GROUP BY u.user_id, u.first_name, u.last_name, c.price, c.coach_description"
+    )
 
     if min_rating is not None and min_rating > 0:
         query += " HAVING AVG(cr.rating) >= :min_rating"
@@ -47,5 +51,5 @@ def search_coaches(name, filters, is_certified=False, max_price=None, min_rating
         query += " ORDER BY avg_rating DESC, review_count DESC"
     else:
         query += " ORDER BY c.price ASC"
-    print(query, params)
+
     return run_query(query, params=params, fetch=True, commit=False)
