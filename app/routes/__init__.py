@@ -13,6 +13,7 @@ from .workouts import workoutAction_bp, exerciseLog_bp, workouts_bp
 from .landing import landing_bp
 from .admin import admin_bp
 from .dashboard import dashboard_bp
+from .manageClient import manage_bp
 
 
 def register_routes(app):
@@ -32,5 +33,5 @@ def register_routes(app):
     app.register_blueprint(notify_bp, url_prefix="/notifications")
     app.register_blueprint(contract_bp, url_prefix="/contract")
     app.register_blueprint(admin_bp, url_prefix="/admin")
-
     app.register_blueprint(dashboard_bp, url_prefix="/dashboard")
+    app.register_blueprint(manage_bp, url_prefix="/manage")
