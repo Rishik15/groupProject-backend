@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document explains how the frontend should integrate with the prediction markets, wallet, and daily survey endpoints.
+This document explains how the frontend should integrate with the prediction markets, wallet, and daily wellness survey endpoints.
 
 This guide uses the **exact endpoint names** that must be called by the frontend.
 
@@ -11,6 +11,22 @@ It is written for frontend implementation against the Betafit backend running lo
 ```text
 http://localhost:8080
 ```
+
+---
+
+# Scope of This Document
+
+This is a **frontend HTTP integration guide only**.
+
+It intentionally describes:
+
+- exact API endpoints
+- request shapes
+- expected response shapes
+- authentication requirements
+- frontend state and UI expectations
+
+It does **not** describe backend file placement, blueprint layout, or internal Flask module structure. Frontend code should rely only on the HTTP contract.
 
 ---
 
@@ -53,7 +69,7 @@ headers: {
 
 ## Error Handling
 
-The backend pattern is consistent:
+The backend pattern is expected to follow:
 
 ### Success
 
@@ -76,7 +92,7 @@ Frontend should always check:
 
 - HTTP status
 - presence of `error`
-- presence of returned domain object/list
+- presence of returned domain object or list
 
 Recommended pattern:
 
@@ -132,6 +148,29 @@ These are the exact endpoints the frontend should use.
 
 ---
 
+# Important Status of This Guide
+
+This guide mixes two kinds of information:
+
+## 1. Endpoints that are part of the required frontend contract
+
+These route names are fixed and should be used exactly as written.
+
+## 2. Response shapes and behaviors that are implementation targets
+
+Some endpoints in this document describe the intended target behavior for the feature, but the backend implementation may still be in progress.
+
+That is especially true for:
+
+- admin review flows
+- cancel-review flows
+- settlement result storage
+- single-market detail request shape
+
+Frontend should code to the endpoint names, but be aware that a few payload details may be finalized alongside backend implementation.
+
+---
+
 # Feature Overview
 
 ## What this feature does
@@ -143,7 +182,7 @@ Users can:
 - see their own created markets
 - see their own bets
 - see open and completed markets
-- receive daily points from the daily survey
+- receive daily points through the daily wellness survey flow
 - view their wallet balance and transaction history
 
 Admins can:
@@ -158,7 +197,7 @@ Admins can:
 
 # Frontend Data Models
 
-These are the recommended frontend shapes to use when consuming the API.
+These are recommended frontend shapes to use when consuming the API.
 
 ## Prediction Market
 
@@ -676,15 +715,21 @@ Return detail for a single market.
 
 ### Important note
 
-Because the endpoint contract is fixed as:
+The endpoint name is fixed as:
 
 ```text
 GET /predictions/markets/detail
 ```
 
-the backend still needs a way to identify which market is requested without changing the path. The safest frontend assumption is that the backend will accept a JSON-based identifier or another repo-aligned mechanism under this exact route.
+However, the **exact request contract for identifying the market is not finalized yet**.
 
-### Recommended request body
+Because the path itself cannot be changed and business identifiers should not be moved into route params, frontend should treat this endpoint as **present but request-shape pending** until the backend implementation finalizes how `market_id` is supplied.
+
+### Current frontend recommendation
+
+Use this endpoint only after backend confirms the exact request format.
+
+### Provisional request example
 
 ```json
 {
@@ -692,7 +737,7 @@ the backend still needs a way to identify which market is requested without chan
 }
 ```
 
-### Expected response
+### Provisional response example
 
 ```json
 {
@@ -724,11 +769,13 @@ the backend still needs a way to identify which market is requested without chan
 
 ### UI notes
 
-This endpoint should power:
+This endpoint is intended to power:
 
 - market detail page
 - creator management view
 - bettor detail modal
+
+But frontend should treat the request format as pending until backend implementation finalizes it.
 
 ---
 
@@ -797,6 +844,10 @@ Allow the creator to request cancellation review.
 - creator requests cancellation
 - admin later approves or rejects cancel request
 - should not instantly cancel market
+
+### Important note
+
+This is part of the required frontend contract, but the exact backend persistence model for cancel requests may still be finalized during implementation.
 
 ### Expected success response
 
@@ -988,11 +1039,27 @@ Render:
 
 # Daily Survey Endpoints
 
+## Daily Survey Product Rule
+
+The daily `100` points are awarded **through the daily wellness survey submission flow**.
+
+There is **no separate daily reward claim endpoint** in this contract.
+
+The intended user flow is:
+
+1. frontend checks daily survey status
+2. frontend shows survey if user has not completed today
+3. frontend submits daily wellness survey
+4. backend awards `100` points once for that day
+5. frontend refreshes wallet and daily status
+
+---
+
 ## 14) GET /survey/daily/status
 
 ### Purpose
 
-Tell the frontend whether the user already completed today’s daily survey and whether the `100`-point reward is still available.
+Tell the frontend whether the user already completed today’s daily wellness survey and whether the `100`-point reward is still available.
 
 ### Request
 
@@ -1031,16 +1098,17 @@ Submit the user’s daily wellness survey and award the once-daily `100` points.
 
 ### Important product rule
 
-This is tied to the wellness survey. Users should receive:
+This is tied directly to the daily wellness survey. Users should receive:
 
 - `100` points
 - only once per day
+- only as part of successful daily survey submission
 
 ### Request body
 
-The final payload depends on the survey questions actually used by the app, but the frontend should expect to send the daily wellness fields in JSON.
+The final payload depends on the daily wellness questions used by the app.
 
-A likely shape is:
+A likely minimum shape is:
 
 ```json
 {
@@ -1049,7 +1117,7 @@ A likely shape is:
 }
 ```
 
-If the backend later ties this to multiple questions, the payload may expand.
+If the implementation stores multiple question answers, the payload may expand.
 
 ### Example response
 
@@ -1084,6 +1152,10 @@ After success:
 - hide claim banner
 - show reward confirmation
 
+### Important frontend note
+
+Do **not** build a separate "claim reward" button that calls a different endpoint. The reward is part of daily survey submission itself.
+
 ---
 
 # Admin Endpoints
@@ -1096,6 +1168,16 @@ If a non-admin hits them, expect:
 { "error": "Forbidden" }
 ```
 
+### Important note on admin endpoints
+
+The admin prediction endpoints below are part of the required frontend contract, but several of them should still be treated as **target behavior pending final backend implementation**, especially for:
+
+- review state handling
+- cancel review persistence
+- settlement result persistence
+
+Frontend can build screens against these route names, but should not assume every payload detail is final until backend implementation lands.
+
 ---
 
 ## 16) GET /admin/predictions/review
@@ -1103,6 +1185,10 @@ If a non-admin hits them, expect:
 ### Purpose
 
 Get newly created markets pending admin review.
+
+### Important note
+
+This is target contract behavior. Exact backend review-state modeling may still be finalized during implementation.
 
 ### Example response
 
@@ -1140,6 +1226,10 @@ Show:
 
 Approve a pending market for normal use.
 
+### Important note
+
+This is target contract behavior. Final backend state transitions may still be finalized during implementation.
+
 ### Request body
 
 ```json
@@ -1169,6 +1259,10 @@ Approve a pending market for normal use.
 
 Reject a pending market.
 
+### Important note
+
+This is target contract behavior. Final backend rejection semantics may still be finalized during implementation.
+
 ### Request body
 
 ```json
@@ -1197,6 +1291,10 @@ Reject a pending market.
 ### Purpose
 
 Get markets that are ready for admin settlement.
+
+### Important note
+
+This is target contract behavior. Exact readiness logic may still be finalized during backend implementation.
 
 ### Example response
 
@@ -1230,6 +1328,10 @@ Admins should see:
 ### Purpose
 
 Settle a closed market with final outcome.
+
+### Important note
+
+This is target contract behavior. Final result storage model may still be finalized during backend implementation.
 
 ### Request body
 
@@ -1278,6 +1380,10 @@ After settlement:
 
 Get cancellation requests awaiting admin decision.
 
+### Important note
+
+This is target contract behavior. Exact cancel-request persistence may still be finalized during backend implementation.
+
 ### Example response
 
 ```json
@@ -1301,6 +1407,10 @@ Get cancellation requests awaiting admin decision.
 ### Purpose
 
 Approve a market cancellation request.
+
+### Important note
+
+This is target contract behavior. Refund logic and cancellation persistence are still implementation-dependent until backend work is finalized.
 
 ### Request body
 
@@ -1336,6 +1446,10 @@ Approve a market cancellation request.
 ### Purpose
 
 Reject a market cancellation request.
+
+### Important note
+
+This is target contract behavior. Final request-state modeling may still be finalized during backend implementation.
 
 ### Request body
 
@@ -1531,11 +1645,13 @@ export async function placeBet(payload: {
 - check status before rendering reward CTA
 - prevent duplicate submit
 - refresh wallet after completion
+- do not implement a separate reward-claim endpoint
 
 ## Admin pages
 
 - show clear action confirmations for approve, reject, settle, and cancel decisions
 - refresh list after successful action
+- treat some response fields as subject to final backend implementation
 
 ---
 
@@ -1602,7 +1718,7 @@ yes
 no
 ```
 
-Settlement result values are:
+Settlement result values are intended to be:
 
 ```text
 yes
@@ -1618,6 +1734,17 @@ After a successful mutation, refresh the dependent screens:
 - relevant market lists
 - daily survey status
 - leaderboard if needed
+
+## 6) Treat a few areas as pending-finalization
+
+Frontend should treat these as contract areas that may need a small final adjustment when backend lands:
+
+- `GET /predictions/markets/detail` request shape
+- admin review payload details
+- cancel-review payload details
+- settlement result payload details
+
+The route names remain fixed.
 
 ---
 
@@ -1649,4 +1776,11 @@ This guide is the frontend contract reference for the prediction market feature.
 
 The frontend should code against the exact endpoints listed above and should not invent alternate route names.
 
-If backend implementation details tighten any response shape later, the endpoint names and core behaviors should still remain exactly as documented here.
+The most important hard guarantees are:
+
+- exact route names
+- session-authenticated requests with credentials included
+- daily `100` points awarded through the wellness survey flow
+- wallet-driven betting behavior
+
+Some detailed payloads remain implementation targets until the backend pieces are finished, but the route contract itself should remain exactly as documented here.
