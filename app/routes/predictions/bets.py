@@ -1,10 +1,15 @@
-from flask import jsonify, request, session
+from flask import jsonify, session
 from . import predictions_bp
-from app.services.predictions.bets import place_prediction_bet
+from app.services.predictions.bets import (
+    place_prediction_bet,
+    get_my_prediction_bets,
+)
 
 
 @predictions_bp.route("/bets", methods=["POST"])
 def place_prediction_bet_route():
+    from flask import request
+
     try:
         user_id = session.get("user_id")
 
@@ -38,6 +43,28 @@ def place_prediction_bet_route():
             "message": "success",
             "bet": bet
         }), 201
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@predictions_bp.route("/me/bets", methods=["GET"])
+def get_my_prediction_bets_route():
+    try:
+        user_id = session.get("user_id")
+
+        if not user_id:
+            return jsonify({"error": "Unauthorized"}), 401
+
+        bets = get_my_prediction_bets(int(user_id))
+
+        return jsonify({
+            "message": "success",
+            "bets": bets
+        }), 200
 
     except ValueError as e:
         return jsonify({"error": str(e)}), 400

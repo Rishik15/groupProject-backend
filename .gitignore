@@ -39,7 +39,7 @@ pip-wheel-metadata/
 *.log
 betafit*.json
 client_secret*
-
+cookies
 # -------------------------
 # Testing
 # -------------------------

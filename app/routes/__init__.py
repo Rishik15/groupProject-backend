@@ -14,7 +14,8 @@ from .landing import landing_bp
 from .admin import admin_bp
 from .dashboard import dashboard_bp
 from .predictions import predictions_bp
-
+from .wallet.wallet import wallet_bp
+from .survey import survey_bp
 
 def register_routes(app):
     app.register_blueprint(test_bp, url_prefix="/test")
@@ -35,3 +36,5 @@ def register_routes(app):
     app.register_blueprint(admin_bp, url_prefix="/admin")
     app.register_blueprint(dashboard_bp, url_prefix="/dashboard")
     app.register_blueprint(predictions_bp, url_prefix="/predictions")
+    app.register_blueprint(wallet_bp, url_prefix="/wallet")
+    app.register_blueprint(survey_bp, url_prefix="/survey")
