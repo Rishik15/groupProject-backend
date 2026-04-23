@@ -17,7 +17,10 @@ def _get_coach_id():
 def getAllCoachSideContracts():
     c_id = _get_coach_id()
     if c_id is None:
-        return jsonify({"error": "unauthorized access: no coach credential provided"}), 401
+        return (
+            jsonify({"error": "unauthorized access: no coach credential provided"}),
+            401,
+        )
 
     contracts = cca.getCoachContractsService(c_id) or []
 
@@ -37,7 +40,10 @@ def getAllCoachSideContracts():
 def getCoachActiveContractsRoute():
     c_id = _get_coach_id()
     if c_id is None:
-        return jsonify({"error": "unauthorized access: no coach credential provided"}), 401
+        return (
+            jsonify({"error": "unauthorized access: no coach credential provided"}),
+            401,
+        )
 
     active_contracts = cca.getCoachContractsByStatusService(c_id, 1) or []
     return jsonify({"Response": active_contracts}), 200
@@ -47,7 +53,10 @@ def getCoachActiveContractsRoute():
 def getCoachInactiveContractsRoute():
     c_id = _get_coach_id()
     if c_id is None:
-        return jsonify({"error": "unauthorized access: no coach credential provided"}), 401
+        return (
+            jsonify({"error": "unauthorized access: no coach credential provided"}),
+            401,
+        )
 
     inactive_contracts = cca.getCoachContractsByStatusService(c_id, 0) or []
     return jsonify({"Response": inactive_contracts}), 200
@@ -57,7 +66,10 @@ def getCoachInactiveContractsRoute():
 def coachAcceptContractRoute():
     c_id = _get_coach_id()
     if c_id is None:
-        return jsonify({"error": "unauthorized access: no coach credential provided"}), 401
+        return (
+            jsonify({"error": "unauthorized access: no coach credential provided"}),
+            401,
+        )
 
     data = request.get_json(silent=True) or {}
     contract_id = data.get("contract_id")
@@ -72,9 +84,11 @@ def coachAcceptContractRoute():
     if contract["active"] == 1:
         return jsonify({"error": "contract is already active"}), 400
 
-    client_id = cca.getUserGienContract(contract_id)
-
-    cca.coachAcceptsContractService(contract_id=contract_id, coach_id=c_id, user_id=client_id)
+    client_id = cca.getUserGivenContract(contract_id)[0].get("user_id")
+    client_id = int(client_id)
+    cca.coachAcceptsContractService(
+        contract_id=contract_id, coach_id=c_id, user_id=client_id
+    )
     return jsonify({"message": f"successfully accepted contract: {contract_id}"}), 200
 
 
@@ -83,7 +97,10 @@ def coachAcceptContractRoute():
 def coachRejectContractRoute():
     c_id = _get_coach_id()
     if c_id is None:
-        return jsonify({"error": "unauthorized access: no coach credential provided"}), 401
+        return (
+            jsonify({"error": "unauthorized access: no coach credential provided"}),
+            401,
+        )
 
     data = request.get_json(silent=True) or {}
     contract_id = data.get("contract_id")
@@ -106,7 +123,10 @@ def coachRejectContractRoute():
 def coachTerminateContractRoute():
     c_id = _get_coach_id()
     if c_id is None:
-        return jsonify({"error": "unauthorized access: no coach credential provided"}), 401
+        return (
+            jsonify({"error": "unauthorized access: no coach credential provided"}),
+            401,
+        )
 
     data = request.get_json(silent=True) or {}
     contract_id = data.get("contract_id")
