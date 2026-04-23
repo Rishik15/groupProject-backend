@@ -57,6 +57,10 @@ def _get_prediction_market_row(market_id: int):
             ui.first_name,
             ui.last_name,
             ui.email,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'yes' THEN 1 ELSE 0 END), 0) AS yes_bets,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'no' THEN 1 ELSE 0 END), 0) AS no_bets,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'yes' THEN p.points_wagered ELSE 0 END), 0) AS yes_points,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'no' THEN p.points_wagered ELSE 0 END), 0) AS no_points,
             COALESCE(COUNT(p.prediction_id), 0) AS total_bets,
             COALESCE(SUM(p.points_wagered), 0) AS total_points
         FROM prediction_market AS pm
@@ -179,6 +183,10 @@ def _shape_prediction_market(row):
         "cancel_review_note": row["cancel_review_note"],
         "total_bets": int(row["total_bets"]),
         "total_points": int(row["total_points"]) if row["total_points"] is not None else 0,
+        "yes_bets": int(row["yes_bets"]),
+        "no_bets": int(row["no_bets"]),
+        "yes_points": int(row["yes_points"]) if row["yes_points"] is not None else 0,
+        "no_points": int(row["no_points"]) if row["no_points"] is not None else 0,
         "created_at": row["created_at"].isoformat() if row["created_at"] is not None else None,
         "updated_at": row["updated_at"].isoformat() if row["updated_at"] is not None else None,
     }
@@ -227,6 +235,10 @@ def get_open_prediction_markets(user_id: int):
             ui.first_name,
             ui.last_name,
             ui.email,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'yes' THEN 1 ELSE 0 END), 0) AS yes_bets,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'no' THEN 1 ELSE 0 END), 0) AS no_bets,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'yes' THEN p.points_wagered ELSE 0 END), 0) AS yes_points,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'no' THEN p.points_wagered ELSE 0 END), 0) AS no_points,
             COALESCE(COUNT(p.prediction_id), 0) AS total_bets,
             COALESCE(SUM(p.points_wagered), 0) AS total_points
         FROM prediction_market AS pm
@@ -413,6 +425,10 @@ def get_my_prediction_markets(user_id: int):
             ui.first_name,
             ui.last_name,
             ui.email,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'yes' THEN 1 ELSE 0 END), 0) AS yes_bets,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'no' THEN 1 ELSE 0 END), 0) AS no_bets,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'yes' THEN p.points_wagered ELSE 0 END), 0) AS yes_points,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'no' THEN p.points_wagered ELSE 0 END), 0) AS no_points,
             COALESCE(COUNT(p.prediction_id), 0) AS total_bets,
             COALESCE(SUM(p.points_wagered), 0) AS total_points
         FROM prediction_market AS pm
@@ -556,6 +572,10 @@ def get_completed_prediction_markets(user_id: int):
             ui.first_name,
             ui.last_name,
             ui.email,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'yes' THEN 1 ELSE 0 END), 0) AS yes_bets,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'no' THEN 1 ELSE 0 END), 0) AS no_bets,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'yes' THEN p.points_wagered ELSE 0 END), 0) AS yes_points,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'no' THEN p.points_wagered ELSE 0 END), 0) AS no_points,
             COALESCE(COUNT(p.prediction_id), 0) AS total_bets,
             COALESCE(SUM(p.points_wagered), 0) AS total_points
         FROM prediction_market AS pm
@@ -668,6 +688,10 @@ def get_admin_prediction_review_queue(admin_user_id: int):
             ui.first_name,
             ui.last_name,
             ui.email,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'yes' THEN 1 ELSE 0 END), 0) AS yes_bets,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'no' THEN 1 ELSE 0 END), 0) AS no_bets,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'yes' THEN p.points_wagered ELSE 0 END), 0) AS yes_points,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'no' THEN p.points_wagered ELSE 0 END), 0) AS no_points,
             COALESCE(COUNT(p.prediction_id), 0) AS total_bets,
             COALESCE(SUM(p.points_wagered), 0) AS total_points
         FROM prediction_market AS pm
@@ -818,6 +842,10 @@ def get_admin_pending_settlement_queue(admin_user_id: int):
             ui.first_name,
             ui.last_name,
             ui.email,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'yes' THEN 1 ELSE 0 END), 0) AS yes_bets,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'no' THEN 1 ELSE 0 END), 0) AS no_bets,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'yes' THEN p.points_wagered ELSE 0 END), 0) AS yes_points,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'no' THEN p.points_wagered ELSE 0 END), 0) AS no_points,
             COALESCE(COUNT(p.prediction_id), 0) AS total_bets,
             COALESCE(SUM(p.points_wagered), 0) AS total_points
         FROM prediction_market AS pm
@@ -1256,6 +1284,10 @@ def get_admin_prediction_cancel_review_queue(admin_user_id: int):
             ui.first_name,
             ui.last_name,
             ui.email,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'yes' THEN 1 ELSE 0 END), 0) AS yes_bets,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'no' THEN 1 ELSE 0 END), 0) AS no_bets,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'yes' THEN p.points_wagered ELSE 0 END), 0) AS yes_points,
+            COALESCE(SUM(CASE WHEN p.prediction_value = 'no' THEN p.points_wagered ELSE 0 END), 0) AS no_points,
             COALESCE(COUNT(p.prediction_id), 0) AS total_bets,
             COALESCE(SUM(p.points_wagered), 0) AS total_points
         FROM prediction_market AS pm
