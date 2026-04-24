@@ -10,3 +10,5 @@ from . import createFoodItem
 from . import getMeals
 from . import createMealPlan
 from . import updateMealPlan
+from . import getMyMealPlans
+from . import deleteMealPlan
