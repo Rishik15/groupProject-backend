@@ -11,7 +11,7 @@ def getCoachIdFromContract(client_id):
 
     result = run_query(
         query=query,
-        params={"client": client_id},
+        params={"client_id": client_id},
         fetch=True,
         commit=False,
     )
