@@ -1,4 +1,3 @@
-# app/services/contracts/client_Contracts.py
 from app.services import run_query
 from datetime import date
 from app.services.contracts.contract_Status import get_contract_status

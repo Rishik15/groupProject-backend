@@ -1,9 +1,9 @@
 from app.services import run_query
 
 
-def get_relevant_users(user_id, role):
+def get_relevant_users(user_id, mode):
 
-    if role == "coach":
+    if mode == "coach":
         query = """
             SELECT 
                 u.user_id AS id,
@@ -13,8 +13,6 @@ def get_relevant_users(user_id, role):
             JOIN users_immutables u ON u.user_id = c.user_id
             WHERE c.coach_id = :user_id AND c.active = 1
         """
-
-        users = run_query(query, {"user_id": user_id})
 
     else:
         query = """
@@ -27,6 +25,4 @@ def get_relevant_users(user_id, role):
             WHERE c.user_id = :user_id AND c.active = 1
         """
 
-        users = run_query(query, {"user_id": user_id})
-
-    return users
+    return run_query(query, {"user_id": user_id})

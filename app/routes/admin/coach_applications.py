@@ -7,7 +7,7 @@ from app.services.admin.coach_applications import (
 )
 
 
-@admin_bp.route("/coach-applications", methods=["GET"])
+@admin_bp.route("/coach-applications/list", methods=["POST"])
 def admin_get_coach_applications():
     try:
         user_id = session.get("user_id")
@@ -15,10 +15,11 @@ def admin_get_coach_applications():
         if not user_id:
             return jsonify({"error": "Unauthorized"}), 401
 
-        status = request.args.get("status")
+        data = request.get_json() or {}
+        status = data.get("status")
 
         if not status:
-            return jsonify({"error": "status query parameter is required"}), 400
+            return jsonify({"error": "status is required"}), 400
 
         user_id = int(user_id)
 
@@ -39,8 +40,8 @@ def admin_get_coach_applications():
         return jsonify({"error": str(e)}), 500
 
 
-@admin_bp.route("/coach-applications/<int:application_id>/approve", methods=["PATCH"])
-def admin_approve_coach_application(application_id):
+@admin_bp.route("/coach-applications/approve", methods=["PATCH"])
+def admin_approve_coach_application():
     try:
         user_id = session.get("user_id")
 
@@ -50,6 +51,7 @@ def admin_approve_coach_application(application_id):
         user_id = int(user_id)
         data = request.get_json() or {}
 
+        application_id = data.get("application_id")
         admin_action = data.get("admin_action")
 
         application = approve_coach_application(user_id, application_id, admin_action)
@@ -69,8 +71,8 @@ def admin_approve_coach_application(application_id):
         return jsonify({"error": str(e)}), 500
 
 
-@admin_bp.route("/coach-applications/<int:application_id>/reject", methods=["PATCH"])
-def admin_reject_coach_application(application_id):
+@admin_bp.route("/coach-applications/reject", methods=["PATCH"])
+def admin_reject_coach_application():
     try:
         user_id = session.get("user_id")
 
@@ -80,6 +82,7 @@ def admin_reject_coach_application(application_id):
         user_id = int(user_id)
         data = request.get_json() or {}
 
+        application_id = data.get("application_id")
         admin_action = data.get("admin_action")
 
         application = reject_coach_application(user_id, application_id, admin_action)

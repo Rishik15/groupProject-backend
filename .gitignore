@@ -93,4 +93,7 @@ dist/
 
 gunicorn.ctl
 
+
+*.json
+
 media

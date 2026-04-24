@@ -29,7 +29,7 @@ def _get_application_row(application_id: int):
             ON ca.user_id = ui.user_id
         WHERE ca.application_id = :application_id
         """,
-        params={"application_id": application_id},
+        params={"application_id": int(application_id)},
         fetch=True,
         commit=False
     )
@@ -54,7 +54,7 @@ def _get_application_cert_rows(application_id: int):
         WHERE application_id = :application_id
         ORDER BY application_certification_id ASC
         """,
-        params={"application_id": application_id},
+        params={"application_id": int(application_id)},
         fetch=True,
         commit=False
     )
@@ -172,7 +172,10 @@ def approve_coach_application(user_id: int, application_id: int, admin_action=No
     if not _is_admin(user_id):
         raise PermissionError("Forbidden")
 
-    application_row = _get_application_row(application_id)
+    if not application_id:
+        raise ValueError("application_id is required")
+
+    application_row = _get_application_row(int(application_id))
 
     if application_row["status"] != "pending":
         raise ValueError("Only pending applications can be approved")
@@ -191,7 +194,7 @@ def approve_coach_application(user_id: int, application_id: int, admin_action=No
     if existing_coach_rows:
         raise ValueError("Coach row already exists for this user")
 
-    cert_rows = _get_application_cert_rows(application_id)
+    cert_rows = _get_application_cert_rows(int(application_id))
 
     final_admin_action = admin_action if admin_action else "Approved by admin"
 
@@ -254,14 +257,14 @@ def approve_coach_application(user_id: int, application_id: int, admin_action=No
         params={
             "admin_id": user_id,
             "admin_action": final_admin_action,
-            "application_id": application_id
+            "application_id": int(application_id)
         },
         fetch=False,
         commit=True
     )
 
-    updated_application = _get_application_row(application_id)
-    updated_certs = _get_application_cert_rows(application_id)
+    updated_application = _get_application_row(int(application_id))
+    updated_certs = _get_application_cert_rows(int(application_id))
 
     return _shape_application(updated_application, updated_certs)
 
@@ -270,7 +273,10 @@ def reject_coach_application(user_id: int, application_id: int, admin_action=Non
     if not _is_admin(user_id):
         raise PermissionError("Forbidden")
 
-    application_row = _get_application_row(application_id)
+    if not application_id:
+        raise ValueError("application_id is required")
+
+    application_row = _get_application_row(int(application_id))
 
     if application_row["status"] != "pending":
         raise ValueError("Only pending applications can be rejected")
@@ -290,13 +296,13 @@ def reject_coach_application(user_id: int, application_id: int, admin_action=Non
         params={
             "admin_id": user_id,
             "admin_action": final_admin_action,
-            "application_id": application_id
+            "application_id": int(application_id)
         },
         fetch=False,
         commit=True
     )
 
-    updated_application = _get_application_row(application_id)
-    updated_certs = _get_application_cert_rows(application_id)
+    updated_application = _get_application_row(int(application_id))
+    updated_certs = _get_application_cert_rows(int(application_id))
 
     return _shape_application(updated_application, updated_certs)

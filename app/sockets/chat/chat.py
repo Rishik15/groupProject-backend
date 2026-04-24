@@ -1,9 +1,9 @@
-from flask_socketio import emit, join_room
-from flask import session, request
+from flask_socketio import emit
+from flask import request
 from app import (
     chat_online_users,
     presence_subscribers,
-    socket_to_user,
+    socket_to_identity,
     user_active_conversation,
 )
 from app.services.chat.notify_users import notify_presence_change
@@ -11,48 +11,81 @@ from app.services import run_query
 
 
 def register_chat_socket_events(socketio):
-    @socketio.on("join_chat_presence")
-    def join_chat():
-        sid = request.sid
-        user_id = socket_to_user.get(sid)
-        if not user_id:
-            return
-        chat_online_users.setdefault(user_id, set()).add(sid)
 
-        notify_presence_change(user_id, "chat_online")
+    @socketio.on("join_chat_presence")
+    def join_chat(data=None):
+        identity = socket_to_identity.get(request.sid)
+
+        print("JOIN CHAT PRESENCE")
+        print("sid:", request.sid)
+        print("identity:", identity)
+
+        if not identity:
+            print("NO IDENTITY → FAIL")
+            return
+
+        chat_online_users.setdefault(identity, set()).add(request.sid)
+
+        print("CHAT ONLINE USERS:", chat_online_users)
+
+        user_id, mode = identity.split(":")
+        notify_presence_change(int(user_id), mode, "chat_online")
 
     @socketio.on("leave_chat_presence")
-    def leave_chat():
+    def leave_chat(data=None):
+        identity = socket_to_identity.get(request.sid)
+        if not identity:
+            return
 
-        sid = request.sid
-        user_id = socket_to_user[sid]
-        if user_id in chat_online_users:
-            chat_online_users[user_id].discard(sid)
+        if identity in chat_online_users:
+            chat_online_users[identity].discard(request.sid)
 
-            if not chat_online_users[user_id]:
-                chat_online_users.pop(user_id)
+            if not chat_online_users[identity]:
+                chat_online_users.pop(identity)
 
-                notify_presence_change(user_id, "chat_offline")
+                user_id, mode = identity.split(":")
+                notify_presence_change(int(user_id), mode, "chat_offline")
 
     @socketio.on("subscribe_presence")
     def handle_subscribe(data):
-        user_id = socket_to_user[request.sid]
+        watcher_identity = socket_to_identity.get(request.sid)
 
-        user_ids = data.get("userIds", [])
+        print("SUBSCRIBE PRESENCE")
+        print("watcher_identity:", watcher_identity)
+        print("targets:", data.get("identities"))
 
-        for target_id in user_ids:
-            presence_subscribers.setdefault(target_id, set()).add(user_id)
+        if not watcher_identity:
+            print("NO WATCHER IDENTITY → FAIL")
+            return
+
+        target_identities = data.get("identities", [])
+
+        # remove from all previous subscriptions
+        for watchers in presence_subscribers.values():
+            watchers.discard(watcher_identity)
+
+        # add new subscriptions
+        for target_identity in target_identities:
+            presence_subscribers.setdefault(target_identity, set()).add(
+                watcher_identity
+            )
 
     @socketio.on("chat_selected")
     def handle_selected(data):
-        user_id = session.get("user_id")
-        conv_id = data.get("convId")
-
-        if not user_id or not conv_id:
+        identity = socket_to_identity.get(request.sid)
+        if not identity:
             return
 
-        user_active_conversation[user_id] = conv_id
+        conv_id = data.get("convId")
+        if not conv_id:
+            return
 
+        user_id, _ = identity.split(":")
+        user_id = int(user_id)
+
+        user_active_conversation[identity] = conv_id
+
+        # reset unread count
         run_query(
             """
             UPDATE conversation_member
@@ -65,6 +98,7 @@ def register_chat_socket_events(socketio):
             commit=True,
         )
 
+        # mark notifications read
         run_query(
             """
             UPDATE notification
@@ -81,12 +115,13 @@ def register_chat_socket_events(socketio):
         emit(
             "chat_notifications_cleared",
             {"conversationId": conv_id},
-            room=str(user_id),
+            room=identity,
         )
 
     @socketio.on("chat_deselected")
     def handle_deselected(data):
-        user_id = session.get("user_id")
+        identity = socket_to_identity.get(request.sid)
+        if not identity:
+            return
 
-        if user_id in user_active_conversation:
-            user_active_conversation.pop(user_id)
+        user_active_conversation.pop(identity, None)
