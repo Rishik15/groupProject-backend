@@ -24,7 +24,7 @@ def getCoachContractsService(coach_id: int):
             """,
             {"c_id": coach_id},
             commit=False,
-            fetch=True
+            fetch=True,
         )
         return ret
     except Exception as e:
@@ -43,11 +43,12 @@ def getUsersPerContract(user_id: int):
             """,
             {"user_id": user_id},
             commit=False,
-            fetch=True
+            fetch=True,
         )
         return ret
     except Exception as e:
         raise e
+
 
 def getUserGivenContract(contract_id: int):
     try:
@@ -56,15 +57,16 @@ def getUserGivenContract(contract_id: int):
                 SELECT user_id 
                 FROM user_coach_contract 
                 WHERE contract_id = :contract_id;
-            """, 
-            {"contract_id": contract_id} ,
+            """,
+            {"contract_id": contract_id},
             commit=False,
-            fetch=True
+            fetch=True,
         )
 
         return ret
-    except Exception as e : 
+    except Exception as e:
         raise e
+
 
 def getCoachContractsByStatusServie(coach_id: int, active: int):
     try:
@@ -88,7 +90,7 @@ def getCoachContractsByStatusServie(coach_id: int, active: int):
             """,
             {"coach_id": coach_id, "active": active},
             commit=False,
-            fetch=True
+            fetch=True,
         )
         return ret
     except Exception as e:
@@ -117,15 +119,16 @@ def getSingleCoachContractService(coach_id: int, contract_id: int):
             """,
             {"coach_id": coach_id, "contract_id": contract_id},
             commit=False,
-            fetch=True
+            fetch=True,
         )
         return ret[0] if ret else None
     except Exception as e:
         raise e
 
+
 def buildDefaultConversation(contract_id: int, coach_id: int, user_id: int):
     try:
-    
+
         run_query(
             """
                 INSERT INTO conversation (conversation_type, created_by, title)
@@ -133,25 +136,25 @@ def buildDefaultConversation(contract_id: int, coach_id: int, user_id: int):
             """,
             {"coach_id": coach_id},
             commit=False,
-            fetch=False
+            fetch=False,
         )
 
-  
         conversation_id_raw = run_query(
             """
                 SELECT LAST_INSERT_ID() AS conversation_id;
             """,
             {},
             commit=False,
-            fetch=True
+            fetch=True,
         )
 
-        if not conversation_id_raw or conversation_id_raw[0].get("conversation_id") is None:
+        if (
+            not conversation_id_raw
+            or conversation_id_raw[0].get("conversation_id") is None
+        ):
             raise ValueError("Error inserting into conversation table")
 
         conversation_id = int(conversation_id_raw[0]["conversation_id"])
-
-        # print(f"\n\n\n\n\n\nconversation_id is ::: {conversation_id}\n\n\n\n\n\n")
 
         run_query(
             """
@@ -160,7 +163,7 @@ def buildDefaultConversation(contract_id: int, coach_id: int, user_id: int):
             """,
             {"conversation_id": conversation_id, "coach_id": coach_id},
             commit=False,
-            fetch=False
+            fetch=False,
         )
 
         run_query(
@@ -170,7 +173,7 @@ def buildDefaultConversation(contract_id: int, coach_id: int, user_id: int):
             """,
             {"conversation_id": conversation_id, "user_id": user_id},
             commit=False,
-            fetch=False
+            fetch=False,
         )
 
         dt = datetime.now().replace(microsecond=0)
@@ -184,14 +187,14 @@ def buildDefaultConversation(contract_id: int, coach_id: int, user_id: int):
                 VALUES
                 (
                     :conversation_id,
-                    1,
-                    'This is the beginning of a great relationship! Conversations can be managed here!',
+                    :coach_id,
+                    'This is the beginning of a great conversation!',
                     :dt
                 );
             """,
-            {"conversation_id": conversation_id, "dt": dt},
+            {"conversation_id": conversation_id, "dt": dt, "coach_id": coach_id},
             commit=True,
-            fetch=False
+            fetch=False,
         )
 
         return conversation_id
@@ -199,7 +202,8 @@ def buildDefaultConversation(contract_id: int, coach_id: int, user_id: int):
     except Exception as e:
         raise e
 
-def coachAcceptsContractService(contract_id: int, coach_id: int, user_id : int):
+
+def coachAcceptsContractService(contract_id: int, coach_id: int, user_id: int):
     try:
         today = date.today().isoformat()
         run_query(
@@ -211,12 +215,13 @@ def coachAcceptsContractService(contract_id: int, coach_id: int, user_id : int):
             """,
             {"contract_id": contract_id, "today": today},
             fetch=False,
-            commit=True
+            commit=True,
         )
-        
+
         buildDefaultConversation(contract_id, coach_id, user_id)
     except Exception as e:
         raise e
+
 
 def coachRejectsContractService(contract_id: int):
     try:
@@ -230,7 +235,7 @@ def coachRejectsContractService(contract_id: int):
             """,
             {"contract_id": contract_id, "today": today},
             fetch=False,
-            commit=True
+            commit=True,
         )
     except Exception as e:
         raise e
@@ -248,7 +253,7 @@ def coachTerminatesContractService(contract_id: int):
             """,
             {"contract_id": contract_id, "today": today},
             fetch=False,
-            commit=True
+            commit=True,
         )
     except Exception as e:
         raise e
