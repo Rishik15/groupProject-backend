@@ -1,6 +1,7 @@
 from flask import request, jsonify, session
 from . import coach_bp
-from app.services.coach.update_Certs import update_coach_certification
+from app.services.coach.update_certs import update_coach_certification
+
 
 @coach_bp.route("/certifications/update", methods=["PATCH"])
 def update_certification_route():
@@ -11,14 +12,13 @@ def update_certification_route():
             return jsonify({"error": "Unauthorized"}), 401
 
         data = request.get_json() or {}
-        
 
         role = data.get("role")
         cert_id = data.get("cert_id")
 
         if role != "coach":
             return jsonify({"error": "Forbidden. Coach role required."}), 403
-        
+
         if not cert_id:
             return jsonify({"error": "cert_id is required in the request body"}), 400
 
@@ -36,7 +36,7 @@ def update_certification_route():
             cert_name=cert_name,
             provider=provider,
             description=description,
-            expires_date=expires_date
+            expires_date=expires_date,
         )
 
         return jsonify({"message": "Certification updated successfully"}), 200
