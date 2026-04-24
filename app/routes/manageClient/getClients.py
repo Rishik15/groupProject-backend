@@ -1,5 +1,5 @@
 from . import manage_bp
-from flask import session
+from flask import jsonify, session
 from app.services.manageClients.getClientContracts import getClientContracts
 
 
@@ -12,4 +12,4 @@ def getClients():
 
     clients = getClientContracts(coach_id)
 
-    return clients
+    return jsonify(clients)
