@@ -15,7 +15,9 @@ def _coerce_db_datetime(value):
     raise TypeError("unsupported datetime value returned from db")
 
 
-def partialFoodItemUpdate(user_id, food_id, name, calories, protein, carbs, fats, image_url):
+def partialFoodItemUpdate(
+    user_id, food_id, name, calories, protein, carbs, fats, image_url
+):
     try:
         run_query(
             """
@@ -46,6 +48,7 @@ def partialFoodItemUpdate(user_id, food_id, name, calories, protein, carbs, fats
     except Exception as e:
         raise e
 
+
 def getFoodItem(user_id: int):
     try:
         rows = run_query(
@@ -66,7 +69,7 @@ def getFoodItem(user_id: int):
             """,
             {"uid": user_id},
             fetch=True,
-            commit=False
+            commit=False,
         )
 
         for row in rows:
@@ -80,13 +83,7 @@ def getFoodItem(user_id: int):
 
 
 def createFoodItem(
-    user_id: int,
-    name: str,
-    cals: int,
-    pro: float,
-    carbs: float,
-    fats: float,
-    img: str
+    user_id: int, name: str, cals: int, pro: float, carbs: float, fats: float, img: str
 ):
     try:
         run_query(
@@ -119,10 +116,10 @@ def createFoodItem(
                 "pro": pro,
                 "carbs": carbs,
                 "fats": fats,
-                "img": img
+                "img": img,
             },
             fetch=False,
-            commit=True
+            commit=True,
         )
 
     except Exception as e:
@@ -154,23 +151,14 @@ def _getFoodItemsForMeal(user_id: int, food_item_ids: list[int]):
             ORDER BY fi.food_item_id ASC
         """
 
-        return run_query(
-            query=query,
-            params=params,
-            fetch=True,
-            commit=False
-        )
+        return run_query(query=query, params=params, fetch=True, commit=False)
 
     except Exception as e:
         raise e
 
 
 def _createMeal(
-    meal_name: str,
-    calories: int,
-    protein: float,
-    carbs: float,
-    fats: float
+    meal_name: str, calories: int, protein: float, carbs: float, fats: float
 ):
     try:
         run_query(
@@ -197,17 +185,17 @@ def _createMeal(
                 "calories": calories,
                 "protein": protein,
                 "carbs": carbs,
-                "fats": fats
+                "fats": fats,
             },
             fetch=False,
-            commit=False
+            commit=False,
         )
 
         created = run_query(
             query="SELECT LAST_INSERT_ID() AS meal_id",
             params={},
             fetch=True,
-            commit=False
+            commit=False,
         )
 
         if not created or created[0]["meal_id"] is None:
@@ -217,41 +205,29 @@ def _createMeal(
 
     except Exception as e:
         raise e
+
+
 def mealLogInsert(
     user_id: int,
     meal_name: str,
     eaten_at: str,
     servings: int,
     notes: str | None,
-    photo_url: str,
-    food_item_ids: list[int]
+    photo_url: str | None,
+    food_item_ids: list[int],
 ):
     try:
         eaten_dt = datetime.fromisoformat(eaten_at)
 
-        food_rows = _getFoodItemsForMeal(user_id=user_id, food_item_ids=food_item_ids)
+        if len(food_item_ids) != 1:
+            raise ValueError("exactly one food item must be provided")
 
-        if len(food_rows) != len(food_item_ids):
-            raise ValueError("one or more food items do not exist for this user")
+        food_item_id = food_item_ids[0]
 
-        total_calories = 0
-        total_protein = 0.0
-        total_carbs = 0.0
-        total_fats = 0.0
+        food_rows = _getFoodItemsForMeal(user_id=user_id, food_item_ids=[food_item_id])
 
-        for item in food_rows:
-            total_calories += int(item["calories"])
-            total_protein += float(item["protein"])
-            total_carbs += float(item["carbs"])
-            total_fats += float(item["fats"])
-
-        meal_id = _createMeal(
-            meal_name=meal_name,
-            calories=total_calories,
-            protein=total_protein,
-            carbs=total_carbs,
-            fats=total_fats
-        )
+        if not food_rows:
+            raise ValueError("food item not found for this user")
 
         run_query(
             query="""
@@ -268,8 +244,8 @@ def mealLogInsert(
                 VALUES
                 (
                     :uid,
-                    :meal_id,
                     NULL,
+                    :food_item_id,
                     :eaten_at,
                     :servings,
                     :notes,
@@ -278,21 +254,23 @@ def mealLogInsert(
             """,
             params={
                 "uid": user_id,
-                "meal_id": meal_id,
+                "food_item_id": food_item_id,
                 "eaten_at": eaten_dt.isoformat(),
                 "servings": servings,
                 "notes": notes,
-                "photo_url": photo_url
+                "photo_url": photo_url,
             },
             fetch=False,
-            commit=True
+            commit=True,
         )
 
     except Exception as e:
         raise e
 
 
-def getLoggedMeals(user_id: int, start_dt: str | None = None, end_dt: str | None = None):
+def getLoggedMeals(
+    user_id: int, start_dt: str | None = None, end_dt: str | None = None
+):
     try:
         query = """
             SELECT
@@ -306,14 +284,16 @@ def getLoggedMeals(user_id: int, start_dt: str | None = None, end_dt: str | None
                 ml.photo_url,
                 ml.created_at,
                 ml.updated_at,
-                m.name AS meal_name,
-                m.calories,
-                m.protein,
-                m.carbs,
-                m.fats
+                COALESCE(m.name, fi.name) AS meal_name,
+                COALESCE(m.calories, fi.calories) AS calories,
+                COALESCE(m.protein, fi.protein) AS protein,
+                COALESCE(m.carbs, fi.carbs) AS carbs,
+                COALESCE(m.fats, fi.fats) AS fats
             FROM meal_log AS ml
             LEFT JOIN meal AS m
                 ON ml.meal_id = m.meal_id
+            LEFT JOIN food_item AS fi
+                ON ml.food_item_id = fi.food_item_id
             WHERE ml.user_id = :uid
         """
 
@@ -331,12 +311,7 @@ def getLoggedMeals(user_id: int, start_dt: str | None = None, end_dt: str | None
 
         query += " ORDER BY ml.eaten_at DESC, ml.log_id DESC"
 
-        rows = run_query(
-            query=query,
-            params=params,
-            fetch=True,
-            commit=False
-        )
+        rows = run_query(query=query, params=params, fetch=True, commit=False)
 
         for row in rows:
             row["eaten_at"] = _coerce_db_datetime(row["eaten_at"]).isoformat()

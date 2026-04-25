@@ -231,15 +231,57 @@ def getLoggedMeals():
             user_id=u_id, start_dt=start_dt, end_dt=end_dt
         )
 
+        if meals is None:
+            meals = []
+
+        logged_meals = []
+        total_calories = 0
+        total_protein = 0.0
+        total_carbs = 0.0
+        total_fats = 0.0
+
+        for meal in meals:
+            servings = float(meal.get("servings") or 1)
+            calories = float(meal.get("calories") or 0)
+            protein = float(meal.get("protein") or 0)
+            carbs = float(meal.get("carbs") or 0)
+            fats = float(meal.get("fats") or 0)
+
+            total_calories += calories * servings
+            total_protein += protein * servings
+            total_carbs += carbs * servings
+            total_fats += fats * servings
+
+            logged_meals.append(
+                {
+                    "log_id": meal["log_id"],
+                    "meal_name": meal["meal_name"],
+                    "eaten_at": meal["eaten_at"],
+                    "servings": servings,
+                    "notes": meal.get("notes"),
+                    "photo_url": meal.get("photo_url"),
+                    "calories": calories,
+                    "protein": protein,
+                    "carbs": carbs,
+                    "fats": fats,
+                }
+            )
+
         return (
             jsonify(
                 {
                     "message": "success",
-                    "loggedMeals": meals if meals is not None else [],
+                    "loggedMeals": logged_meals,
+                    "summary": {
+                        "total_calories": round(total_calories),
+                        "total_protein": round(total_protein, 1),
+                        "total_carbs": round(total_carbs, 1),
+                        "total_fats": round(total_fats, 1),
+                    },
                 }
             ),
             200,
         )
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e)}), 5
