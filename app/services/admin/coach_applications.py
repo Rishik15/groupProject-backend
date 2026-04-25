@@ -1,5 +1,10 @@
 from app.services import run_query
 from app.services.admin.dashboard import _is_admin
+import json
+from datetime import datetime
+from app.services.onboarding import onboardUser
+from app.sockets.notifications import send_notification_to_user
+from app.services.auth.getUserRoles import getUserRoles
 
 
 def _validate_application_status_filter(status: str):
@@ -17,6 +22,7 @@ def _get_application_row(application_id: int):
             ca.years_experience,
             ca.coach_description,
             ca.desired_price,
+            ca.metadata,
             ca.submitted_at,
             ca.reviewed_at,
             ca.reviewed_by_admin_id,
@@ -31,7 +37,7 @@ def _get_application_row(application_id: int):
         """,
         params={"application_id": int(application_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     if not rows:
@@ -56,7 +62,7 @@ def _get_application_cert_rows(application_id: int):
         """,
         params={"application_id": int(application_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
 
@@ -68,13 +74,23 @@ def _shape_application(application_row, cert_rows):
 
     for cert in cert_rows:
         cert_names.append(cert["cert_name"])
-        certifications.append({
-            "cert_name": cert["cert_name"],
-            "provider_name": cert["provider_name"],
-            "description": cert["description"],
-            "issued_date": cert["issued_date"].isoformat() if cert["issued_date"] is not None else None,
-            "expires_date": cert["expires_date"].isoformat() if cert["expires_date"] is not None else None
-        })
+        certifications.append(
+            {
+                "cert_name": cert["cert_name"],
+                "provider_name": cert["provider_name"],
+                "description": cert["description"],
+                "issued_date": (
+                    cert["issued_date"].isoformat()
+                    if cert["issued_date"] is not None
+                    else None
+                ),
+                "expires_date": (
+                    cert["expires_date"].isoformat()
+                    if cert["expires_date"] is not None
+                    else None
+                ),
+            }
+        )
 
     return {
         "id": application_row["application_id"],
@@ -82,17 +98,31 @@ def _shape_application(application_row, cert_rows):
         "user_id": application_row["user_id"],
         "name": name,
         "email": application_row["email"],
-        "appliedLabel": application_row["submitted_at"].isoformat() if application_row["submitted_at"] is not None else None,
-        "avatarInitial": application_row["first_name"][0] if application_row["first_name"] else None,
+        "appliedLabel": (
+            application_row["submitted_at"].isoformat()
+            if application_row["submitted_at"] is not None
+            else None
+        ),
+        "avatarInitial": (
+            application_row["first_name"][0] if application_row["first_name"] else None
+        ),
         "status": application_row["status"],
         "years_experience": application_row["years_experience"],
         "coach_description": application_row["coach_description"],
-        "desired_price": float(application_row["desired_price"]) if application_row["desired_price"] is not None else None,
-        "reviewed_at": application_row["reviewed_at"].isoformat() if application_row["reviewed_at"] is not None else None,
+        "desired_price": (
+            float(application_row["desired_price"])
+            if application_row["desired_price"] is not None
+            else None
+        ),
+        "reviewed_at": (
+            application_row["reviewed_at"].isoformat()
+            if application_row["reviewed_at"] is not None
+            else None
+        ),
         "reviewed_by_admin_id": application_row["reviewed_by_admin_id"],
         "admin_action": application_row["admin_action"],
         "certifications": cert_names,
-        "certification_details": certifications
+        "certification_details": certifications,
     }
 
 
@@ -111,6 +141,7 @@ def get_admin_coach_applications(user_id: int, status: str):
             ca.years_experience,
             ca.coach_description,
             ca.desired_price,
+            ca.metadata,
             ca.submitted_at,
             ca.reviewed_at,
             ca.reviewed_by_admin_id,
@@ -126,7 +157,7 @@ def get_admin_coach_applications(user_id: int, status: str):
         """,
         params={"status": status},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     cert_rows = run_query(
@@ -142,7 +173,7 @@ def get_admin_coach_applications(user_id: int, status: str):
         ORDER BY application_id ASC, application_certification_id ASC
         """,
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     certs_by_application = {}
@@ -159,13 +190,23 @@ def get_admin_coach_applications(user_id: int, status: str):
 
     for row in rows:
         applications.append(
-            _shape_application(
-                row,
-                certs_by_application.get(row["application_id"], [])
-            )
+            _shape_application(row, certs_by_application.get(row["application_id"], []))
         )
 
     return applications
+
+
+def _parse_metadata(metadata):
+    if not metadata:
+        return {}
+
+    if isinstance(metadata, dict):
+        return metadata
+
+    if isinstance(metadata, str):
+        return json.loads(metadata)
+
+    return {}
 
 
 def approve_coach_application(user_id: int, application_id: int, admin_action=None):
@@ -180,68 +221,74 @@ def approve_coach_application(user_id: int, application_id: int, admin_action=No
     if application_row["status"] != "pending":
         raise ValueError("Only pending applications can be approved")
 
+    coach_id = application_row["user_id"]
+
     existing_coach_rows = run_query(
         """
         SELECT coach_id
         FROM coach
         WHERE coach_id = :coach_id
         """,
-        params={"coach_id": application_row["user_id"]},
+        params={"coach_id": coach_id},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     if existing_coach_rows:
         raise ValueError("Coach row already exists for this user")
 
-    cert_rows = _get_application_cert_rows(int(application_id))
+    metadata = _parse_metadata(application_row.get("metadata"))
 
     final_admin_action = admin_action if admin_action else "Approved by admin"
 
     run_query(
         """
         INSERT INTO coach (coach_id, coach_description, price)
-        VALUES (:coach_id, :coach_description, :price)
+        VALUES (:coach_id, '', 0)
         """,
-        params={
-            "coach_id": application_row["user_id"],
-            "coach_description": application_row["coach_description"],
-            "price": application_row["desired_price"]
-        },
+        params={"coach_id": coach_id},
         fetch=False,
-        commit=False
+        commit=True,
     )
 
-    for cert in cert_rows:
-        run_query(
-            """
-            INSERT INTO certifications (
-                coach_id,
-                cert_name,
-                provider_name,
-                description,
-                issued_date,
-                expires_date
-            )
-            VALUES (
-                :coach_id,
-                :cert_name,
-                :provider_name,
-                :description,
-                :issued_date,
-                :expires_date
-            )
-            """,
-            params={
-                "coach_id": application_row["user_id"],
-                "cert_name": cert["cert_name"],
-                "provider_name": cert["provider_name"],
-                "description": cert["description"],
-                "issued_date": cert["issued_date"],
-                "expires_date": cert["expires_date"]
-            },
-            fetch=False,
-            commit=False
+    onboardUser.onboardCoachSurvey(
+        coach_id, application_row["coach_description"], application_row["desired_price"]
+    )
+
+    n_c = int(metadata.get("num_cert") or 0)
+
+    cert_names = metadata.get("cert_name", [])
+    provider_names = metadata.get("provider_name", [])
+    descriptions = metadata.get("description", [])
+    issued_dates = metadata.get("issued_date", [])
+    expires_dates = metadata.get("expires_date", [])
+
+    for i in range(n_c):
+        onboardUser.insertCoachCert(
+            coach_id,
+            cert_names[i],
+            provider_names[i],
+            descriptions[i],
+            datetime.fromisoformat(issued_dates[i]) if issued_dates[i] else None,
+            datetime.fromisoformat(expires_dates[i]) if expires_dates[i] else None,
+        )
+
+    n_d = int(metadata.get("num_days") or 0)
+
+    days_of_week = metadata.get("day_of_week", [])
+    start_times = metadata.get("start_time", [])
+    end_times = metadata.get("end_time", [])
+    recurring_list = metadata.get("recurring", [])
+    active_list = metadata.get("active", [])
+
+    for i in range(n_d):
+        onboardUser.coachAvailability(
+            coach_id,
+            days_of_week[i],
+            start_times[i],
+            end_times[i],
+            recurring_list[i],
+            active_list[i],
         )
 
     run_query(
@@ -257,16 +304,30 @@ def approve_coach_application(user_id: int, application_id: int, admin_action=No
         params={
             "admin_id": user_id,
             "admin_action": final_admin_action,
-            "application_id": int(application_id)
+            "application_id": int(application_id),
         },
         fetch=False,
-        commit=True
+        commit=True,
+    )
+
+    roles = getUserRoles(coach_id)
+
+    send_notification_to_user(
+        user_id=coach_id,
+        mode="client",
+        event="coach_application_status_changed",
+        notification_type="coach_application",
+        title="Coach application approved",
+        body="Your coach application was approved. You can now switch to coach mode.",
+        metadata={
+            "status": "approved",
+            "roles": roles,
+        },
+        reference_id=application_id,
     )
 
     updated_application = _get_application_row(int(application_id))
-    updated_certs = _get_application_cert_rows(int(application_id))
-
-    return _shape_application(updated_application, updated_certs)
+    return _shape_application(updated_application, [])
 
 
 def reject_coach_application(user_id: int, application_id: int, admin_action=None):
@@ -296,13 +357,27 @@ def reject_coach_application(user_id: int, application_id: int, admin_action=Non
         params={
             "admin_id": user_id,
             "admin_action": final_admin_action,
-            "application_id": int(application_id)
+            "application_id": int(application_id),
         },
         fetch=False,
-        commit=True
+        commit=True,
+    )
+
+    applicant_id = application_row["user_id"]
+
+    send_notification_to_user(
+        user_id=applicant_id,
+        mode="client",
+        event="coach_application_status_changed",
+        notification_type="coach_application",
+        title="Coach application rejected",
+        body="Your coach application was rejected. You can apply again from your profile.",
+        metadata={
+            "status": "rejected",
+            "roles": ["client"],
+        },
+        reference_id=application_id,
     )
 
     updated_application = _get_application_row(int(application_id))
-    updated_certs = _get_application_cert_rows(int(application_id))
-
-    return _shape_application(updated_application, updated_certs)
+    return _shape_application(updated_application, [])

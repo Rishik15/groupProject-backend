@@ -9,98 +9,41 @@ def onboardSurvey():
     try:
         data = request.get_json() or {}
 
-        u_id = session.get("user_id")
-        role = session.get("role")
+        user_id = session.get("user_id")
 
-        if not u_id or not role:
+        if not user_id:
             return jsonify({"error": "Unauthorized"}), 401
 
-        u_id = int(u_id)
+        user_id = int(user_id)
 
-        date = datetime.fromisoformat(data.get("dob")) if data.get("dob") is not None else datetime.now()
-        gw = data.get("goal_weight") if data.get("goal_weight") is not None else data.get("weight")
-        pfp = data.get("profile_picture")
+        dob_value = data.get("dob")
+        date = datetime.fromisoformat(dob_value) if dob_value else datetime.now()
+
         weight = data.get("weight")
         height = data.get("height")
+        goal_weight = (
+            data.get("goal_weight") if data.get("goal_weight") is not None else weight
+        )
+        profile_picture = data.get("profile_picture")
 
-        required_fields = [weight, height, data.get("dob")]
+        required_fields = [weight, height, dob_value]
+
         if any(field is None for field in required_fields):
-            return jsonify({"error": "weight, height, date of birth are required field"}), 400
-
-        if role == "client":
-            onboardUser.onboardClientSurvey(
-                u_id,
-                pfp,
-                weight,
-                height,
-                gw,
-                date
-            )
-            return jsonify({"message": "Onboarding completed successfully"}), 200
-
-        elif role == "coach":
-            desc = data.get("coach_description")
-            price = data.get("price")
-
-            required_fields_coach = [desc, price]
-            if any(field is None for field in required_fields_coach):
-                return jsonify({"error": "description and price are required field"}), 400
-
-            onboardUser.onboardClientSurvey(
-                u_id,
-                pfp,
-                weight,
-                height,
-                gw,
-                date
+            return (
+                jsonify({"error": "weight, height, date of birth are required fields"}),
+                400,
             )
 
-            onboardUser.onboardCoachSurvey(
-                u_id,
-                desc,
-                price
-            )
+        onboardUser.onboardClientSurvey(
+            user_id,
+            profile_picture,
+            weight,
+            height,
+            goal_weight,
+            date,
+        )
 
-            n_c = int(data.get("num_cert") or 0)
-
-            cert_names = data.get("cert_name", [])
-            provider_names = data.get("provider_name", [])
-            descriptions = data.get("description", [])
-            issued_dates = data.get("issued_date", [])
-            expires_dates = data.get("expires_date", [])
-
-            for i in range(n_c):
-                onboardUser.insertCoachCert(
-                    u_id,
-                    cert_names[i],
-                    provider_names[i],
-                    descriptions[i],
-                    datetime.fromisoformat(issued_dates[i]) if issued_dates[i] else None,
-                    datetime.fromisoformat(expires_dates[i]) if expires_dates[i] else None,
-                )
-
-            n_d = int(data.get("num_days") or 0)
-
-            days_of_week = data.get("day_of_week", [])
-            start_times = data.get("start_time", [])
-            end_times = data.get("end_time", [])
-            recurring_list = data.get("recurring", [])
-            active_list = data.get("active", [])
-
-            for i in range(n_d):
-                onboardUser.coachAvailability(
-                    u_id,
-                    days_of_week[i],
-                    start_times[i],
-                    end_times[i],
-                    recurring_list[i],
-                    active_list[i]
-                )
-
-            return jsonify({"message": "Onboarding completed successfully"}), 200
-
-        else:
-            return jsonify({"error": "Invalid role"}), 400
+        return jsonify({"message": "Client onboarding completed successfully"}), 200
 
     except Exception as e:
         raise e
