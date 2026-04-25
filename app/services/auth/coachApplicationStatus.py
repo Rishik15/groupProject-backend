@@ -31,4 +31,4 @@ def getCoachApplicationStatus(user_id: int) -> str:
     if existing_coach:
         return "approved"
 
-    return "rejected"
+    return "none"

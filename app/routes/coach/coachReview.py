@@ -46,35 +46,13 @@ def getCoachInfo():
         return jsonify(result[0] if isinstance(result, list) else result), 200
     except Exception:
         return jsonify({"error": "failed to fetch coach info"}), 500
-    
+
 
 @coach_bp.route("/get_review", methods=["GET"])
 def getCoachReview():
-    """
-    Response:
-    {
-        "coach_avg_rating": float | None,
-        "reviews": [
-            {
-                "review_id": int,
-                "rating": int,
-                "review_text": str,
-                "reviewer_first_name": str,
-                "reviewer_last_name": str,
-                "created_at": str,
-                "updated_at": str
-            }
-        ],
-        "coach_first_name": str,
-        "coach_last_name": str
-    }
-    """
     try:
         u_id = session.get("user_id")
         role = session.get("role")
-
-        if not u_id or not role:
-            return jsonify({"error": "Unauthorized"}), 401
 
         c_id = request.args.get("coach_id")
 
@@ -90,10 +68,18 @@ def getCoachReview():
         except (TypeError, ValueError):
             return jsonify({"error": "coach_id must be an integer"}), 400
 
-        return jsonify(getReviews(c_id)), 200
+        review_data = getReviews(c_id)
 
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 404
+        can_review = False
+        if u_id and role == "client":
+            can_review = clientKnowsCoach(u_id, c_id) and not hasExistingReview(
+                u_id, c_id
+            )
+
+        review_data["can_review"] = can_review
+
+        return jsonify(review_data), 200
+
     except Exception:
         return jsonify({"error": "failed to fetch reviews"}), 500
 

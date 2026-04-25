@@ -3,7 +3,7 @@ from app.services.admin.dashboard import _is_admin
 import json
 from datetime import datetime
 from app.services.onboarding import onboardUser
-from app.sockets.notifications import send_notification_to_user
+from app.sockets.notifications.notifications import send_notification
 from app.services.auth.getUserRoles import getUserRoles
 
 
@@ -312,18 +312,23 @@ def approve_coach_application(user_id: int, application_id: int, admin_action=No
 
     roles = getUserRoles(coach_id)
 
-    send_notification_to_user(
+    send_notification(
         user_id=coach_id,
         mode="client",
-        event="coach_application_status_changed",
         notification_type="coach_application",
         title="Coach application approved",
         body="Your coach application was approved. You can now switch to coach mode.",
+        route="/client/profile",
         metadata={
             "status": "approved",
             "roles": roles,
         },
         reference_id=application_id,
+        extra_event="coach_application_status_changed",
+        extra_payload={
+            "status": "approved",
+            "roles": roles,
+        },
     )
 
     updated_application = _get_application_row(int(application_id))
@@ -365,18 +370,23 @@ def reject_coach_application(user_id: int, application_id: int, admin_action=Non
 
     applicant_id = application_row["user_id"]
 
-    send_notification_to_user(
+    send_notification(
         user_id=applicant_id,
         mode="client",
-        event="coach_application_status_changed",
         notification_type="coach_application",
         title="Coach application rejected",
         body="Your coach application was rejected. You can apply again from your profile.",
+        route="/client/profile",
         metadata={
             "status": "rejected",
             "roles": ["client"],
         },
         reference_id=application_id,
+        extra_event="coach_application_status_changed",
+        extra_payload={
+            "status": "rejected",
+            "roles": ["client"],
+        },
     )
 
     updated_application = _get_application_row(int(application_id))

@@ -4,6 +4,7 @@ from app.services.auth.checkUser import checkUserExists
 from app.services.auth.getUser import getUserInfo, getUserOnboardingStatus
 from app.services.auth.getUserRoles import getUserRoles
 from app.services.auth.coachApplicationStatus import getCoachApplicationStatus
+from app.services.auth.coachApplicationActivation import getCoachModeActivated
 
 
 @auth_bp.route("/me", methods=["GET"])
@@ -22,6 +23,7 @@ def me():
     roles = getUserRoles(user_id)
     user = getUserInfo(user_id)
     coach_application_status = getCoachApplicationStatus(user_id)
+    coach_mode_activated = getCoachModeActivated(user_id)
 
     active_role = None
 
@@ -45,5 +47,6 @@ def me():
         "roles": roles,
         "user": user,
         "coach_application_status": coach_application_status,
+        "coach_mode_activated": coach_mode_activated,
         "needs_onboarding": needs_onboarding,
     }, 200
