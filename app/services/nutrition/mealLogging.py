@@ -214,7 +214,7 @@ def mealLogInsert(
     servings: int,
     notes: str | None,
     photo_url: str | None,
-    food_item_ids: list[int],
+    food_item_ids: list[int]
 ):
     try:
         eaten_dt = datetime.fromisoformat(eaten_at)
@@ -267,10 +267,7 @@ def mealLogInsert(
     except Exception as e:
         raise e
 
-
-def getLoggedMeals(
-    user_id: int, start_dt: str | None = None, end_dt: str | None = None
-):
+def getLoggedMeals(user_id: int, start_dt: str | None = None, end_dt: str | None = None):
     try:
         query = """
             SELECT
