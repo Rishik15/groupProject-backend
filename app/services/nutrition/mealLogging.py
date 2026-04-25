@@ -223,35 +223,21 @@ def mealLogInsert(
     eaten_at: str,
     servings: int,
     notes: str | None,
-    photo_url: str,
+    photo_url: str | None,
     food_item_ids: list[int]
 ):
     try:
         eaten_dt = datetime.fromisoformat(eaten_at)
 
-        food_rows = _getFoodItemsForMeal(user_id=user_id, food_item_ids=food_item_ids)
+        if len(food_item_ids) != 1:
+            raise ValueError("exactly one food item must be provided")
 
-        if len(food_rows) != len(food_item_ids):
-            raise ValueError("one or more food items do not exist for this user")
+        food_item_id = food_item_ids[0]
 
-        total_calories = 0
-        total_protein = 0.0
-        total_carbs = 0.0
-        total_fats = 0.0
+        food_rows = _getFoodItemsForMeal(user_id=user_id, food_item_ids=[food_item_id])
 
-        for item in food_rows:
-            total_calories += int(item["calories"])
-            total_protein += float(item["protein"])
-            total_carbs += float(item["carbs"])
-            total_fats += float(item["fats"])
-
-        meal_id = _createMeal(
-            meal_name=meal_name,
-            calories=total_calories,
-            protein=total_protein,
-            carbs=total_carbs,
-            fats=total_fats
-        )
+        if not food_rows:
+            raise ValueError("food item not found for this user")
 
         run_query(
             query="""
@@ -268,8 +254,8 @@ def mealLogInsert(
                 VALUES
                 (
                     :uid,
-                    :meal_id,
                     NULL,
+                    :food_item_id,
                     :eaten_at,
                     :servings,
                     :notes,
@@ -278,7 +264,7 @@ def mealLogInsert(
             """,
             params={
                 "uid": user_id,
-                "meal_id": meal_id,
+                "food_item_id": food_item_id,
                 "eaten_at": eaten_dt.isoformat(),
                 "servings": servings,
                 "notes": notes,
@@ -290,7 +276,6 @@ def mealLogInsert(
 
     except Exception as e:
         raise e
-
 
 def getLoggedMeals(user_id: int, start_dt: str | None = None, end_dt: str | None = None):
     try:
@@ -306,14 +291,16 @@ def getLoggedMeals(user_id: int, start_dt: str | None = None, end_dt: str | None
                 ml.photo_url,
                 ml.created_at,
                 ml.updated_at,
-                m.name AS meal_name,
-                m.calories,
-                m.protein,
-                m.carbs,
-                m.fats
+                COALESCE(m.name, fi.name) AS meal_name,
+                COALESCE(m.calories, fi.calories) AS calories,
+                COALESCE(m.protein, fi.protein) AS protein,
+                COALESCE(m.carbs, fi.carbs) AS carbs,
+                COALESCE(m.fats, fi.fats) AS fats
             FROM meal_log AS ml
             LEFT JOIN meal AS m
                 ON ml.meal_id = m.meal_id
+            LEFT JOIN food_item AS fi
+                ON ml.food_item_id = fi.food_item_id
             WHERE ml.user_id = :uid
         """
 

@@ -12,3 +12,6 @@ from . import createMealPlan
 from . import updateMealPlan
 from . import getMyMealPlans
 from . import deleteMealPlan
+from . import getTodaysMeals
+from . import logMealFromPlan
+from . import getWeeklyCalories

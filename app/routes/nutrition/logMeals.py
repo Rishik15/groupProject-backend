@@ -136,7 +136,6 @@ def addUserFoodItem():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
 @nutrition_bp.route("/logMeal", methods=["POST"])
 def logMeal():
     try:
@@ -157,9 +156,6 @@ def logMeal():
         if meal_name is None or eaten_at is None or servings_raw is None:
             return jsonify({"error": "name, eaten_at, and servings are required"}), 400
 
-        if photo is None:
-            return jsonify({"error": "photo file is required"}), 400
-
         try:
             servings = int(servings_raw)
         except ValueError:
@@ -173,13 +169,16 @@ def logMeal():
         if len(food_item_ids) == 0:
             return jsonify({"error": "food_item_ids must be a non-empty list"}), 400
 
-        try:
-            upload_result = save_meal_image_for_user(
-                user_id=u_id,
-                uploaded_file=photo,
-            )
-        except ValueError as e:
-            return jsonify({"error": str(e)}), 400
+        photo_url = None
+        if photo:
+            try:
+                upload_result = save_meal_image_for_user(
+                    user_id=u_id,
+                    uploaded_file=photo,
+                )
+                photo_url = upload_result["photo_url"]
+            except ValueError as e:
+                return jsonify({"error": str(e)}), 400
 
         mealLogging.mealLogInsert(
             user_id=u_id,
@@ -187,7 +186,7 @@ def logMeal():
             eaten_at=eaten_at,
             servings=servings,
             notes=notes,
-            photo_url=upload_result["photo_url"],
+            photo_url=photo_url,
             food_item_ids=food_item_ids,
         )
 
@@ -195,24 +194,16 @@ def logMeal():
 
         if coach_id:
             coach_room = f"{coach_id}:coach"
-
             if coach_room in online_users:
                 socketio.emit("nutrition_updated", {"user_id": u_id}, room=coach_room)
 
-        return (
-            jsonify(
-                {
-                    "message": "success",
-                    "photo_url": upload_result["photo_url"],
-                }
-            ),
-            200,
-        )
+        return jsonify({
+            "message": "success",
+            "photo_url": photo_url,
+        }), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
-
 @nutrition_bp.route("/getLoggedMeals", methods=["POST"])
 def getLoggedMeals():
     try:
@@ -231,15 +222,51 @@ def getLoggedMeals():
             user_id=u_id, start_dt=start_dt, end_dt=end_dt
         )
 
-        return (
-            jsonify(
-                {
-                    "message": "success",
-                    "loggedMeals": meals if meals is not None else [],
-                }
-            ),
-            200,
-        )
+        if meals is None:
+            meals = []
+
+        # Build today's meals list
+        logged_meals = []
+        total_calories = 0
+        total_protein = 0.0
+        total_carbs = 0.0
+        total_fats = 0.0
+
+        for meal in meals:
+            servings = float(meal.get("servings") or 1)
+            calories = float(meal.get("calories") or 0)
+            protein  = float(meal.get("protein") or 0)
+            carbs    = float(meal.get("carbs") or 0)
+            fats     = float(meal.get("fats") or 0)
+
+            total_calories += calories * servings
+            total_protein  += protein * servings
+            total_carbs    += carbs * servings
+            total_fats     += fats * servings
+
+            logged_meals.append({
+                "log_id":       meal["log_id"],
+                "meal_name":    meal["meal_name"],
+                "eaten_at":     meal["eaten_at"],
+                "servings":     servings,
+                "notes":        meal.get("notes"),
+                "photo_url":    meal.get("photo_url"),
+                "calories":     calories,
+                "protein":      protein,
+                "carbs":        carbs,
+                "fats":         fats,
+            })
+
+        return jsonify({
+            "message": "success",
+            "loggedMeals": logged_meals,
+            "summary": {
+                "total_calories": round(total_calories),
+                "total_protein":  round(total_protein, 1),
+                "total_carbs":    round(total_carbs, 1),
+                "total_fats":     round(total_fats, 1),
+            }
+        }), 200
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
