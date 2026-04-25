@@ -10,3 +10,4 @@ from . import assignPlan
 from . import exercisesInPlan
 from . import createWorkoutPlan
 from . import myWorkouts
+from . import getPlanDays
