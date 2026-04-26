@@ -18,6 +18,7 @@ def log_food_item(
     eaten_dt = datetime.fromisoformat(eaten_at)
 
     photo_url = None
+
     if uploaded_file:
         result = save_meal_image_for_user(user_id, uploaded_file)
         photo_url = result["photo_url"]
@@ -65,8 +66,9 @@ def log_food_item(
             fetch=False,
             commit=True,
         )
+
     else:
-        run_query(
+        food_item_id = run_query(
             """
             INSERT INTO food_item
             (
@@ -100,15 +102,8 @@ def log_food_item(
             },
             fetch=False,
             commit=True,
+            return_lastrowid=True,
         )
-
-        created = run_query(
-            "SELECT LAST_INSERT_ID() AS food_item_id",
-            fetch=True,
-            commit=False,
-        )
-
-        food_item_id = created[0]["food_item_id"]
 
     run_query(
         """

@@ -1,6 +1,7 @@
 from flask import jsonify, request, session
 from app.routes.nutrition import nutrition_bp
 from app.services.nutrition.log_Food_Item import log_food_item
+import traceback
 
 
 @nutrition_bp.route("/log-food-item", methods=["POST"])
@@ -72,4 +73,6 @@ def log_food_item_route():
         return jsonify({"error": str(e)}), 400
 
     except Exception as e:
+        print("ERROR IN /nutrition/log-food-item")
+        print(traceback.format_exc())
         return jsonify({"error": str(e)}), 500
