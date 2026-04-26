@@ -89,7 +89,9 @@ def get_nutrition_today(user_id: int):
             {
                 "log_id": meal.get("log_id"),
                 "meal_name": meal.get("meal_name") or "Meal",
-                "meal_type": _get_meal_type(eaten_at),
+                "meal_type": (
+                    "Food" if meal.get("meal_id") is None else _get_meal_type(eaten_at)
+                ),
                 "eaten_at": _format_datetime(eaten_at),
                 "time_label": _format_time_label(eaten_at),
                 "servings": servings,

@@ -16,3 +16,5 @@ from . import deleteMealPlan
 from . import getTodaysMeals
 from . import logMealFromPlan
 from . import getWeeklyCalories
+from . import getWeeklyCaloriesSummary
+from . import logFoodItem
