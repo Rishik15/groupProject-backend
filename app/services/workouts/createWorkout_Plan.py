@@ -3,18 +3,13 @@ from app.services import run_query
 
 def create_workout_plan(user_id, plan_name, days, description):
 
-    run_query(
+    plan_id = run_query(
         "INSERT INTO workout_plan (plan_name) VALUES (:plan_name)",
         {"plan_name": plan_name},
         fetch=False,
-        commit=True
+        commit=True,
+        return_lastrowid=True
     )
-
-    result = run_query(
-        "SELECT LAST_INSERT_ID() AS plan_id",
-        fetch=True, commit=False
-    )
-    plan_id = result[0]["plan_id"]
 
     run_query(
         """
@@ -30,21 +25,16 @@ def create_workout_plan(user_id, plan_name, days, description):
         day_label = day.get("day_label", f"Day {day_order}")
         exercises = day.get("exercises", [])
 
-        run_query(
+        day_id = run_query(
             """
             INSERT INTO workout_day (plan_id, day_order, day_label)
             VALUES (:plan_id, :day_order, :day_label)
             """,
             {"plan_id": plan_id, "day_order": day_order, "day_label": day_label},
             fetch=False,
-            commit=True
+            commit=True,
+            return_lastrowid=True
         )
-
-        day_result = run_query(
-            "SELECT LAST_INSERT_ID() AS day_id",
-            fetch=True, commit=False
-        )
-        day_id = day_result[0]["day_id"]
 
         for order_in_workout, ex in enumerate(exercises, start=1):
             run_query(
