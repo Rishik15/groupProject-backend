@@ -12,8 +12,10 @@ class Config:
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
+    APP_TIMEZONE = os.getenv("APP_TIMEZONE", "UTC")
+    DB_TIMEZONE = os.getenv("DB_TIMEZONE", "+00:00")
 
+    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
     PERMANENT_SESSION_LIFETIME = timedelta(hours=4)
 
     SESSION_COOKIE_HTTPONLY = True

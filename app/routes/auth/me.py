@@ -15,7 +15,7 @@ def me():
     user_id = session.get("user_id")
 
     if not checkUserExists(user_id=user_id):
-        session.clear()
+        print("AUTH ME CHECK USER FAILED:", user_id)
         return {"authenticated": False}, 401
 
     user_id = int(user_id)
@@ -42,6 +42,7 @@ def me():
     print("AUTH ME USER:", user_id)
     print("AUTH ME ROLES:", roles)
     print("AUTH ME COACH APPLICATION STATUS:", coach_application_status)
+
     return {
         "authenticated": True,
         "roles": roles,
