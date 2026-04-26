@@ -14,7 +14,7 @@ from .landing import landing_bp
 from .admin import admin_bp
 from .dashboard import dashboard_bp
 from .manageClient import manage_bp
-
+from .payments import payments_bp
 
 def register_routes(app):
     app.register_blueprint(test_bp, url_prefix="/test")
@@ -35,3 +35,4 @@ def register_routes(app):
     app.register_blueprint(admin_bp, url_prefix="/admin")
     app.register_blueprint(dashboard_bp, url_prefix="/dashboard")
     app.register_blueprint(manage_bp, url_prefix="/manage")
+    app.register_blueprint(payments_bp, url_prefix="/payments")

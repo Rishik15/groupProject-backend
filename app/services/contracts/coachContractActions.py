@@ -202,26 +202,87 @@ def buildDefaultConversation(contract_id: int, coach_id: int, user_id: int):
     except Exception as e:
         raise e
 
-
 def coachAcceptsContractService(contract_id: int, coach_id: int, user_id: int):
     try:
         today = date.today().isoformat()
-        run_query(
+
+        contract = run_query(
             """
-            UPDATE user_coach_contract
-            SET active = 1,
-                start_date = :today
-            WHERE contract_id = :contract_id;
+            SELECT agreed_price, is_recurring
+            FROM user_coach_contract
+            WHERE contract_id = :contract_id
             """,
-            {"contract_id": contract_id, "today": today},
-            fetch=False,
-            commit=True,
+            {"contract_id": contract_id},
+            fetch=True, commit=False
         )
 
+        if contract:
+            contract     = contract[0]
+            is_recurring = contract["is_recurring"]
+            agreed_price = contract["agreed_price"]
+
+            run_query(
+                """
+                UPDATE user_coach_contract
+                SET active = 1,
+                    start_date = :today,
+                    contract_text = :contract_text
+                WHERE contract_id = :contract_id;
+                """,
+                {
+                    "contract_id":   contract_id,
+                    "today":         today,
+                    "contract_text": f"{'Recurring subscription' if is_recurring else 'One-time coaching'} at ${agreed_price}/session. Active from {today}."
+                },
+                fetch=False,
+                commit=True,
+            )
+
+            payment_method = run_query(
+                """
+                SELECT payment_method_id FROM user_payment_method
+                WHERE user_id = :user_id AND is_default = 1
+                LIMIT 1
+                """,
+                {"user_id": user_id},
+                fetch=True, commit=False
+            )
+
+            payment_method_id = payment_method[0]["payment_method_id"] if payment_method else None
+
+            run_query(
+                """
+                INSERT INTO payment
+                    (user_id, coach_id, payment_method_id, amount, currency, status, payment_type, description, paid_at)
+                VALUES
+                    (:user_id, :coach_id, :payment_method_id, :amount, 'USD', 'completed', :payment_type, :description, NOW())
+                """,
+                {
+                    "user_id":           user_id,
+                    "coach_id":          coach_id,
+                    "payment_method_id": payment_method_id,
+                    "amount":            agreed_price,
+                    "payment_type":      "subscription" if is_recurring else "coaching_fee",
+                    "description":       f"Monthly subscription to coach #{coach_id}" if is_recurring else f"Coaching fee for contract #{contract_id}"
+                },
+                fetch=False, commit=True
+            )
+
+            if is_recurring:
+                run_query(
+                    """
+                    UPDATE user_coach_contract
+                    SET next_billing_date = DATE_ADD(CURDATE(), INTERVAL 1 MONTH)
+                    WHERE contract_id = :contract_id
+                    """,
+                    {"contract_id": contract_id},
+                    fetch=False, commit=True
+                )
+
         buildDefaultConversation(contract_id, coach_id, user_id)
+
     except Exception as e:
         raise e
-
 
 def coachRejectsContractService(contract_id: int):
     try:
