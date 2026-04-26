@@ -2,7 +2,6 @@ from flask import Blueprint
 
 nutrition_bp = Blueprint("nutrition", __name__)
 
-from . import logMeals
 from . import getNutritionToday
 from . import getMealPlans
 from . import getMealPlanDetails
@@ -15,6 +14,5 @@ from . import getMyMealPlans
 from . import deleteMealPlan
 from . import getTodaysMeals
 from . import logMealFromPlan
-from . import getWeeklyCalories
 from . import getWeeklyCaloriesSummary
 from . import logFoodItem
