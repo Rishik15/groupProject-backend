@@ -16,6 +16,11 @@ from .dashboard import dashboard_bp
 from .predictions import predictions_bp
 from .wallet.wallet import wallet_bp
 from .survey import survey_bp
+from .manageClient import manage_bp
+from .calendar import calendar_bp
+from .sessions import sessions_bp
+from .activityLog import activity_log_bp
+
 
 def register_routes(app):
     app.register_blueprint(test_bp, url_prefix="/test")
@@ -38,3 +43,7 @@ def register_routes(app):
     app.register_blueprint(predictions_bp, url_prefix="/predictions")
     app.register_blueprint(wallet_bp, url_prefix="/wallet")
     app.register_blueprint(survey_bp, url_prefix="/survey")
+    app.register_blueprint(manage_bp, url_prefix="/manage")
+    app.register_blueprint(calendar_bp, url_prefix="/calendar")
+    app.register_blueprint(sessions_bp, url_prefix="/sessions")
+    app.register_blueprint(activity_log_bp, url_prefix="/activity-log")

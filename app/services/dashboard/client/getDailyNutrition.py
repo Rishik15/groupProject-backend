@@ -1,57 +1,29 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+from app.services.nutrition.mealLogging import getLoggedMeals
 from app.services import run_query
 
 
 def getNutrition(user_id):
 
-    result = run_query(
-        """
-        SELECT 
-            SUM(
-                CASE 
-                    WHEN ml.meal_id IS NOT NULL THEN m.protein * ml.servings
-                    ELSE fi.protein * ml.servings
-                END
-            ) AS protein,
+    now = datetime.now()
 
-            SUM(
-                CASE 
-                    WHEN ml.meal_id IS NOT NULL THEN m.carbs * ml.servings
-                    ELSE fi.carbs * ml.servings
-                END
-            ) AS carbs,
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
 
-            SUM(
-                CASE 
-                    WHEN ml.meal_id IS NOT NULL THEN m.fats * ml.servings
-                    ELSE fi.fats * ml.servings
-                END
-            ) AS fat,
-
-            SUM(
-                CASE 
-                    WHEN ml.meal_id IS NOT NULL THEN m.calories * ml.servings
-                    ELSE fi.calories * ml.servings
-                END
-            ) AS calories
-
-        FROM meal_log ml
-        LEFT JOIN meal m ON ml.meal_id = m.meal_id
-        LEFT JOIN food_item fi ON ml.food_item_id = fi.food_item_id
-
-        WHERE ml.user_id = :user_id
-        AND DATE(ml.eaten_at) = CURDATE()
-        """,
-        {"user_id": user_id},
+    meals = getLoggedMeals(
+        user_id=user_id, start_dt=start.isoformat(), end_dt=end.isoformat()
     )
 
-    totals = result[0] if result else {}
+    total = {"calories": 0, "protein": 0, "carbs": 0, "fat": 0}
 
-    consumed = {
-        "calories": totals.get("calories") or 0,
-        "protein": totals.get("protein") or 0,
-        "carbs": totals.get("carbs") or 0,
-        "fat": totals.get("fat") or 0,
-    }
+    for meal in meals:
+        servings = float(meal.get("servings") or 0)
+
+        total["calories"] += float(meal.get("calories") or 0) * servings
+        total["protein"] += float(meal.get("protein") or 0) * servings
+        total["carbs"] += float(meal.get("carbs") or 0) * servings
+        total["fat"] += float(meal.get("fats") or 0) * servings
 
     goals = run_query(
         """
@@ -69,12 +41,12 @@ def getNutrition(user_id):
     if goals:
         g = goals[0]
         target = {
-            "calories": g["calories_target"],
-            "protein": g["protein_target"],
-            "carbs": g["carbs_target"],
-            "fat": g["fat_target"],
+            "calories": g.get("calories_target"),
+            "protein": g.get("protein_target"),
+            "carbs": g.get("carbs_target"),
+            "fat": g.get("fat_target"),
         }
     else:
         target = {"calories": None, "protein": None, "carbs": None, "fat": None}
 
-    return {"consumed": consumed, "target": target}
+    return {"consumed": total, "target": target}

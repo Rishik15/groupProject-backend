@@ -1,22 +1,28 @@
+from datetime import datetime, date, timedelta
+from zoneinfo import ZoneInfo
 from app.services import run_query
-from datetime import date, timedelta
+from app.services.nutrition.mealLogging import getLoggedMeals
 
 
 def userMetrics(user_id):
-    calories = run_query(
-        """
-        SELECT 
-            COALESCE(SUM(
-                COALESCE(m.calories, f.calories) * ml.servings
-            ), 0) AS total
-        FROM meal_log ml
-        LEFT JOIN meal m ON ml.meal_id = m.meal_id
-        LEFT JOIN food_item f ON ml.food_item_id = f.food_item_id
-        WHERE ml.user_id = :user_id
-        AND DATE(ml.eaten_at) = CURDATE()
-    """,
-        {"user_id": user_id},
-    )[0]["total"]
+    now = datetime.now()
+
+    start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    end = now.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+    meals = getLoggedMeals(
+        user_id=user_id,
+        start_dt=start.isoformat(),
+        end_dt=end.isoformat(),
+    )
+
+    calories = 0
+    for meal in meals:
+        if meal.get("calories") is None:
+            continue
+
+        servings = float(meal.get("servings") or 0)
+        calories += float(meal.get("calories") or 0) * servings
 
     steps = run_query(
         """
@@ -24,30 +30,30 @@ def userMetrics(user_id):
         FROM cardio_log
         WHERE user_id = :user_id
         AND DATE(performed_at) = CURDATE()
-    """,
+        """,
         {"user_id": user_id},
     )[0]["total"]
 
     workouts = run_query(
         """
-    SELECT COUNT(*) AS total
-    FROM workout_session
-    WHERE user_id = :user_id
-    AND ended_at IS NOT NULL
-    AND DATE(ended_at) = CURDATE()
-""",
+        SELECT COUNT(*) AS total
+        FROM workout_session
+        WHERE user_id = :user_id
+        AND ended_at IS NOT NULL
+        AND DATE(ended_at) = CURDATE()
+        """,
         {"user_id": user_id},
     )[0]["total"]
 
     streak_rows = run_query(
         """
-    SELECT DATE(ended_at) as workout_date
-    FROM workout_session
-    WHERE user_id = :user_id
-    AND ended_at IS NOT NULL
-    GROUP BY DATE(ended_at)
-    ORDER BY workout_date DESC
-    """,
+        SELECT DATE(ended_at) as workout_date
+        FROM workout_session
+        WHERE user_id = :user_id
+        AND ended_at IS NOT NULL
+        GROUP BY DATE(ended_at)
+        ORDER BY workout_date DESC
+        """,
         {"user_id": user_id},
     )
 

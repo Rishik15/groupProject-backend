@@ -3,20 +3,22 @@ from app import bcrypt
 from flask import request, session
 from app.services.auth.checkUser import checkUserExists
 from app.services.auth.client import addClient, initialize_client_role
-from app.services.auth.coach import addCoach, initialize_coach_role
 from app.services.auth.getUser import getUserInfo, getUserOnboardingStatus
 from app.services.auth.getUserRoles import getUserRoles
+from app.services.auth.coachApplicationStatus import getCoachApplicationStatus
 
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
-
-    data = request.get_json()
+    data = request.get_json() or {}
 
     email = data.get("email")
     password = data.get("password")
     name = data.get("name")
     role = data.get("role")
+
+    if role not in {"client", "coach"}:
+        return {"error": "role must be 'client' or 'coach'"}, 400
 
     if checkUserExists(email=email):
         return {"error": "User already exists"}, 409
@@ -32,19 +34,23 @@ def register():
         first_name = " ".join(name_parts[:-1])
         last_name = name_parts[-1]
 
-    if role == "client":
-        user_id = addClient(email, password_hash, first_name, last_name)
-    else:
-        user_id = addCoach(email, password_hash, first_name, last_name)
+    user_id = addClient(email, password_hash, first_name, last_name)
 
     session.permanent = True
     session["user_id"] = user_id
+
     session["role"] = role
 
     roles = getUserRoles(user_id)
     user_info = getUserInfo(user_id)
+    coach_application_status = getCoachApplicationStatus(user_id)
 
-    return {"success": True, "roles": roles, "user": user_info}, 200
+    return {
+        "success": True,
+        "roles": roles,
+        "user": user_info,
+        "coach_application_status": coach_application_status,
+    }, 200
 
 
 @auth_bp.route("/updateRole", methods=["POST"])
@@ -60,21 +66,21 @@ def update_role():
 
     user_id = int(session["user_id"])
 
-    if role == "client":
-        initialize_client_role(user_id, commit=True)
-    else:
-        initialize_coach_role(user_id, commit=True)
+    initialize_client_role(user_id, commit=True)
 
     session["role"] = role
 
     user = getUserInfo(user_id)
-    needs_onboarding = getUserOnboardingStatus(user_id, role)
     roles = getUserRoles(user_id)
+    coach_application_status = getCoachApplicationStatus(user_id)
+
+    needs_onboarding = getUserOnboardingStatus(user_id, "client")
 
     return {
         "authenticated": True,
         "role": role,
         "roles": roles,
         "user": user,
+        "coach_application_status": coach_application_status,
         "needs_onboarding": needs_onboarding,
     }, 200
