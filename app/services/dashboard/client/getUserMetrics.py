@@ -3,11 +3,9 @@ from zoneinfo import ZoneInfo
 from app.services import run_query
 from app.services.nutrition.mealLogging import getLoggedMeals
 
-NY_TZ = ZoneInfo("America/New_York")
-
 
 def userMetrics(user_id):
-    now = datetime.now(NY_TZ)
+    now = datetime.now()
 
     start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     end = now.replace(hour=23, minute=59, second=59, microsecond=999999)

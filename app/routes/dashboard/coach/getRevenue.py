@@ -13,7 +13,6 @@ def revenue():
     coach_id = session.get("user_id")
 
     if not checkUserExists(user_id=coach_id):
-        session.clear()
         return {"error": "Unauthorized"}, 401
 
     data = getRevenueLast6Months(coach_id)

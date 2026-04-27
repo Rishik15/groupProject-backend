@@ -10,6 +10,7 @@ from . import addCerts
 from . import updateAvailability
 from . import coachReview
 from . import getClients
-from . import assignClientPlan 
+from . import assignClientPlan
 from . import getCoachProfile
 from . import deleteCerts
+from . import activateCoachMode

@@ -51,8 +51,14 @@ def requestContract(
         raise Exception("You already have a pending request with this coach")
 
     coach_info = run_query(
-        "SELECT price FROM coach WHERE coach_id = :coach_id",
+        """
+        SELECT price
+        FROM coach
+        WHERE coach_id = :coach_id
+        """,
         {"coach_id": coach_id},
+        fetch=True,
+        commit=False,
         fetch=True,
         commit=False,
     )
@@ -117,6 +123,8 @@ def requestContract(
             "contract_text": contract_text,
             "is_recurring":  1 if is_recurring else 0
         },
+        fetch=False,
+        commit=True,
         fetch=False,
         commit=True,
     )

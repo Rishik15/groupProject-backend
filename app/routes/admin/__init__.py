@@ -11,3 +11,4 @@ from . import coach_prices
 from . import exercises
 from . import videos
 from . import workouts
+from . import predictions

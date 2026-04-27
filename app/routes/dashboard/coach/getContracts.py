@@ -13,7 +13,6 @@ def get_contracts():
     coach_id = session.get("user_id")
 
     if not checkUserExists(user_id=coach_id):
-        session.clear()
         return {"error": "Unauthorized"}, 401
 
     data = getCoachContracts(coach_id)
