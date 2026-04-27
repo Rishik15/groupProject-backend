@@ -34,10 +34,10 @@ def get_coach_profile(coach_id):
 
     certs = run_query(
         """
-        SELECT cert_name, provider_name, description, issued_date, expires_date
-        FROM certifications
-        WHERE coach_id = :cid
-        ORDER BY issued_date DESC
+    SELECT cert_id, cert_name, provider_name, description, issued_date, expires_date
+    FROM certifications
+    WHERE coach_id = :cid
+    ORDER BY issued_date DESC
         """,
         {"cid": coach_id},
         commit=False,
@@ -47,6 +47,7 @@ def get_coach_profile(coach_id):
     formatted_certs = []
     for cert in certs:
         formatted_certs.append({
+            "id": cert["cert_id"],
             "name": cert["cert_name"],
             "provider": cert["provider_name"],
             "description": cert["description"],
