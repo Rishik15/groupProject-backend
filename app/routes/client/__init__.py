@@ -10,3 +10,5 @@ from . import getInfo
 from . import checkSurvey
 from . import updateProfile
 from . import progressPhotos
+from . import getCoaches
+from . import reportCoach
