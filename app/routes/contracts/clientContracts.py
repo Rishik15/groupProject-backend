@@ -16,6 +16,7 @@ def clientCoachStatusRoute():
     return jsonify({
         "has_active_contract": active_contract is not None,
         "active_coach_id": active_contract["coach_id"] if active_contract else None,
+        "contract": active_contract,
     }), 200
 
 
