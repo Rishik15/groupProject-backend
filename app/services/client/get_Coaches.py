@@ -4,7 +4,7 @@ def getUsersCoaches(user_id):
     query = """
     SELECT 
         c.coach_id,
-        CONCAT(ui.first_name, ' ', ui.last_name) AS full_name
+        CONCAT(ui.first_name, ' ', ui.last_name) AS full_name,
         ui.email
     FROM user_coach_contract ucc
     JOIN coach c ON ucc.coach_id = c.coach_id
