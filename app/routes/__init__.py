@@ -20,7 +20,7 @@ from .manageClient import manage_bp
 from .payments import payments_bp
 from .calendar import calendar_bp
 from .sessions import sessions_bp
-from app.routes.coachsession import coach_session_bp
+from .coachsession import coach_session_bp
 from .activityLog import activity_log_bp
 
 
