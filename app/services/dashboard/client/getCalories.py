@@ -2,11 +2,9 @@ from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 from app.services.nutrition.mealLogging import getLoggedMeals
 
-NY_TZ = ZoneInfo("America/New_York")
-
 
 def get_calories_metrics_service(user_id: int):
-    now = datetime.now(NY_TZ)
+    now = datetime.now()
 
     start_of_week = now - timedelta(days=now.weekday())
     start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
