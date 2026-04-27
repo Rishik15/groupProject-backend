@@ -68,7 +68,7 @@ def getUserGivenContract(contract_id: int):
         raise e
 
 
-def getCoachContractsByStatusServie(coach_id: int, active: int):
+def getCoachContractsByStatusService(coach_id: int, active: int):
     try:
         ret = run_query(
             """

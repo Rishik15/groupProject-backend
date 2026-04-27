@@ -7,10 +7,15 @@ from app.services.contracts.contract_Status import get_contract_status
 def get_client_active_contract(user_id):
     result = run_query(
         """
-        SELECT contract_id, coach_id, user_id
-        FROM user_coach_contract
-        WHERE user_id = :user_id
-        AND active = 1
+        SELECT
+        ucc.contract_id,
+        ucc.coach_id,
+        ucc.agreed_price,
+        CONCAT(ui.first_name, ' ', ui.last_name) AS coach_name
+        FROM user_coach_contract ucc
+        JOIN users_immutables ui ON ui.user_id = ucc.coach_id
+        WHERE ucc.user_id = :user_id
+        AND ucc.active = 1
         LIMIT 1
         """,
         {"user_id": user_id},
@@ -52,6 +57,8 @@ def requestContract(
         WHERE coach_id = :coach_id
         """,
         {"coach_id": coach_id},
+        fetch=True,
+        commit=False,
         fetch=True,
         commit=False,
     )
@@ -121,6 +128,8 @@ def requestContract(
             "contract_text": contract_text,
             "is_recurring": 1 if is_recurring else 0,
         },
+        fetch=False,
+        commit=True,
         fetch=False,
         commit=True,
     )

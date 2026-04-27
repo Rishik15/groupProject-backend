@@ -1,81 +1,127 @@
-from . import contract_bp
-from flask import session, request, jsonify
-from app.services.contracts.client_Contracts import (
-    requestContract,
-    get_client_active_contract,
-)
+from app.services import run_query
+from app.services.payments.add_Payment_Method import add_payment_method
+from datetime import date
+from app.services.contracts.contract_Status import get_contract_status
 
 
-@contract_bp.route("/clientCoachStatus", methods=["GET"])
-def clientCoachStatusRoute():
-    user_id = session.get("user_id")
-    if not user_id:
-        return jsonify({"error": "unauthorized"}), 401
+def get_client_active_contract(user_id):
+    result = run_query(
+        """
+        SELECT
+        ucc.contract_id,
+        ucc.coach_id,
+        ucc.agreed_price,
+        CONCAT(ui.first_name, ' ', ui.last_name) AS coach_name
+        FROM user_coach_contract ucc
+        JOIN users_immutables ui ON ui.user_id = ucc.coach_id
+        WHERE ucc.user_id = :user_id
+        AND ucc.active = 1
+        LIMIT 1
+        """,
+        {"user_id": user_id},
+        fetch=True,
+        commit=False,
+    )
+    return result[0] if result else None
 
+
+def requestContract(
+    user_id: int,
+    coach_id: int,
+    is_recurring: bool,
+    training_reason: str,
+    preferred_schedule: str = "",
+    notes: str = "",
+    payment_method_id: int = None,
+    card_number: str = None,
+    card_brand: str = None,
+    expiry_month: int = None,
+    expiry_year: int = None,
+):
     active_contract = get_client_active_contract(user_id)
-    return (
-        jsonify(
-            {
-                "has_active_contract": active_contract is not None,
-                "active_coach_id": (
-                    active_contract["coach_id"] if active_contract else None
-                ),
-            }
-        ),
-        200,
+    if active_contract:
+        raise Exception("You already have an active coach")
+
+    status = get_contract_status(user_id, coach_id)
+
+    if status == "active":
+        raise Exception("You already have an active contract with this coach")
+
+    if status == "pending":
+        raise Exception("You already have a pending request with this coach")
+
+    coach_info = run_query(
+        "SELECT price FROM coach WHERE coach_id = :coach_id",
+        {"coach_id": coach_id},
+        fetch=True,
+        commit=False,
     )
 
+    if not coach_info:
+        raise Exception("Coach not found")
 
-@contract_bp.route("/requestContract", methods=["POST"])
-def requestContractRoute():
-    user_id = session.get("user_id")
+    actual_price = coach_info[0]["price"]
 
-    if not user_id:
-        return jsonify({"error": "unauthorized"}), 401
-
-    data = request.get_json() or {}
-    coach_id = data.get("coach_id")
-    is_recurring = data.get("is_recurring", False)
-    training_reason = data.get("training_reason", "")
-    preferred_schedule = data.get("preferred_schedule", "")
-    notes = data.get("notes", "")
-    payment_method_id = data.get("payment_method_id")
-    card_number = data.get("card_number")
-    card_brand = data.get("card_brand")
-    expiry_month = data.get("expiry_month")
-    expiry_year = data.get("expiry_year")
-
-    if not coach_id:
-        return jsonify({"error": "coach_id is required"}), 400
-
-    if not training_reason.strip():
-        return jsonify({"error": "training_reason is required"}), 400
-
-    if not payment_method_id and not all(
-        [card_number, card_brand, expiry_month, expiry_year]
-    ):
-        return (
-            jsonify(
-                {"error": "Either payment_method_id or full card details are required"}
-            ),
-            400,
+    # Handle payment method
+    if payment_method_id:
+        existing = run_query(
+            """
+            SELECT payment_method_id FROM user_payment_method
+            WHERE payment_method_id = :id AND user_id = :user_id
+            """,
+            {"id": payment_method_id, "user_id": user_id},
+            fetch=True,
+            commit=False,
         )
+        if not existing:
+            raise Exception("Payment method not found or does not belong to this user")
 
-    try:
-        requestContract(
+        run_query(
+            "UPDATE user_payment_method SET is_default = 0 WHERE user_id = :user_id",
+            {"user_id": user_id},
+            fetch=False,
+            commit=True,
+        )
+        run_query(
+            "UPDATE user_payment_method SET is_default = 1 WHERE payment_method_id = :id",
+            {"id": payment_method_id},
+            fetch=False,
+            commit=True,
+        )
+    else:
+        card_last_four = str(card_number).replace(" ", "")[-4:]
+        payment_method_id = add_payment_method(
             user_id=user_id,
-            coach_id=coach_id,
-            is_recurring=is_recurring,
-            training_reason=training_reason,
-            preferred_schedule=preferred_schedule,
-            notes=notes,
-            payment_method_id=payment_method_id,
-            card_number=card_number,
+            card_last_four=card_last_four,
             card_brand=card_brand,
-            expiry_month=int(expiry_month) if expiry_month else None,
-            expiry_year=int(expiry_year) if expiry_year else None,
+            expiry_month=expiry_month,
+            expiry_year=expiry_year,
         )
-        return jsonify({"message": "Contract request sent successfully"}), 201
 
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    # Build parsable contract text
+    contract_text = (
+        f"training_reason:{training_reason}|"
+        f"preferred_schedule:{preferred_schedule if preferred_schedule else 'Not provided'}|"
+        f"notes:{notes if notes else 'Not provided'}|"
+        f"payment_type:{'recurring' if is_recurring else 'one_time'}|"
+        f"price:{actual_price}"
+    )
+
+    run_query(
+        """
+        INSERT INTO user_coach_contract
+            (coach_id, user_id, agreed_price, start_date, contract_text, active, is_recurring)
+        VALUES
+            (:coach_id, :user_id, :agreed_price, :start_date, :contract_text, 0, :is_recurring)
+        """,
+        {
+            "coach_id": coach_id,
+            "user_id": user_id,
+            "agreed_price": actual_price,
+            "start_date": date.today(),
+            "contract_text": contract_text,
+            "is_recurring": 1 if is_recurring else 0,
+        },
+        fetch=False,
+        commit=True,
+    )

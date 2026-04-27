@@ -21,6 +21,10 @@ def log_food_item_route():
     notes = request.form.get("notes")
     photo = request.files.get("photo")
 
+    print("LOG FOOD FORM:", request.form)
+    print("LOG FOOD FILES:", request.files)
+    print("EATEN_AT:", eaten_at)
+
     if not name:
         return jsonify({"error": "name is required"}), 400
 
