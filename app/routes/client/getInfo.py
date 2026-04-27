@@ -1,4 +1,4 @@
-#written by albi
+# written by albi
 from . import client_bp
 from flask import session
 from app.services.auth.checkUser import checkUserExists
@@ -11,7 +11,6 @@ def getInfo():
         return {"authenticated": False}, 401
 
     if not checkUserExists(user_id=session.get("user_id")):
-        session.clear()
         return {"authenticated": False}, 401
 
     user = getUserInfo(session.get("user_id"))

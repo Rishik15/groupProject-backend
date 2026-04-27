@@ -11,12 +11,12 @@ def mark_as_read():
     if not user_id:
         return {"error": "User not authenticated"}, 401
 
-    data = request.get_json()
+    data = request.get_json() or {}
     notif_id = data.get("id")
 
-    if not notif_id or not mode:
+    if notif_id is None or mode is None:
         return {"error": "Missing data"}, 400
 
-    mark_notification_as_read(user_id, notif_id, mode)
+    mark_notification_as_read(int(user_id), int(notif_id), mode)
 
     return {"message": "Marked as read"}, 200

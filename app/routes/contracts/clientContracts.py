@@ -22,6 +22,7 @@ def clientCoachStatusRoute():
 @contract_bp.route("/requestContract", methods=["POST"])
 def requestContractRoute():
     user_id = session.get("user_id")
+
     if not user_id:
         return jsonify({"error": "unauthorized"}), 401
 
@@ -61,5 +62,6 @@ def requestContractRoute():
             expiry_year=int(expiry_year) if expiry_year else None
         )
         return jsonify({"message": "Contract request sent successfully"}), 201
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500

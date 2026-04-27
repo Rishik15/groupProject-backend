@@ -18,7 +18,7 @@ def handle_chat_notification(user_id, conv_id, sender_name, message, mode):
     )
 
     title = sender_name
-    body = message.get("content") or message.get("text", "")[:100]
+    body = (message.get("content") or message.get("text") or "")[:100]
     metadata = json.dumps({"sender_name": sender_name})
 
     if existing:
@@ -54,7 +54,7 @@ def handle_chat_notification(user_id, conv_id, sender_name, message, mode):
         }, True
 
     else:
-        run_query(
+        notif_id = run_query(
             """
             INSERT INTO notification (
                 user_id, type, conversation_id, title, body, metadata, mode
@@ -73,9 +73,10 @@ def handle_chat_notification(user_id, conv_id, sender_name, message, mode):
             },
             fetch=False,
             commit=True,
+            return_lastrowid=True,
         )
-
-        notif_id = run_query("SELECT LAST_INSERT_ID() AS id", {})[0]["id"]
+        if not notif_id:
+            raise Exception("Failed to get notification id after insert")
 
         return {
             "id": notif_id,
