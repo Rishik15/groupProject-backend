@@ -18,6 +18,7 @@ from .wallet.wallet import wallet_bp
 from .survey import survey_bp
 from .manageClient import manage_bp
 from .payments import payments_bp
+from .sessions import sessions_bp
 
 
 def register_routes(app):
@@ -43,3 +44,4 @@ def register_routes(app):
     app.register_blueprint(survey_bp, url_prefix="/survey")
     app.register_blueprint(manage_bp, url_prefix="/manage")
     app.register_blueprint(payments_bp, url_prefix="/payments")
+    app.register_blueprint(sessions_bp, url_prefix="/sessions")
