@@ -13,10 +13,17 @@ def clientCoachStatusRoute():
         return jsonify({"error": "unauthorized"}), 401
 
     active_contract = get_client_active_contract(user_id)
-    return jsonify({
-        "has_active_contract": active_contract is not None,
-        "active_coach_id": active_contract["coach_id"] if active_contract else None,
-    }), 200
+    return (
+        jsonify(
+            {
+                "has_active_contract": active_contract is not None,
+                "active_coach_id": (
+                    active_contract["coach_id"] if active_contract else None
+                ),
+            }
+        ),
+        200,
+    )
 
 
 @contract_bp.route("/requestContract", methods=["POST"])
@@ -44,8 +51,15 @@ def requestContractRoute():
     if not training_reason.strip():
         return jsonify({"error": "training_reason is required"}), 400
 
-    if not payment_method_id and not all([card_number, card_brand, expiry_month, expiry_year]):
-        return jsonify({"error": "Either payment_method_id or full card details are required"}), 400
+    if not payment_method_id and not all(
+        [card_number, card_brand, expiry_month, expiry_year]
+    ):
+        return (
+            jsonify(
+                {"error": "Either payment_method_id or full card details are required"}
+            ),
+            400,
+        )
 
     try:
         requestContract(
@@ -59,7 +73,7 @@ def requestContractRoute():
             card_number=card_number,
             card_brand=card_brand,
             expiry_month=int(expiry_month) if expiry_month else None,
-            expiry_year=int(expiry_year) if expiry_year else None
+            expiry_year=int(expiry_year) if expiry_year else None,
         )
         return jsonify({"message": "Contract request sent successfully"}), 201
 

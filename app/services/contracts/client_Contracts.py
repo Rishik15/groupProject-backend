@@ -54,8 +54,6 @@ def requestContract(
         {"coach_id": coach_id},
         fetch=True,
         commit=False,
-        fetch=True,
-        commit=False,
     )
 
     if not coach_info:
@@ -71,18 +69,23 @@ def requestContract(
             WHERE payment_method_id = :id AND user_id = :user_id
             """,
             {"id": payment_method_id, "user_id": user_id},
-            fetch=True, commit=False
+            fetch=True,
+            commit=False,
         )
         if not existing:
             raise Exception("Payment method not found or does not belong to this user")
 
         run_query(
             "UPDATE user_payment_method SET is_default = 0 WHERE user_id = :user_id",
-            {"user_id": user_id}, fetch=False, commit=True
+            {"user_id": user_id},
+            fetch=False,
+            commit=True,
         )
         run_query(
             "UPDATE user_payment_method SET is_default = 1 WHERE payment_method_id = :id",
-            {"id": payment_method_id}, fetch=False, commit=True
+            {"id": payment_method_id},
+            fetch=False,
+            commit=True,
         )
     else:
         card_last_four = str(card_number).replace(" ", "")[-4:]
@@ -91,7 +94,7 @@ def requestContract(
             card_last_four=card_last_four,
             card_brand=card_brand,
             expiry_month=expiry_month,
-            expiry_year=expiry_year
+            expiry_year=expiry_year,
         )
 
     # Build parsable contract text
@@ -111,15 +114,13 @@ def requestContract(
             (:coach_id, :user_id, :agreed_price, :start_date, :contract_text, 0, :is_recurring)
         """,
         {
-            "coach_id":      coach_id,
-            "user_id":       user_id,
-            "agreed_price":  actual_price,
-            "start_date":    date.today(),
+            "coach_id": coach_id,
+            "user_id": user_id,
+            "agreed_price": actual_price,
+            "start_date": date.today(),
             "contract_text": contract_text,
-            "is_recurring":  1 if is_recurring else 0
+            "is_recurring": 1 if is_recurring else 0,
         },
-        fetch=False,
-        commit=True,
         fetch=False,
         commit=True,
     )
