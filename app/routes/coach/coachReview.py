@@ -13,16 +13,24 @@ from flask import session, request, jsonify
 @coach_bp.route("/get_coach_info", methods=["GET"])
 def getCoachInfo():
     """
-    Response:
-    {
-        "first_name": str,
-        "last_name": str,
-        "price": number,
-        "coach_description": str,
-        "profile_picture": str,
-        "weight": number,
-        "height": number
-    }
+Get coach information
+---
+tags:
+  - coach
+parameters:
+  - name: coach_id
+    in: query
+    type: integer
+    required: true
+responses:
+  200:
+    description: Coach info
+  400:
+    description: Invalid coach_id
+  401:
+    description: Unauthorized
+  404:
+    description: Coach not found
     """
     u_id = session.get("user_id")
     role = session.get("role")
@@ -50,6 +58,24 @@ def getCoachInfo():
 
 @coach_bp.route("/get_review", methods=["GET"])
 def getCoachReview():
+    """
+Get coach reviews
+---
+tags:
+  - coach
+parameters:
+  - name: coach_id
+    in: query
+    type: integer
+    required: true
+responses:
+  200:
+    description: Reviews data
+  400:
+    description: Invalid coach_id
+  401:
+    description: Unauthorized
+    """
     try:
         u_id = session.get("user_id")
         role = session.get("role")
@@ -87,12 +113,37 @@ def getCoachReview():
 @coach_bp.route("/leave_review", methods=["POST"])
 def leaveCoachReview():
     """
-    Expects:
-    {
-        "coach_id": int,
-        "rating": int,
-        "review_text": str
-    }
+Leave a review for a coach
+---
+tags:
+  - coach
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - coach_id
+        - rating
+      properties:
+        coach_id:
+          type: integer
+        rating:
+          type: integer
+        review_text:
+          type: string
+responses:
+  200:
+    description: Review submitted
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+  403:
+    description: Not allowed to review
+  409:
+    description: Already reviewed
     """
     try:
         u_id = session.get("user_id")

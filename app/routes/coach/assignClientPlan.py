@@ -5,6 +5,42 @@ from app.services.coach.assign_Client_Plan import assign_plan_to_client
 
 @coach_bp.route("/assign", methods=["POST"])
 def assign_plan_to_client_route():
+    """
+Add coach certification
+---
+tags:
+  - coach
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - role
+        - cert_name
+        - provider_name
+      properties:
+        role:
+          type: string
+        cert_name:
+          type: string
+        provider_name:
+          type: string
+        description:
+          type: string
+        issued_date:
+          type: string
+          format: date
+        expires_date:
+          type: string
+          format: date
+responses:
+  201:
+    description: Certification added
+  403:
+    description: Forbidden
+    """
     data = request.get_json()
     client_user_id = data.get("client_user_id")
     plan_id = data.get("plan_id")

@@ -4,6 +4,35 @@ from app.services.coach.delete_Certs import delete_coach_certification
 
 @coach_bp.route("/certifications/delete", methods=["DELETE"])
 def delete_certification_route():
+    """
+Delete coach certification
+---
+tags:
+  - coach
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - role
+        - cert_id
+      properties:
+        role:
+          type: string
+        cert_id:
+          type: integer
+responses:
+  200:
+    description: Certification deleted
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+  403:
+    description: Forbidden
+    """
     try:
         coach_id = session.get("user_id")
         if not coach_id:

@@ -4,6 +4,48 @@ from app.services.coach.search_coaches import search_coaches
 
 @coach_bp.route("/search", methods=["POST"])
 def search_coaches_route():
+    """
+Search coaches
+---
+tags:
+  - coach
+parameters:
+  - name: body
+    in: body
+    required: false
+    schema:
+      type: object
+      properties:
+        name:
+          type: string
+        filters:
+          type: array
+          items:
+            type: string
+        is_certified:
+          type: boolean
+        max_price:
+          type: number
+        min_rating:
+          type: number
+        sort_by:
+          type: string
+          enum:
+            - price
+            - rating
+responses:
+  200:
+    description: List of coaches
+    schema:
+      type: object
+      properties:
+        coaches:
+          type: array
+          items:
+            type: object
+  400:
+    description: Invalid input
+    """
     data = request.get_json()
 
     name = data.get("name", "")

@@ -14,6 +14,58 @@ from app.services.predictions.markets import (
 
 @predictions_bp.route("/markets/open", methods=["GET"])
 def get_open_prediction_markets_route():
+    """
+Get open prediction markets
+---
+tags:
+  - predictions
+responses:
+  200:
+    description: List of open markets
+    schema:
+      type: object
+      properties:
+        message:
+          type: string
+        markets:
+          type: array
+          items:
+            type: object
+            properties:
+              market_id:
+                type: integer
+              creator_user_id:
+                type: integer
+              creator_name:
+                type: string
+              creator_email:
+                type: string
+              title:
+                type: string
+              goal_text:
+                type: string
+              end_date:
+                type: string
+                format: date-time
+              status:
+                type: string
+              review_status:
+                type: string
+              total_bets:
+                type: integer
+              total_points:
+                type: integer
+              yes_bets:
+                type: integer
+              no_bets:
+                type: integer
+              yes_points:
+                type: integer
+              no_points:
+                type: integer
+  401:
+    description: Unauthorized
+    """
     try:
         user_id = session.get("user_id")
 
@@ -166,6 +218,30 @@ def get_prediction_leaderboard_route():
 
 @predictions_bp.route("/markets/close", methods=["PATCH"])
 def close_prediction_market_route():
+    """
+Close prediction market
+---
+tags:
+  - predictions
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - market_id
+      properties:
+        market_id:
+          type: integer
+responses:
+  200:
+    description: Market closed
+  400:
+    description: Invalid input
+  403:
+    description: Forbidden
+    """
     try:
         user_id = session.get("user_id")
 

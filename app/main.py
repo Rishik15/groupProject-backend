@@ -45,7 +45,10 @@ def create_app():
     
     @app.route("/openapi.json", methods=["GET"])
     def openapi_json():
-        return send_from_directory("documentation", "openapi.json")
+        return send_from_directory(
+            os.path.join(app.root_path, "..", "documentation"),
+            "openapi.json",
+        )
     Swagger(app) 
 
     return app
