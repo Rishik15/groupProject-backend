@@ -93,7 +93,7 @@ def coachAcceptContractRoute():
 
 
 @contract_bp.route("/coachRejectContract", methods=["PATCH"])
-@contract_bp.route("/coachRegjectContract", methods=["PATCH"])  # backward compatibility
+@contract_bp.route("/coachRegjectContract", methods=["PATCH"]) 
 def coachRejectContractRoute():
     c_id = _get_coach_id()
     if c_id is None:

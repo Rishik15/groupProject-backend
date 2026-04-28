@@ -5,8 +5,23 @@ def getUserRoles(user_id: int):
     result = run_query(
         """
         SELECT
-            EXISTS(SELECT 1 FROM admin WHERE admin_id = :user_id) AS is_admin,
-            EXISTS(SELECT 1 FROM coach WHERE coach_id = :user_id) AS is_coach
+            EXISTS(
+                SELECT 1
+                FROM admin
+                WHERE admin_id = :user_id
+            ) AS is_admin,
+
+            EXISTS(
+                SELECT 1
+                FROM coach
+                WHERE coach_id = :user_id
+            ) AS is_coach,
+
+            EXISTS(
+                SELECT 1
+                FROM user_mutables
+                WHERE user_id = :user_id
+            ) AS is_client
         """,
         {"user_id": user_id},
     )
@@ -22,4 +37,7 @@ def getUserRoles(user_id: int):
     if row["is_coach"]:
         return ["coach", "client"]
 
-    return ["client"]
+    if row["is_client"]:
+        return ["client"]
+
+    return []

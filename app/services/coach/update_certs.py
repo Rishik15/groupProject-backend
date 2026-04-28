@@ -1,29 +1,28 @@
 from app.services import run_query
 
-def add_coach_certification(coach_id, incoming_json):
-
-    cert_name = incoming_json.get("cert_name")
-    provider = incoming_json.get("provider_name")
-    description = incoming_json.get("description")
-    issued_date = incoming_json.get("issued_date")
-    expires_date = incoming_json.get("expires_date")
-
-    query = """
-        INSERT INTO certifications (coach_id, cert_name, provider_name, description, issued_date, expires_date)
-        VALUES (:id, :name, :org, :desc, :issued_date, :expires_date)
-    """
-    
-    params = {
-        "id": coach_id,
-        "name": cert_name,
-        "org": provider,
-        "desc": description,
-        "issued_date": issued_date,
-        "expires_date": expires_date
-    }
-
+def update_coach_certification(coach_id: int, cert_id: int, cert_name: str, provider: str, description: str = None, expires_date: str = None):
     try:
-        run_query(query, params=params, fetch=False, commit=True)
-        return {"message": "Certificate added successfully"}, 201
+        run_query(
+            """
+            UPDATE certifications
+            SET 
+                cert_name = :name,
+                provider_name = :provider,
+                description = :desc,
+                expires_date = :expires
+            WHERE cert_id = :cert_id AND coach_id = :coach_id
+            """,
+            {
+                "name": cert_name,
+                "provider": provider,
+                "desc": description,
+                "expires": expires_date,
+                "cert_id": cert_id,
+                "coach_id": coach_id
+            },
+            fetch=False,
+            commit=True
+        )
+        return True
     except Exception as e:
-        return {"error": str(e)}, 500
+        raise Exception(f"Failed to update certification: {str(e)}")

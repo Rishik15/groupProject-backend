@@ -13,6 +13,15 @@ from .workouts import workoutAction_bp, exerciseLog_bp, workouts_bp
 from .landing import landing_bp
 from .admin import admin_bp
 from .dashboard import dashboard_bp
+from .predictions import predictions_bp
+from .wallet.wallet import wallet_bp
+from .survey import survey_bp
+from .manageClient import manage_bp
+from .payments import payments_bp
+from .calendar import calendar_bp
+from .sessions import sessions_bp
+from .coachsession import coach_session_bp
+from .activityLog import activity_log_bp
 
 
 def register_routes(app):
@@ -33,3 +42,12 @@ def register_routes(app):
     app.register_blueprint(contract_bp, url_prefix="/contract")
     app.register_blueprint(admin_bp, url_prefix="/admin")
     app.register_blueprint(dashboard_bp, url_prefix="/dashboard")
+    app.register_blueprint(predictions_bp, url_prefix="/predictions")
+    app.register_blueprint(wallet_bp, url_prefix="/wallet")
+    app.register_blueprint(survey_bp, url_prefix="/survey")
+    app.register_blueprint(manage_bp, url_prefix="/manage")
+    app.register_blueprint(payments_bp, url_prefix="/payments")
+    app.register_blueprint(calendar_bp, url_prefix="/calendar")
+    app.register_blueprint(sessions_bp, url_prefix="/sessions")
+    app.register_blueprint(activity_log_bp, url_prefix="/activity-log")
+    app.register_blueprint(coach_session_bp, url_prefix="/coachsession")

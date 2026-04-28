@@ -1,36 +1,52 @@
-from app.services import run_query
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+from app.services.nutrition.mealLogging import getLoggedMeals
 
 
 def get_calories_metrics_service(user_id: int):
-    rows = run_query(
-        """
-        SELECT 
-            DATE(ml.eaten_at) as day,
-            SUM(COALESCE(m.calories, fi.calories) * ml.servings) as calories
-        FROM meal_log ml
-        LEFT JOIN meal m ON ml.meal_id = m.meal_id
-        LEFT JOIN food_item fi ON ml.food_item_id = fi.food_item_id
-        WHERE ml.user_id = :user_id
-        AND ml.eaten_at >= DATE_SUB(CURDATE(), INTERVAL WEEKDAY(CURDATE()) DAY)
-        GROUP BY day
-        ORDER BY day ASC
-        """,
-        {"user_id": user_id},
+    now = datetime.now()
+
+    start_of_week = now - timedelta(days=now.weekday())
+    start_of_week = start_of_week.replace(hour=0, minute=0, second=0, microsecond=0)
+
+    end_of_week = start_of_week + timedelta(days=6)
+    end_of_week = end_of_week.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+    meals = getLoggedMeals(
+        user_id=user_id,
+        start_dt=start_of_week.isoformat(),
+        end_dt=end_of_week.isoformat(),
     )
 
-    data_map = {str(row["day"]): float(row["calories"]) for row in rows}
+    result_map = {}
+    for i in range(7):
+        day = (start_of_week + timedelta(days=i)).date()
+        result_map[str(day)] = 0
 
-    today = datetime.today()
-    start_of_week = today - timedelta(days=today.weekday())
+    for meal in meals:
+        if meal.get("calories") is None:
+            continue
+
+        eaten_at = meal.get("eaten_at")
+        if not eaten_at:
+            continue
+
+        day = eaten_at.split("T")[0]
+
+        servings = float(meal.get("servings") or 0)
+        calories = float(meal.get("calories") or 0)
+
+        result_map[day] += calories * servings
 
     result = []
-
     for i in range(7):
         current_day = (start_of_week + timedelta(days=i)).date()
 
-        calories = data_map.get(str(current_day), 0)
-
-        result.append({"day": current_day.strftime("%a"), "calories": calories})
+        result.append(
+            {
+                "day": current_day.strftime("%a"),
+                "calories": result_map[str(current_day)],
+            }
+        )
 
     return result

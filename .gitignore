@@ -37,7 +37,9 @@ pip-wheel-metadata/
 # Logs
 # -------------------------
 *.log
-
+betafit*.json
+client_secret*
+cookies
 # -------------------------
 # Testing
 # -------------------------
@@ -92,5 +94,8 @@ dist/
 *.pid.lock
 
 gunicorn.ctl
+
+
+*.json
 
 media

@@ -2,7 +2,7 @@ from sqlalchemy import text
 from app import db
 
 
-def run_query(query, params=None, fetch=True, commit=False):
+def run_query(query, params=None, fetch=True, commit=False, return_lastrowid=False):
     """
     Helper to run SQL queries.
 
@@ -19,8 +19,13 @@ def run_query(query, params=None, fetch=True, commit=False):
     try:
         result = db.session.execute(text(query), params or {})
 
+        lastrowid = result.lastrowid if return_lastrowid else None
+
         if commit:
             db.session.commit()
+
+        if return_lastrowid:
+            return lastrowid
 
         if fetch:
             return [dict(row) for row in result.mappings()]
