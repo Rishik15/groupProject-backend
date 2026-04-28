@@ -1,4 +1,4 @@
-from flask_socketio import join_room, emit
+from flask_socketio import join_room, leave_room, emit
 from flask import session, request
 from app import (
     online_users,
@@ -44,6 +44,8 @@ def register_login_socket_events(socketio):
         new_identity = f"{user_id}:{mode}"
 
         if old_identity and old_identity != new_identity:
+            leave_room(old_identity, sid=sid)
+
             if old_identity in online_users:
                 online_users[old_identity].discard(sid)
                 if not online_users[old_identity]:
@@ -54,11 +56,16 @@ def register_login_socket_events(socketio):
                 if not chat_online_users[old_identity]:
                     chat_online_users.pop(old_identity, None)
 
+                    old_user_id, old_mode = old_identity.split(":")
+                    notify_presence_change(int(old_user_id), old_mode, "chat_offline")
+
             user_active_conversation.pop(old_identity, None)
 
         socket_to_identity[sid] = new_identity
         join_room(new_identity)
         online_users.setdefault(new_identity, set()).add(sid)
+
+        print("REGISTER MODE:", user_id, mode, "ROOM:", new_identity)
 
         emit(
             "mode_registered",
@@ -79,6 +86,8 @@ def register_login_socket_events(socketio):
             return
 
         user_id, mode = identity.split(":")
+
+        leave_room(identity, sid=sid)
 
         if identity in online_users:
             online_users[identity].discard(sid)

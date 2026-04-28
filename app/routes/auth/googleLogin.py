@@ -33,6 +33,13 @@ def _coerce_email_verified(value):
 
 @auth_bp.route("/googleLogin/start", methods=["GET"])
 def google_login_start():
+    session.pop("google_login_state", None)
+    session.pop("google_login_code_verifier", None)
+    session.pop("google_oauth_state", None)
+    session.pop("google_oauth_code_verifier", None)
+    session.pop("google_oauth_personal_state", None)
+    session.pop("google_oauth_personal_code_verifier", None)
+
     flow = build_google_login_flow()
 
     authorization_url, state = flow.authorization_url(
@@ -43,6 +50,7 @@ def google_login_start():
 
     session["google_login_state"] = state
     session["google_login_code_verifier"] = flow.code_verifier
+    session.modified = True
 
     return redirect(authorization_url)
 
@@ -53,12 +61,11 @@ def google_login_callback():
     if not saved_state:
         return jsonify({"error": "Missing OAuth state"}), 400
 
-    flow = build_google_login_flow(state=saved_state)
-
     code_verifier = session.get("google_login_code_verifier")
     if not code_verifier:
         return jsonify({"error": "Missing code verifier"}), 400
 
+    flow = build_google_login_flow(state=saved_state)
     flow.code_verifier = code_verifier
 
     try:
@@ -84,7 +91,12 @@ def google_login_callback():
     full_name = idinfo.get("name")
 
     if not google_sub or not google_email:
-        return jsonify({"error": "Google account did not return required identity fields"}), 400
+        return (
+            jsonify(
+                {"error": "Google account did not return required identity fields"}
+            ),
+            400,
+        )
 
     user = resolve_or_create_google_user(
         google_sub=google_sub,
@@ -98,11 +110,16 @@ def google_login_callback():
 
     session.permanent = True
     session["user_id"] = user["user_id"]
-    session["role"] = user["role"]
     session["auth_provider"] = "google"
+
+    if user.get("role"):
+        session["role"] = user["role"]
+    else:
+        session.pop("role", None)
 
     session.pop("google_login_state", None)
     session.pop("google_login_code_verifier", None)
+    session.modified = True
 
     base = current_app.config["GOOGLE_LOGIN_FRONTEND_REDIRECT_URI"].rstrip("/")
     redirect_url = f"{base}/auth/complete"
@@ -115,9 +132,14 @@ def google_login_status():
     if "user_id" not in session:
         return jsonify({"authenticated": False}), 401
 
-    return jsonify({
-        "authenticated": True,
-        "user_id": session.get("user_id"),
-        "role": session.get("role"),
-        "auth_provider": session.get("auth_provider", "password"),
-    }), 200
+    return (
+        jsonify(
+            {
+                "authenticated": True,
+                "user_id": session.get("user_id"),
+                "role": session.get("role"),
+                "auth_provider": session.get("auth_provider", "password"),
+            }
+        ),
+        200,
+    )
