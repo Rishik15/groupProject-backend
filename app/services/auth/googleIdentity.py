@@ -120,7 +120,7 @@ def _split_name(name: str | None):
 def createUserFromGoogle(
     email: str,
     full_name: str | None = None,
-    role: str = "client",
+    role: str | None = None,
 ):
     first_name, last_name = _split_name(full_name)
 
@@ -141,27 +141,48 @@ def createUserFromGoogle(
     result = run_query("SELECT LAST_INSERT_ID() AS user_id")
     user_id = result[0]["user_id"]
 
-    run_query(
-        """
-        INSERT INTO user_mutables (user_id)
-        VALUES (:user_id)
-        """,
-        {"user_id": user_id},
-        fetch=False,
-        commit=False,
-    )
+    if role == "client":
+        run_query(
+            """
+            INSERT INTO user_mutables (user_id)
+            VALUES (:user_id)
+            """,
+            {"user_id": user_id},
+            fetch=False,
+            commit=False,
+        )
 
-    run_query(
-        """
-        INSERT INTO points_wallet (user_id, balance)
-        VALUES (:user_id, 0)
-        """,
-        {"user_id": user_id},
-        fetch=False,
-        commit=False,
-    )
+        run_query(
+            """
+            INSERT INTO points_wallet (user_id, balance)
+            VALUES (:user_id, 0)
+            """,
+            {"user_id": user_id},
+            fetch=False,
+            commit=True,
+        )
 
-    if role == "coach":
+    elif role == "coach":
+        run_query(
+            """
+            INSERT INTO user_mutables (user_id)
+            VALUES (:user_id)
+            """,
+            {"user_id": user_id},
+            fetch=False,
+            commit=False,
+        )
+
+        run_query(
+            """
+            INSERT INTO points_wallet (user_id, balance)
+            VALUES (:user_id, 0)
+            """,
+            {"user_id": user_id},
+            fetch=False,
+            commit=False,
+        )
+
         run_query(
             """
             INSERT INTO coach (coach_id, price)
@@ -171,11 +192,8 @@ def createUserFromGoogle(
             fetch=False,
             commit=True,
         )
+
     else:
-        run_query(
-            "SELECT 1",
-            fetch=False,
-            commit=True,
-        )
+        run_query("SELECT 1", fetch=False, commit=True)
 
     return user_id

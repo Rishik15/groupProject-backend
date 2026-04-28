@@ -31,7 +31,7 @@ def resolve_or_create_google_user(
     user_id = createUserFromGoogle(
         email=google_email,
         full_name=full_name,
-        role="client",
+        role=None,
     )
 
     linkGoogleIdentity(

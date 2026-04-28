@@ -190,7 +190,10 @@ def get_admin_coach_applications(user_id: int, status: str):
 
     for row in rows:
         applications.append(
-            _shape_application(row, certs_by_application.get(row["application_id"], []))
+            _shape_application(
+                row,
+                certs_by_application.get(row["application_id"], []),
+            )
         )
 
     return applications
@@ -252,7 +255,9 @@ def approve_coach_application(user_id: int, application_id: int, admin_action=No
     )
 
     onboardUser.onboardCoachSurvey(
-        coach_id, application_row["coach_description"], application_row["desired_price"]
+        coach_id,
+        application_row["coach_description"],
+        application_row["desired_price"],
     )
 
     n_c = int(metadata.get("num_cert") or 0)
@@ -318,16 +323,18 @@ def approve_coach_application(user_id: int, application_id: int, admin_action=No
         notification_type="coach_application",
         title="Coach application approved",
         body="Your coach application was approved. You can now switch to coach mode.",
-        route="/client/profile",
+        route="/client/settings",
         metadata={
             "status": "approved",
             "roles": roles,
+            "coachModeActivated": True,
         },
         reference_id=application_id,
         extra_event="coach_application_status_changed",
         extra_payload={
             "status": "approved",
             "roles": roles,
+            "coachModeActivated": True,
         },
     )
 
@@ -375,17 +382,19 @@ def reject_coach_application(user_id: int, application_id: int, admin_action=Non
         mode="client",
         notification_type="coach_application",
         title="Coach application rejected",
-        body="Your coach application was rejected. You can apply again from your profile.",
-        route="/client/profile",
+        body="Your coach application was rejected. You can apply again from your settings page.",
+        route="/client/settings",
         metadata={
             "status": "rejected",
             "roles": ["client"],
+            "coachModeActivated": False,
         },
         reference_id=application_id,
         extra_event="coach_application_status_changed",
         extra_payload={
             "status": "rejected",
             "roles": ["client"],
+            "coachModeActivated": False,
         },
     )
 

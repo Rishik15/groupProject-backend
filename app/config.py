@@ -15,7 +15,11 @@ class Config:
     APP_TIMEZONE = os.getenv("APP_TIMEZONE", "UTC")
     DB_TIMEZONE = os.getenv("DB_TIMEZONE", "+00:00")
 
-    SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key")
+    SECRET_KEY = os.getenv("SECRET_KEY")
+
+    if not SECRET_KEY:
+        raise RuntimeError("SECRET_KEY is missing. Set it in .env")
+
     PERMANENT_SESSION_LIFETIME = timedelta(hours=4)
 
     SESSION_COOKIE_HTTPONLY = True
