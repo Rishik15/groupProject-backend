@@ -28,6 +28,26 @@ def _time_to_string(value):
     return str(value)
 
 
+def _get_workout_status(row):
+    if row.get("event_type") != "workout":
+        return None
+
+    session_id = row.get("session_id")
+    ended_at = row.get("session_ended_at")
+    event_datetime = row.get("event_datetime")
+
+    if session_id and ended_at is not None:
+        return "completed"
+
+    if session_id and ended_at is None:
+        return "active"
+
+    if event_datetime and event_datetime < datetime.now():
+        return "missed"
+
+    return "scheduled"
+
+
 def _serialize_event(row):
     if not row:
         return None
@@ -37,6 +57,7 @@ def _serialize_event(row):
     notes = row.get("notes") or ""
     workout_plan_name = row.get("workout_plan_name")
     workout_day_label = row.get("workout_day_label")
+    workout_status = _get_workout_status(row)
 
     title = description
 
@@ -66,6 +87,16 @@ def _serialize_event(row):
         "workoutDayId": row.get("workout_day_id"),
         "workoutDayLabel": workout_day_label,
         "workoutDayOrder": row.get("workout_day_order"),
+        "sessionId": row.get("session_id"),
+        "sessionStartedAt": (
+            str(row.get("session_started_at"))
+            if row.get("session_started_at")
+            else None
+        ),
+        "sessionEndedAt": (
+            str(row.get("session_ended_at")) if row.get("session_ended_at") else None
+        ),
+        "workoutStatus": workout_status,
     }
 
 
@@ -114,6 +145,7 @@ def get_events_for_user_range(user_id: int, start_date: date, end_date: date):
             e.event_date,
             e.start_time,
             e.end_time,
+            TIMESTAMP(e.event_date, e.end_time) AS event_datetime,
             e.event_type,
             e.description,
             e.notes,
@@ -121,12 +153,18 @@ def get_events_for_user_range(user_id: int, start_date: date, end_date: date):
             e.workout_day_id,
             wp.plan_name AS workout_plan_name,
             wd.day_label AS workout_day_label,
-            wd.day_order AS workout_day_order
+            wd.day_order AS workout_day_order,
+            ws.session_id,
+            ws.started_at AS session_started_at,
+            ws.ended_at AS session_ended_at
         FROM event e
         LEFT JOIN workout_plan wp
             ON wp.plan_id = e.workout_plan_id
         LEFT JOIN workout_day wd
             ON wd.day_id = e.workout_day_id
+        LEFT JOIN workout_session ws
+            ON ws.event_id = e.event_id
+            AND ws.user_id = e.user_id
         WHERE e.user_id = :user_id
         AND e.event_date BETWEEN :start_date AND :end_date
         ORDER BY e.event_date ASC, e.start_time ASC, e.event_id ASC
@@ -152,6 +190,7 @@ def get_event_by_id_for_user(user_id: int, event_id: int):
             e.event_date,
             e.start_time,
             e.end_time,
+            TIMESTAMP(e.event_date, e.end_time) AS event_datetime,
             e.event_type,
             e.description,
             e.notes,
@@ -159,12 +198,18 @@ def get_event_by_id_for_user(user_id: int, event_id: int):
             e.workout_day_id,
             wp.plan_name AS workout_plan_name,
             wd.day_label AS workout_day_label,
-            wd.day_order AS workout_day_order
+            wd.day_order AS workout_day_order,
+            ws.session_id,
+            ws.started_at AS session_started_at,
+            ws.ended_at AS session_ended_at
         FROM event e
         LEFT JOIN workout_plan wp
             ON wp.plan_id = e.workout_plan_id
         LEFT JOIN workout_day wd
             ON wd.day_id = e.workout_day_id
+        LEFT JOIN workout_session ws
+            ON ws.event_id = e.event_id
+            AND ws.user_id = e.user_id
         WHERE e.user_id = :user_id
         AND e.event_id = :event_id
         LIMIT 1
