@@ -24,7 +24,7 @@ def _get_coach_id():
     if not coach_id:
         return None
 
-    return coach_id
+    return int(coach_id)
 
 
 def _get_client_id_from_args():
@@ -33,7 +33,7 @@ def _get_client_id_from_args():
     if not coach_id:
         return None, None, (jsonify({"error": "Unauthorized"}), 401)
 
-    contract_id = request.args.get("contract_id")
+    contract_id = request.args.get("contract_id", type=int)
 
     if not contract_id:
         return None, None, (jsonify({"error": "contract_id is required"}), 400)
@@ -47,7 +47,7 @@ def _get_client_id_from_args():
             (jsonify({"error": "Client not found for this contract"}), 404),
         )
 
-    return coach_id, client_id, None
+    return coach_id, int(client_id), None
 
 
 def _get_client_id_from_body(data):
@@ -61,7 +61,7 @@ def _get_client_id_from_body(data):
     if not contract_id:
         return None, None, (jsonify({"error": "contract_id is required"}), 400)
 
-    client_id = getClientIdFromContract(contract_id, coach_id)
+    client_id = getClientIdFromContract(int(contract_id), coach_id)
 
     if not client_id:
         return (
@@ -70,12 +70,12 @@ def _get_client_id_from_body(data):
             (jsonify({"error": "Client not found for this contract"}), 404),
         )
 
-    return coach_id, client_id, None
+    return coach_id, int(client_id), None
 
 
 def _parse_date(value):
     try:
-        return date.fromisoformat(value)
+        return date.fromisoformat(str(value))
     except Exception:
         return None
 
@@ -139,7 +139,14 @@ def get_events_route():
     if not start_date or not end_date:
         return jsonify({"error": "Invalid start_date or end_date"}), 400
 
-    events = get_events_for_user_range(client_id, start_date, end_date)
+    if end_date < start_date:
+        return jsonify({"error": "end_date cannot be before start_date"}), 400
+
+    events = get_events_for_user_range(
+        user_id=client_id,
+        start_date=start_date,
+        end_date=end_date,
+    )
 
     return jsonify(events), 200
 
@@ -173,6 +180,9 @@ def create_event_route():
     if not event_date or not start_time or not end_time:
         return jsonify({"error": "Invalid date or time"}), 400
 
+    if end_time <= start_time:
+        return jsonify({"error": "end_time must be after start_time"}), 400
+
     is_valid, message = _validate_plan_day_for_client(
         client_id,
         data.get("workout_plan_id"),
@@ -200,7 +210,6 @@ def create_event_route():
 @manage_workouts_bp.route("/events", methods=["PATCH"])
 def update_event_route():
     data = request.get_json() or {}
-    print("PATCH WORKOUT EVENT DATA:", data)
 
     coach_id, client_id, error = _get_client_id_from_body(data)
 
@@ -231,6 +240,9 @@ def update_event_route():
 
     if not event_date or not start_time or not end_time:
         return jsonify({"error": "Invalid date or time"}), 400
+
+    if end_time <= start_time:
+        return jsonify({"error": "end_time must be after start_time"}), 400
 
     is_valid, message = _validate_plan_day_for_client(
         client_id,
@@ -266,17 +278,17 @@ def delete_event_route():
     if error:
         return error
 
-    event_id = request.args.get("event_id")
+    event_id = request.args.get("event_id", type=int)
 
     if not event_id:
         return jsonify({"error": "event_id is required"}), 400
 
-    deleted = delete_event(client_id, int(event_id))
+    deleted = delete_event(client_id, event_id)
 
     if not deleted:
         return jsonify({"error": "Workout event not found"}), 404
 
-    return jsonify({"success": True, "eventId": int(event_id)}), 200
+    return jsonify({"success": True, "eventId": event_id}), 200
 
 
 @manage_workouts_bp.route("/client-plans", methods=["GET"])
@@ -310,12 +322,12 @@ def get_plan_days_route():
     if error:
         return error
 
-    plan_id = request.args.get("plan_id")
+    plan_id = request.args.get("plan_id", type=int)
 
     if not plan_id:
         return jsonify({"error": "plan_id is required"}), 400
 
-    days = get_workout_plan_days(client_id, int(plan_id))
+    days = get_workout_plan_days(client_id, plan_id)
 
     return jsonify(days), 200
 
@@ -327,12 +339,12 @@ def get_coach_plan_days_route():
     if not coach_id:
         return jsonify({"error": "Unauthorized"}), 401
 
-    plan_id = request.args.get("plan_id")
+    plan_id = request.args.get("plan_id", type=int)
 
     if not plan_id:
         return jsonify({"error": "plan_id is required"}), 400
 
-    days = get_workout_plan_days(coach_id, int(plan_id))
+    days = get_workout_plan_days(coach_id, plan_id)
 
     return jsonify(days), 200
 

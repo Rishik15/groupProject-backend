@@ -53,7 +53,7 @@ def _session_belongs_to_user(user_id: int, session_id: int):
     return rows[0]
 
 
-def _format_strength_logs(rows, can_edit: bool):
+def _format_strength_logs(rows):
     strength_logs = []
 
     for row in rows:
@@ -72,14 +72,14 @@ def _format_strength_logs(rows, can_edit: bool):
                 "endedAt": _format_datetime(row.get("ended_at")),
                 "workoutPlanName": row.get("plan_name"),
                 "workoutDayLabel": row.get("day_label"),
-                "canEdit": can_edit,
+                "canEdit": bool(row["can_edit"]),
             }
         )
 
     return strength_logs
 
 
-def _format_cardio_logs(rows, can_edit: bool):
+def _format_cardio_logs(rows):
     cardio_logs = []
 
     for row in rows:
@@ -98,7 +98,7 @@ def _format_cardio_logs(rows, can_edit: bool):
                 "durationMin": row["duration_min"],
                 "calories": row["calories"],
                 "avgHr": row["avg_hr"],
-                "canEdit": can_edit,
+                "canEdit": bool(row["can_edit"]),
             }
         )
 
@@ -130,7 +130,13 @@ def get_activity_logs(user_id: int, session_id: int | None = None):
             ws.started_at,
             ws.ended_at,
             wp.plan_name,
-            wd.day_label
+            wd.day_label,
+            CASE
+                WHEN esl.performed_at >= CURDATE()
+                AND esl.performed_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+                THEN 1
+                ELSE 0
+            END AS can_edit
         FROM exercise_set_log esl
         JOIN exercise e
             ON e.exercise_id = esl.exercise_id
@@ -141,7 +147,6 @@ def get_activity_logs(user_id: int, session_id: int | None = None):
         LEFT JOIN workout_day wd
             ON wd.day_id = ws.workout_day_id
         WHERE ws.user_id = :user_id
-        AND ws.ended_at IS NOT NULL
         AND esl.performed_at >= CURDATE()
         AND esl.performed_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
     """
@@ -171,7 +176,13 @@ def get_activity_logs(user_id: int, session_id: int | None = None):
             distance_km,
             duration_min,
             calories,
-            avg_hr
+            avg_hr,
+            CASE
+                WHEN performed_at >= CURDATE()
+                AND performed_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+                THEN 1
+                ELSE 0
+            END AS can_edit
         FROM cardio_log
         WHERE user_id = :user_id
         AND performed_at >= CURDATE()
@@ -196,8 +207,8 @@ def get_activity_logs(user_id: int, session_id: int | None = None):
     return {
         "success": True,
         "sessionId": session_id,
-        "strengthLogs": _format_strength_logs(strength_rows, True),
-        "cardioLogs": _format_cardio_logs(cardio_rows, True),
+        "strengthLogs": _format_strength_logs(strength_rows),
+        "cardioLogs": _format_cardio_logs(cardio_rows),
     }
 
 
@@ -217,7 +228,13 @@ def get_full_activity_logs(user_id: int):
             ws.started_at,
             ws.ended_at,
             wp.plan_name,
-            wd.day_label
+            wd.day_label,
+            CASE
+                WHEN esl.performed_at >= CURDATE()
+                AND esl.performed_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+                THEN 1
+                ELSE 0
+            END AS can_edit
         FROM exercise_set_log esl
         JOIN exercise e
             ON e.exercise_id = esl.exercise_id
@@ -228,7 +245,6 @@ def get_full_activity_logs(user_id: int):
         LEFT JOIN workout_day wd
             ON wd.day_id = ws.workout_day_id
         WHERE ws.user_id = :user_id
-        AND ws.ended_at IS NOT NULL
         ORDER BY esl.performed_at DESC, esl.set_log_id DESC
         """,
         {"user_id": user_id},
@@ -247,7 +263,13 @@ def get_full_activity_logs(user_id: int):
             distance_km,
             duration_min,
             calories,
-            avg_hr
+            avg_hr,
+            CASE
+                WHEN performed_at >= CURDATE()
+                AND performed_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+                THEN 1
+                ELSE 0
+            END AS can_edit
         FROM cardio_log
         WHERE user_id = :user_id
         ORDER BY performed_at DESC, cardio_log_id DESC
@@ -259,8 +281,8 @@ def get_full_activity_logs(user_id: int):
 
     return {
         "success": True,
-        "strengthLogs": _format_strength_logs(strength_rows, False),
-        "cardioLogs": _format_cardio_logs(cardio_rows, False),
+        "strengthLogs": _format_strength_logs(strength_rows),
+        "cardioLogs": _format_cardio_logs(cardio_rows),
     }
 
 
