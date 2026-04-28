@@ -16,3 +16,4 @@ from . import getTodaysMeals
 from . import logMealFromPlan
 from . import getWeeklyCaloriesSummary
 from . import logFoodItem
+from . import getGoalsRoute
