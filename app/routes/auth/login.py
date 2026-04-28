@@ -8,6 +8,44 @@ from app.services.auth.coachApplicationStatus import getCoachApplicationStatus
 
 @auth_bp.route("/login", methods=["POST"])
 def login():
+    """
+    User login
+    ---
+    tags:
+      - auth
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [email, password]
+            properties:
+              email:
+                type: string
+              password:
+                type: string
+    responses:
+      200:
+        description: Login successful
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                roles:
+                  type: array
+                  items:
+                    type: string
+                user:
+                  type: object
+                coach_application_status:
+                  type: object
+      401:
+        description: Invalid credentials
+    """
     data = request.get_json() or {}
 
     email = data.get("email")

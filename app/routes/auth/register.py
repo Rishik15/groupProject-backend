@@ -10,6 +10,36 @@ from app.services.auth.coachApplicationStatus import getCoachApplicationStatus
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
+    """
+    Register user
+    ---
+    tags:
+      - auth
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [email, password, name, role]
+            properties:
+              email:
+                type: string
+              password:
+                type: string
+              name:
+                type: string
+              role:
+                type: string
+                enum: [client, coach]
+    responses:
+      200:
+        description: Registration successful
+      400:
+        description: Invalid role
+      409:
+        description: User already exists
+    """
     data = request.get_json() or {}
 
     email = data.get("email")
