@@ -9,6 +9,32 @@ from app.services.admin.coach_applications import (
 
 @admin_bp.route("/coach-applications/list", methods=["POST"])
 def admin_get_coach_applications():
+    """
+Get coach applications by status
+---
+tags:
+  - admin
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+responses:
+  200:
+    description: List of applications
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+  403:
+    description: Forbidden
+"""
     try:
         user_id = session.get("user_id")
 
@@ -42,6 +68,34 @@ def admin_get_coach_applications():
 
 @admin_bp.route("/coach-applications/approve", methods=["PATCH"])
 def admin_approve_coach_application():
+    """
+Approve coach application
+---
+tags:
+  - admin
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - application_id
+      properties:
+        application_id:
+          type: integer
+        admin_action:
+          type: string
+responses:
+  200:
+    description: Application approved
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+  403:
+    description: Forbidden
+"""
     try:
         user_id = session.get("user_id")
 

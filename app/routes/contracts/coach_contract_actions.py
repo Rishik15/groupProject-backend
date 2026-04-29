@@ -15,6 +15,17 @@ def _get_coach_id():
 
 @contract_bp.route("/getAllCoachSideContracts", methods=["GET"])
 def getAllCoachSideContracts():
+    """
+Get all coach contracts
+---
+tags:
+  - contracts
+responses:
+  200:
+    description: List of contracts
+  401:
+    description: Unauthorized
+"""
     c_id = _get_coach_id()
     if c_id is None:
         return (
@@ -38,6 +49,17 @@ def getAllCoachSideContracts():
 
 @contract_bp.route("/getCoachActiveContracts", methods=["GET"])
 def getCoachActiveContractsRoute():
+    """
+Get active coach contracts
+---
+tags:
+  - contracts
+responses:
+  200:
+    description: Active contracts
+  401:
+    description: Unauthorized
+"""
     c_id = _get_coach_id()
     if c_id is None:
         return (
@@ -51,6 +73,17 @@ def getCoachActiveContractsRoute():
 
 @contract_bp.route("/getCoachInactiveContracts", methods=["GET"])
 def getCoachInactiveContractsRoute():
+    """
+Get inactive coach contracts
+---
+tags:
+  - contracts
+responses:
+  200:
+    description: Inactive contracts
+  401:
+    description: Unauthorized
+"""
     c_id = _get_coach_id()
     if c_id is None:
         return (
@@ -64,6 +97,32 @@ def getCoachInactiveContractsRoute():
 
 @contract_bp.route("/coachAcceptContract", methods=["PATCH"])
 def coachAcceptContractRoute():
+    """
+Accept contract
+---
+tags:
+  - contracts
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - contract_id
+      properties:
+        contract_id:
+          type: integer
+responses:
+  200:
+    description: Contract accepted
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+  404:
+    description: Contract not found
+"""
     c_id = _get_coach_id()
     if c_id is None:
         return (
@@ -95,6 +154,32 @@ def coachAcceptContractRoute():
 @contract_bp.route("/coachRejectContract", methods=["PATCH"])
 @contract_bp.route("/coachRegjectContract", methods=["PATCH"]) 
 def coachRejectContractRoute():
+    """
+Reject contract
+---
+tags:
+  - contracts
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - contract_id
+      properties:
+        contract_id:
+          type: integer
+responses:
+  200:
+    description: Contract rejected
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+  404:
+    description: Contract not found
+"""
     c_id = _get_coach_id()
     if c_id is None:
         return (
@@ -121,6 +206,32 @@ def coachRejectContractRoute():
 
 @contract_bp.route("/coachTerminateContract", methods=["PATCH"])
 def coachTerminateContractRoute():
+    """
+Terminate contract
+---
+tags:
+  - contracts
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - contract_id
+      properties:
+        contract_id:
+          type: integer
+responses:
+  200:
+    description: Contract terminated
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+  404:
+    description: Contract not found
+"""
     c_id = _get_coach_id()
     if c_id is None:
         return (

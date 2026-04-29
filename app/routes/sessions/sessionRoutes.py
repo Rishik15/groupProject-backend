@@ -12,6 +12,17 @@ from app.services.sessions.sessionService import (
 
 @sessions_bp.route("/scheduled-today", methods=["GET"])
 def scheduled_today_route():
+    """
+Get today's scheduled sessions
+---
+tags:
+  - sessions
+responses:
+  200:
+    description: Scheduled sessions
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
 
     if not user_id:
@@ -24,6 +35,17 @@ def scheduled_today_route():
 
 @sessions_bp.route("/active", methods=["GET"])
 def active_session_route():
+    """
+Get active session
+---
+tags:
+  - sessions
+responses:
+  200:
+    description: Active session data
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
 
     if not user_id:
@@ -36,6 +58,30 @@ def active_session_route():
 
 @sessions_bp.route("/start-scheduled", methods=["POST"])
 def start_scheduled_session_route():
+    """
+Start scheduled session
+---
+tags:
+  - sessions
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - event_id
+      properties:
+        event_id:
+          type: integer
+responses:
+  200:
+    description: Session started
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
 
     if not user_id:
@@ -57,6 +103,24 @@ def start_scheduled_session_route():
 
 @sessions_bp.route("/session-exercises", methods=["GET"])
 def session_exercises_route():
+    """
+Get session exercises
+---
+tags:
+  - sessions
+parameters:
+  - name: session_id
+    in: query
+    type: integer
+    required: true
+responses:
+  200:
+    description: Session exercises
+  400:
+    description: Missing session_id
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
 
     if not user_id:
@@ -77,6 +141,30 @@ def session_exercises_route():
 
 @sessions_bp.route("/finish", methods=["PATCH"])
 def finish_session_route():
+    """
+Finish session
+---
+tags:
+  - sessions
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - session_id
+      properties:
+        session_id:
+          type: integer
+responses:
+  200:
+    description: Session finished
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
 
     if not user_id:

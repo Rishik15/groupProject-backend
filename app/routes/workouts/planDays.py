@@ -6,6 +6,24 @@ from app.services.workouts.workoutPlanDays import get_workout_plan_days
 
 @workouts_bp.route("/plan-days", methods=["GET"])
 def get_workout_plan_days_route():
+    """
+Get workout plan days
+---
+tags:
+  - workouts
+parameters:
+  - name: plan_id
+    in: query
+    type: integer
+    required: true
+responses:
+  200:
+    description: List of workout days
+  400:
+    description: Invalid or missing plan_id
+  401:
+    description: Unauthorized
+"""
     try:
         user_id = session.get("user_id")
 

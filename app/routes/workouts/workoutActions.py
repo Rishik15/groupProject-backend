@@ -83,6 +83,17 @@ def getExerciseInfo():
 
 @workoutAction_bp.route("/active", methods=["GET"])
 def getActiveWorkoutSession():
+    """
+Get active workout session
+---
+tags:
+  - workouts
+responses:
+  200:
+    description: Active session data
+  401:
+    description: Unauthorized
+"""
     try:
         u_id = session.get("user_id")
         if not u_id:
@@ -113,6 +124,27 @@ def getActiveWorkoutSession():
 
 @workoutAction_bp.route("/start", methods=["POST"])
 def startWorkoutSession():
+    """
+Start workout session
+---
+tags:
+  - workouts
+parameters:
+  - name: body
+    in: body
+    schema:
+      type: object
+      properties:
+        workout_plan_id:
+          type: integer
+        notes:
+          type: string
+responses:
+  201:
+    description: Workout session started
+  401:
+    description: Unauthorized
+"""
     try:
         u_id = session.get("user_id")
         if not u_id:
@@ -179,6 +211,30 @@ def getWorkoutSession():
 
 @workoutAction_bp.route("/mark_workout_done", methods=["PATCH"])
 def markDone():
+    """
+End workout session
+---
+tags:
+  - workouts
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - session_id
+      properties:
+        session_id:
+          type: integer
+responses:
+  200:
+    description: Workout session ended
+  400:
+    description: Invalid session
+  401:
+    description: Unauthorized
+"""
     try:
         data = request.get_json() or {}
         u_id = session.get("user_id")

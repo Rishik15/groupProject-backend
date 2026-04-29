@@ -6,6 +6,44 @@ from datetime import datetime
 
 @exerciseLog_bp.route("/log_weights", methods=["POST"])
 def logSets():
+    """
+Log weight training set
+---
+tags:
+  - workouts
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - session_id
+        - exercise_id
+        - set_number
+      properties:
+        session_id:
+          type: integer
+        exercise_id:
+          type: integer
+        set_number:
+          type: integer
+        reps:
+          type: integer
+        weight:
+          type: number
+        rpe:
+          type: number
+        datetimeFinished:
+          type: string
+responses:
+  200:
+    description: Set logged successfully
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+"""
     try:
         u_id = session.get("user_id")
         if not u_id:
@@ -74,6 +112,37 @@ def logSets():
 
 @exerciseLog_bp.route("/log_cardio", methods=["POST"])
 def logCardio():
+    """
+Log cardio activity
+---
+tags:
+  - workouts
+parameters:
+  - name: body
+    in: body
+    schema:
+      type: object
+      properties:
+        session_id:
+          type: integer
+        steps:
+          type: integer
+        distance_km:
+          type: number
+        duration_min:
+          type: integer
+        calories:
+          type: integer
+        avg_hr:
+          type: integer
+responses:
+  201:
+    description: Cardio logged successfully
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+"""
     try:
         u_id = session.get("user_id")
         if not u_id:

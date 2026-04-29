@@ -5,6 +5,44 @@ from app.services.nutrition.update_Meal_Plan import update_meal_plan
 
 @nutrition_bp.route("/meal-plans/update", methods=["PUT"])
 def update_meal_plan_route():
+    """
+Update meal plan
+---
+tags:
+  - nutrition
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - meal_plan_id
+      properties:
+        meal_plan_id:
+          type: integer
+        plan_name:
+          type: string
+        start_date:
+          type: string
+        end_date:
+          type: string
+        add_meals:
+          type: array
+        remove_meals:
+          type: array
+        update_servings:
+          type: array
+responses:
+  200:
+    description: Meal plan updated
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+  403:
+    description: Forbidden
+"""
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401

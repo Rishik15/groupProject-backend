@@ -5,6 +5,29 @@ from app.services.workouts.predefined_Plans import get_predefined_plans
 
 @workouts_bp.route("/predefined", methods=["POST"])
 def get_predefined_plans_route():
+    """
+Get predefined workout plans
+---
+tags:
+  - workouts
+parameters:
+  - name: body
+    in: body
+    schema:
+      type: object
+      properties:
+        category:
+          type: string
+        days_per_week:
+          type: integer
+        duration:
+          type: integer
+        level:
+          type: string
+responses:
+  200:
+    description: List of predefined plans
+"""
     data = request.get_json()
     category = data.get("category")
     days_per_week = data.get("days_per_week")

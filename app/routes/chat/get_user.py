@@ -10,7 +10,20 @@ from flask import request
 
 @chat_bp.route("/get_users", methods=["GET"])
 def get_users():
-
+    """
+Get chat users list
+---
+tags:
+  - chat
+parameters:
+  - name: mode
+    in: query
+    type: string
+    required: true
+responses:
+  200:
+    description: List of chat users
+"""
     user_id = session.get("user_id")
     mode = request.args.get("mode")
 
