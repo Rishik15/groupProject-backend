@@ -1,4 +1,5 @@
 import json
+from datetime import date, datetime
 from app import socketio
 from app.services import run_query
 
@@ -17,6 +18,23 @@ def _parse_metadata(metadata):
             return {}
 
     return {}
+
+
+def _serialize_notification(notification):
+    if not notification:
+        return None
+
+    cleaned = {}
+
+    for key, value in notification.items():
+        if isinstance(value, (datetime, date)):
+            cleaned[key] = value.isoformat()
+        else:
+            cleaned[key] = value
+
+    cleaned["metadata"] = _parse_metadata(cleaned.get("metadata"))
+
+    return cleaned
 
 
 def send_notification(
@@ -103,10 +121,7 @@ def send_notification(
         commit=False,
     )
 
-    notification = rows[0] if rows else None
-
-    if notification:
-        notification["metadata"] = _parse_metadata(notification.get("metadata"))
+    notification = _serialize_notification(rows[0]) if rows else None
 
     room = f"{user_id}:{mode}"
 

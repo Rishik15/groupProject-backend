@@ -9,34 +9,58 @@ from app.services.auth.settings import (
 from app.services.media import save_user_uploaded_image
 
 
+def _get_mode_from_query():
+    mode = request.args.get("mode")
+
+    if mode not in ["client", "coach", "admin"]:
+        raise ValueError("mode must be client, coach, or admin")
+
+    return mode
+
+
+def _get_mode_from_json(data):
+    mode = data.get("mode")
+
+    if mode not in ["client", "coach", "admin"]:
+        raise ValueError("mode must be client, coach, or admin")
+
+    return mode
+
+
+def _get_mode_from_form():
+    mode = request.form.get("mode")
+
+    if mode not in ["client", "coach", "admin"]:
+        raise ValueError("mode must be client, coach, or admin")
+
+    return mode
+
+
 @auth_bp.route("/settings", methods=["GET"])
 def get_settings():
-    """
-Get account settings
----
-tags:
-  - auth
-responses:
-  200:
-    description: User settings
-  401:
-    description: Unauthorized
-"""
     try:
         user_id = session.get("user_id")
-        role = session.get("role")
 
-        if not user_id or not role:
+        if not user_id:
             return jsonify({"error": "Unauthorized"}), 401
 
         user_id = int(user_id)
+        mode = _get_mode_from_query()
 
-        settings_payload = get_account_settings(user_id=user_id, role=role)
+        settings_payload = get_account_settings(user_id=user_id, role=mode)
 
-        return jsonify({
-            "message": "success",
-            "settings": settings_payload,
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": "success",
+                    "settings": settings_payload,
+                }
+            ),
+            200,
+        )
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -44,75 +68,55 @@ responses:
 
 @auth_bp.route("/settings", methods=["PATCH"])
 def patch_settings():
-    """
-Update account settings
----
-tags:
-  - auth
-parameters:
-  - name: body
-    in: body
-    schema:
-      type: object
-responses:
-  200:
-    description: Settings updated
-"""
     try:
         user_id = session.get("user_id")
-        role = session.get("role")
 
-        if not user_id or not role:
+        if not user_id:
             return jsonify({"error": "Unauthorized"}), 401
 
         data = request.get_json(silent=True) or {}
         user_id = int(user_id)
+        mode = _get_mode_from_json(data)
+
+        update_json = dict(data)
+        update_json.pop("mode", None)
 
         updated_settings = update_account_settings(
             user_id=user_id,
-            role=role,
-            update_json=data,
+            role=mode,
+            update_json=update_json,
         )
 
-        return jsonify({
-            "message": "success",
-            "settings": updated_settings,
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": "success",
+                    "settings": updated_settings,
+                }
+            ),
+            200,
+        )
 
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
 @auth_bp.route("/settings/profile-photo", methods=["POST"])
 def upload_profile_photo():
-    """
-Upload profile photo
----
-tags:
-  - auth
-consumes:
-  - multipart/form-data
-parameters:
-  - name: photo
-    in: formData
-    type: file
-    required: true
-responses:
-  200:
-    description: Photo uploaded
-"""
     try:
         user_id = session.get("user_id")
-        role = session.get("role")
 
-        if not user_id or not role:
+        if not user_id:
             return jsonify({"error": "Unauthorized"}), 401
 
         user_id = int(user_id)
+        mode = _get_mode_from_form()
 
         photo = request.files.get("photo")
+
         if photo is None:
             return jsonify({"error": "photo file is required"}), 400
 
@@ -127,15 +131,23 @@ responses:
 
         updated_settings = update_profile_picture(
             user_id=user_id,
-            role=role,
+            role=mode,
             photo_url=upload_result["photo_url"],
         )
 
-        return jsonify({
-            "message": "success",
-            "photo_url": upload_result["photo_url"],
-            "settings": updated_settings,
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": "success",
+                    "photo_url": upload_result["photo_url"],
+                    "settings": updated_settings,
+                }
+            ),
+            200,
+        )
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
 
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e)}), 50000

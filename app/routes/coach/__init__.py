@@ -16,3 +16,4 @@ from . import createExercises
 from . import myExercises
 from . import deleteCerts
 from . import activateCoachMode
+from . import price_updates

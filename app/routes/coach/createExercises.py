@@ -6,9 +6,13 @@ from app.services.coach.create_Exercise import create_exercise
 @coach_bp.route("/exercise/create", methods=["POST"])
 def create_exercise_route():
     coach_id = session.get("user_id")
-    role = session.get("role")
 
-    if not coach_id or role != "coach":
+    if not coach_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    mode = request.form.get("mode")
+
+    if mode != "coach":
         return jsonify({"error": "Unauthorized. Coach access only."}), 401
 
     exercise_name = request.form.get("name")
@@ -18,6 +22,7 @@ def create_exercise_route():
 
     if not exercise_name:
         return jsonify({"error": "exercise_name is required"}), 400
+
     if not equipment:
         return jsonify({"error": "equipment is required"}), 400
 
@@ -27,10 +32,21 @@ def create_exercise_route():
             exercise_name=exercise_name,
             equipment=equipment,
             description=description,
-            video_file=video_file
+            video_file=video_file,
         )
-        return jsonify({"message": "Exercise created successfully", "exercise": exercise}), 201
+
+        return (
+            jsonify(
+                {
+                    "message": "Exercise created successfully",
+                    "exercise": exercise,
+                }
+            ),
+            201,
+        )
+
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500

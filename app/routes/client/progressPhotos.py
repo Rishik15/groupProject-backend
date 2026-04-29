@@ -8,43 +8,21 @@ from app.services.client.progress_photos import (
 from app.services.media import save_user_uploaded_image
 
 
+def _validate_client_mode(mode):
+    if mode != "client":
+        raise PermissionError("Only clients can access progress photos")
+
+
 @client_bp.route("/progress-photo", methods=["POST"])
 def upload_progress_photo():
-    """
-Upload progress photo
----
-tags:
-  - client
-consumes:
-  - multipart/form-data
-parameters:
-  - name: photo
-    in: formData
-    type: file
-    required: true
-  - name: caption
-    in: formData
-    type: string
-  - name: taken_at
-    in: formData
-    type: string
-responses:
-  200:
-    description: Photo uploaded
-  401:
-    description: Unauthorized
-  403:
-    description: Forbidden
-"""
     try:
         user_id = session.get("user_id")
-        role = session.get("role")
 
-        if not user_id or not role:
+        if not user_id:
             return jsonify({"error": "Unauthorized"}), 401
 
-        if role != "client":
-            return jsonify({"error": "Only clients can upload progress photos"}), 403
+        mode = request.form.get("mode")
+        _validate_client_mode(mode)
 
         user_id = int(user_id)
 
@@ -71,11 +49,19 @@ responses:
             taken_at=taken_at,
         )
 
-        return jsonify({
-            "message": "success",
-            "progress_photo_id": progress_photo_id,
-            "photo_url": upload_result["photo_url"],
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": "success",
+                    "progress_photo_id": progress_photo_id,
+                    "photo_url": upload_result["photo_url"],
+                }
+            ),
+            200,
+        )
+
+    except PermissionError as e:
+        return jsonify({"error": str(e)}), 403
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -83,37 +69,31 @@ responses:
 
 @client_bp.route("/progress-photos", methods=["GET"])
 def list_progress_photos():
-    """
-Get progress photos
----
-tags:
-  - client
-responses:
-  200:
-    description: List of progress photos
-  401:
-    description: Unauthorized
-  403:
-    description: Forbidden
-"""
     try:
         user_id = session.get("user_id")
-        role = session.get("role")
 
-        if not user_id or not role:
+        if not user_id:
             return jsonify({"error": "Unauthorized"}), 401
 
-        if role != "client":
-            return jsonify({"error": "Only clients can access progress photos"}), 403
+        mode = request.args.get("mode")
+        _validate_client_mode(mode)
 
         user_id = int(user_id)
 
         photos = get_progress_photos(user_id)
 
-        return jsonify({
-            "message": "success",
-            "progressPhotos": photos if photos is not None else [],
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": "success",
+                    "progressPhotos": photos if photos is not None else [],
+                }
+            ),
+            200,
+        )
+
+    except PermissionError as e:
+        return jsonify({"error": str(e)}), 403
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500

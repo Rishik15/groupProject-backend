@@ -1,5 +1,6 @@
 from app.services import run_query
 from app.services.admin.dashboard import _is_admin
+from app.sockets.notifications.notifications import send_notification
 
 
 def _get_coach_price_request_row(request_id: int):
@@ -27,7 +28,7 @@ def _get_coach_price_request_row(request_id: int):
         """,
         params={"request_id": int(request_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     if not rows:
@@ -41,14 +42,24 @@ def _shape_coach_price_request(row):
         "request_id": row["request_id"],
         "coach_id": row["coach_id"],
         "coach_name": f'{row["first_name"]} {row["last_name"]}',
-        "current_price": float(row["current_price"]) if row["current_price"] is not None else None,
-        "proposed_price": float(row["proposed_price"]) if row["proposed_price"] is not None else None,
+        "current_price": (
+            float(row["current_price"]) if row["current_price"] is not None else None
+        ),
+        "proposed_price": (
+            float(row["proposed_price"]) if row["proposed_price"] is not None else None
+        ),
         "status": row["status"],
         "admin_action": row["admin_action"],
         "reviewed_by_admin_id": row["reviewed_by_admin_id"],
-        "reviewed_at": row["reviewed_at"].isoformat() if row["reviewed_at"] is not None else None,
-        "created_at": row["created_at"].isoformat() if row["created_at"] is not None else None,
-        "updated_at": row["updated_at"].isoformat() if row["updated_at"] is not None else None,
+        "reviewed_at": (
+            row["reviewed_at"].isoformat() if row["reviewed_at"] is not None else None
+        ),
+        "created_at": (
+            row["created_at"].isoformat() if row["created_at"] is not None else None
+        ),
+        "updated_at": (
+            row["updated_at"].isoformat() if row["updated_at"] is not None else None
+        ),
     }
 
 
@@ -80,7 +91,7 @@ def get_pending_coach_price_requests(user_id: int):
         ORDER BY cpr.created_at DESC, cpr.request_id DESC
         """,
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     return [_shape_coach_price_request(row) for row in rows]
@@ -103,16 +114,15 @@ def approve_coach_price_request(admin_user_id: int, request_id, admin_action=Non
     run_query(
         """
         UPDATE coach
-        SET
-            price = :proposed_price
+        SET price = :proposed_price
         WHERE coach_id = :coach_id
         """,
         params={
             "proposed_price": row["proposed_price"],
-            "coach_id": row["coach_id"]
+            "coach_id": row["coach_id"],
         },
         fetch=False,
-        commit=False
+        commit=False,
     )
 
     run_query(
@@ -128,14 +138,31 @@ def approve_coach_price_request(admin_user_id: int, request_id, admin_action=Non
         params={
             "admin_action": final_admin_action,
             "admin_id": admin_user_id,
-            "request_id": int(request_id)
+            "request_id": int(request_id),
         },
         fetch=False,
-        commit=True
+        commit=True,
     )
 
     updated_row = _get_coach_price_request_row(int(request_id))
-    return _shape_coach_price_request(updated_row)
+    shaped = _shape_coach_price_request(updated_row)
+
+    send_notification(
+        user_id=int(updated_row["coach_id"]),
+        mode="coach",
+        notification_type="profile_update",
+        title="Price change approved",
+        body=f"Your requested price of ${float(updated_row['proposed_price']):.2f} was approved.",
+        route="/coach/settings",
+        reference_id=int(request_id),
+        metadata={
+            "request_id": int(request_id),
+            "status": "approved",
+            "admin_action": final_admin_action,
+        },
+    )
+
+    return shaped
 
 
 def reject_coach_price_request(admin_user_id: int, request_id, admin_action=None):
@@ -165,11 +192,28 @@ def reject_coach_price_request(admin_user_id: int, request_id, admin_action=None
         params={
             "admin_action": final_admin_action,
             "admin_id": admin_user_id,
-            "request_id": int(request_id)
+            "request_id": int(request_id),
         },
         fetch=False,
-        commit=True
+        commit=True,
     )
 
     updated_row = _get_coach_price_request_row(int(request_id))
-    return _shape_coach_price_request(updated_row)
+    shaped = _shape_coach_price_request(updated_row)
+
+    send_notification(
+        user_id=int(updated_row["coach_id"]),
+        mode="coach",
+        notification_type="profile_update",
+        title="Price change rejected",
+        body=final_admin_action,
+        route="/coach/settings",
+        reference_id=int(request_id),
+        metadata={
+            "request_id": int(request_id),
+            "status": "rejected",
+            "admin_action": final_admin_action,
+        },
+    )
+
+    return shaped

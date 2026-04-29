@@ -13,38 +13,6 @@ def login():
     ---
     tags:
       - auth
-    requestBody:
-      required: true
-      content:
-        application/json:
-          schema:
-            type: object
-            required: [email, password]
-            properties:
-              email:
-                type: string
-              password:
-                type: string
-    responses:
-      200:
-        description: Login successful
-        content:
-          application/json:
-            schema:
-              type: object
-              properties:
-                success:
-                  type: boolean
-                roles:
-                  type: array
-                  items:
-                    type: string
-                user:
-                  type: object
-                coach_application_status:
-                  type: object
-      401:
-        description: Invalid credentials
     """
     data = request.get_json() or {}
 
@@ -61,13 +29,13 @@ def login():
 
     user_id = int(user["user_id"])
 
-    session.permanent = True
-    session["user_id"] = user_id
-    session["role"] = user["role"]
-
     roles = getUserRoles(user_id)
     user_info = getUserInfo(user_id)
     coach_application_status = getCoachApplicationStatus(user_id)
+
+    session.permanent = True
+    session["user_id"] = user_id
+    session["role"] = user["role"]
 
     return {
         "success": True,

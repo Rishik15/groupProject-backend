@@ -1,5 +1,6 @@
 from app.services import run_query
 from app.services.admin.dashboard import _is_admin
+from app.sockets.notifications.notifications import send_notification
 
 
 def _validate_report_status_filter(status: str):
@@ -23,7 +24,7 @@ def _get_report_row(report_id: int):
         """,
         params={"report_id": int(report_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     if not rows:
@@ -41,8 +42,10 @@ def _shape_report(row):
         "title": f"Report against user {row['reported_user_id']}",
         "description": row["reason"],
         "status": row["status"],
-        "submittedLabel": row["created_at"].isoformat() if row["created_at"] is not None else None,
-        "admin_action": row["admin_action"]
+        "submittedLabel": (
+            row["created_at"].isoformat() if row["created_at"] is not None else None
+        ),
+        "admin_action": row["admin_action"],
     }
 
 
@@ -68,7 +71,7 @@ def get_admin_reports(user_id: int, status: str):
             ORDER BY created_at DESC, report_id DESC
             """,
             fetch=True,
-            commit=False
+            commit=False,
         )
     else:
         rows = run_query(
@@ -86,7 +89,7 @@ def get_admin_reports(user_id: int, status: str):
             ORDER BY created_at DESC, report_id DESC
             """,
             fetch=True,
-            commit=False
+            commit=False,
         )
 
     return [_shape_report(row) for row in rows]
@@ -118,11 +121,28 @@ def close_admin_report(user_id: int, report_id: int, admin_action=None):
         params={
             "admin_action": final_admin_action,
             "admin_id": user_id,
-            "report_id": int(report_id)
+            "report_id": int(report_id),
         },
         fetch=False,
-        commit=True
+        commit=True,
     )
 
     updated_row = _get_report_row(int(report_id))
-    return _shape_report(updated_row)
+    shaped_report = _shape_report(updated_row)
+
+    send_notification(
+        user_id=int(updated_row["reporter_user_id"]),
+        mode="client",
+        notification_type="report",
+        title="Your report was reviewed",
+        body=final_admin_action,
+        route="/client/settings",
+        reference_id=int(report_id),
+        metadata={
+            "report_id": int(report_id),
+            "reported_user_id": int(updated_row["reported_user_id"]),
+            "admin_action": final_admin_action,
+        },
+    )
+
+    return shaped_report
