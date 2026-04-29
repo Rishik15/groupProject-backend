@@ -44,37 +44,49 @@ responses:
     description: Forbidden
 """
     user_id = session.get("user_id")
+
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
 
-    data            = request.get_json()
-    meal_plan_id    = data.get("meal_plan_id")
-    plan_name       = data.get("plan_name")
-    start_date      = data.get("start_date")
-    end_date        = data.get("end_date")
-    add_meals       = data.get("add_meals")
-    remove_meals    = data.get("remove_meals")
-    update_servings = data.get("update_servings")
+    data = request.get_json() or {}
+
+    meal_plan_id = data.get("meal_plan_id")
 
     if not meal_plan_id:
         return jsonify({"error": "meal_plan_id is required"}), 400
 
     try:
-        update_meal_plan(
-            user_id=user_id,
-            meal_plan_id=meal_plan_id,
-            plan_name=plan_name,
-            start_date=start_date,
-            end_date=end_date,
-            add_meals=add_meals,
-            remove_meals=remove_meals,
-            update_servings=update_servings
+        result = update_meal_plan(
+            user_id=int(user_id),
+            meal_plan_id=int(meal_plan_id),
+            plan_name=data.get("plan_name"),
+            start_date=data.get("start_date"),
+            end_date=data.get("end_date"),
+            add_meals=data.get("add_meals", []),
+            remove_meals=data.get("remove_meals", []),
+            update_servings=data.get("update_servings", []),
         )
+
+        return (
+            jsonify(
+                {
+                    "message": "Meal plan updated successfully",
+                    "meal_plan_id": result["meal_plan_id"],
+                    "total_calories": result["total_calories"],
+                    "deleted": result["deleted"],
+                }
+            ),
+            200,
+        )
+
     except PermissionError as e:
         return jsonify({"error": str(e)}), 403
+
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+
     except Exception as e:
         if "Duplicate entry" in str(e):
-            return jsonify({"error": f"Meal plan '{plan_name}' already exists"}), 409
-        return jsonify({"error": str(e)}), 500
+            return jsonify({"error": "A meal plan with this name already exists"}), 409
 
-    return jsonify({"message": "Meal plan updated successfully"}), 200
+        return jsonify({"error": str(e)}), 500

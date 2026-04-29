@@ -12,5 +12,7 @@ from . import coachReview
 from . import getClients
 from . import assignClientPlan
 from . import getCoachProfile
+from . import createExercises
+from . import myExercises
 from . import deleteCerts
 from . import activateCoachMode

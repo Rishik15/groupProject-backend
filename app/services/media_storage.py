@@ -91,7 +91,7 @@ def save_meal_image_for_user(user_id: int, uploaded_file):
         uploaded_file=uploaded_file,
         category=meal_category,
     )
-
+#-----------------------------------------------------------------------------------------
 
 ALLOWED_VIDEO_MIME_TYPES = {
     "video/mp4",
