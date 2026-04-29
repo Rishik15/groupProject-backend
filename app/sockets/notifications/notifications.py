@@ -1,6 +1,7 @@
 import json
 from datetime import date, datetime
-from app import socketio
+
+from app import socketio, online_users
 from app.services import run_query
 
 
@@ -35,6 +36,15 @@ def _serialize_notification(notification):
     cleaned["metadata"] = _parse_metadata(cleaned.get("metadata"))
 
     return cleaned
+
+
+def _is_user_online_in_mode(user_id: int, mode: str):
+    target_identity = f"{user_id}:{mode}"
+
+    return (
+        target_identity,
+        target_identity in online_users and online_users[target_identity],
+    )
 
 
 def send_notification(
@@ -123,15 +133,26 @@ def send_notification(
 
     notification = _serialize_notification(rows[0]) if rows else None
 
-    room = f"{user_id}:{mode}"
+    target_identity, is_online = _is_user_online_in_mode(user_id, mode)
 
-    print("SENDING NOTIFICATION TO ROOM:", room, notification)
+    print("NOTIFICATION CREATED:", notification)
+    print("TARGET IDENTITY:", target_identity)
+    print("IS ONLINE:", is_online)
 
-    socketio.emit("new_notification", notification, room=room)
+    if is_online and notification:
+        socketio.emit(
+            "new_notification",
+            notification,
+            room=target_identity,
+        )
 
-    if extra_event:
-        print("SENDING EXTRA EVENT TO ROOM:", room, extra_event, extra_payload)
-        socketio.emit(extra_event, extra_payload or {}, room=room)
+        if extra_event:
+            print("SENDING EXTRA EVENT:", extra_event, extra_payload)
+            socketio.emit(
+                extra_event,
+                extra_payload or {},
+                room=target_identity,
+            )
 
     return notification
 
@@ -141,6 +162,9 @@ def clear_notification(
     mode: str,
     notification_id: int,
 ):
+    if mode not in ["client", "coach"]:
+        raise ValueError("mode must be client or coach")
+
     run_query(
         """
         UPDATE notification
@@ -158,16 +182,21 @@ def clear_notification(
         commit=True,
     )
 
-    room = f"{user_id}:{mode}"
+    target_identity, is_online = _is_user_online_in_mode(user_id, mode)
 
-    socketio.emit(
-        "clear_notification",
-        {
-            "id": notification_id,
-            "notification_id": notification_id,
-        },
-        room=room,
-    )
+    print("CLEAR NOTIFICATION:", notification_id)
+    print("TARGET IDENTITY:", target_identity)
+    print("IS ONLINE:", is_online)
+
+    if is_online:
+        socketio.emit(
+            "clear_notification",
+            {
+                "id": notification_id,
+                "notification_id": notification_id,
+            },
+            room=target_identity,
+        )
 
     return True
 
@@ -177,6 +206,9 @@ def clear_notifications_by_type(
     mode: str,
     notification_type: str,
 ):
+    if mode not in ["client", "coach"]:
+        raise ValueError("mode must be client or coach")
+
     rows = run_query(
         """
         SELECT notification_id
@@ -212,15 +244,23 @@ def clear_notifications_by_type(
         commit=True,
     )
 
-    room = f"{user_id}:{mode}"
+    ids = [row["notification_id"] for row in rows]
 
-    socketio.emit(
-        "clear_notifications",
-        {
-            "ids": [row["notification_id"] for row in rows],
-            "type": notification_type,
-        },
-        room=room,
-    )
+    target_identity, is_online = _is_user_online_in_mode(user_id, mode)
+
+    print("CLEAR NOTIFICATIONS BY TYPE:", notification_type)
+    print("IDS:", ids)
+    print("TARGET IDENTITY:", target_identity)
+    print("IS ONLINE:", is_online)
+
+    if is_online:
+        socketio.emit(
+            "clear_notifications",
+            {
+                "ids": ids,
+                "type": notification_type,
+            },
+            room=target_identity,
+        )
 
     return True
