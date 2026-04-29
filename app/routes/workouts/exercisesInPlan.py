@@ -5,6 +5,22 @@ from flask import jsonify, request
 
 @workouts_bp.route("/workout-plan/exercises", methods=["GET"])
 def get_plan_exercises():
+    """
+Get exercises in workout plan
+---
+tags:
+  - workouts
+parameters:
+  - name: plan_id
+    in: query
+    type: integer
+    required: true
+responses:
+  200:
+    description: List of exercises in plan
+  400:
+    description: Missing or invalid plan_id
+"""
     plan_id = request.args.get('plan_id')
     
     if not plan_id:

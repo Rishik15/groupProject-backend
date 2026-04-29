@@ -11,6 +11,17 @@ from app.services.media import save_user_uploaded_image
 
 @auth_bp.route("/settings", methods=["GET"])
 def get_settings():
+    """
+Get account settings
+---
+tags:
+  - auth
+responses:
+  200:
+    description: User settings
+  401:
+    description: Unauthorized
+"""
     try:
         user_id = session.get("user_id")
         role = session.get("role")
@@ -33,6 +44,20 @@ def get_settings():
 
 @auth_bp.route("/settings", methods=["PATCH"])
 def patch_settings():
+    """
+Update account settings
+---
+tags:
+  - auth
+parameters:
+  - name: body
+    in: body
+    schema:
+      type: object
+responses:
+  200:
+    description: Settings updated
+"""
     try:
         user_id = session.get("user_id")
         role = session.get("role")
@@ -62,6 +87,22 @@ def patch_settings():
 
 @auth_bp.route("/settings/profile-photo", methods=["POST"])
 def upload_profile_photo():
+    """
+Upload profile photo
+---
+tags:
+  - auth
+consumes:
+  - multipart/form-data
+parameters:
+  - name: photo
+    in: formData
+    type: file
+    required: true
+responses:
+  200:
+    description: Photo uploaded
+"""
     try:
         user_id = session.get("user_id")
         role = session.get("role")

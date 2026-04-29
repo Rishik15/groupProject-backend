@@ -5,6 +5,39 @@ from app.services.nutrition.log_Meal_From_Plan import log_meal_from_plan
 
 @nutrition_bp.route("/meal-plans/log-meal", methods=["POST"])
 def log_meal_from_plan_route():
+    """
+Log meal from meal plan
+---
+tags:
+  - nutrition
+consumes:
+  - multipart/form-data
+parameters:
+  - name: meal_id
+    in: formData
+    type: integer
+    required: true
+  - name: eaten_at
+    in: formData
+    type: string
+    required: true
+  - name: servings
+    in: formData
+    type: number
+  - name: notes
+    in: formData
+    type: string
+  - name: photo
+    in: formData
+    type: file
+responses:
+  201:
+    description: Meal logged successfully
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
 
     if not user_id:

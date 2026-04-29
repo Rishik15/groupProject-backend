@@ -7,18 +7,14 @@ from datetime import datetime
 @workoutAction_bp.route("/getSWPids", methods=["GET"])
 def getPlanid_sessionId():
     """
-    returns
-        json {
-            "message": str,
-            "Sessions": [
-                {
-                    "session_id": int,
-                    "workout_plan_id": int,
-                    "plan_name": str
-                }
-            ]
-        }
-    """
+Get workout plan and session IDs
+---
+tags:
+  - workoutAction
+responses:
+  200:
+    description: Session mapping
+"""
     try:
         u_id = session.get("user_id")
         if not u_id:
@@ -39,23 +35,17 @@ def getPlanid_sessionId():
 @workoutAction_bp.route("/getExerciseInfo", methods=["GET"])
 def getExerciseInfo():
     """
-    returns
-        json {
-            "message": str,
-            "exercise_info": [
-                {
-                    "exercise_id": int,
-                    "order_in_workout": int,
-                    "sets_goal": int,
-                    "reps_goal": int,
-                    "weight_goal": float,
-                    "exercise_name": str,
-                    "equipment": str,
-                    "video_url": str
-                }
-            ]
-        }
-    """
+Get exercise info for workout plan
+---
+tags:
+  - workoutAction
+parameters:
+  - name: body
+    in: body
+responses:
+  200:
+    description: Exercise info
+"""
     try:
         u_id = session.get("user_id")
         if not u_id:
@@ -83,6 +73,17 @@ def getExerciseInfo():
 
 @workoutAction_bp.route("/active", methods=["GET"])
 def getActiveWorkoutSession():
+    """
+Get active workout session
+---
+tags:
+  - workouts
+responses:
+  200:
+    description: Active session data
+  401:
+    description: Unauthorized
+"""
     try:
         u_id = session.get("user_id")
         if not u_id:
@@ -113,6 +114,27 @@ def getActiveWorkoutSession():
 
 @workoutAction_bp.route("/start", methods=["POST"])
 def startWorkoutSession():
+    """
+Start workout session
+---
+tags:
+  - workouts
+parameters:
+  - name: body
+    in: body
+    schema:
+      type: object
+      properties:
+        workout_plan_id:
+          type: integer
+        notes:
+          type: string
+responses:
+  201:
+    description: Workout session started
+  401:
+    description: Unauthorized
+"""
     try:
         u_id = session.get("user_id")
         if not u_id:
@@ -145,6 +167,18 @@ def startWorkoutSession():
 
 @workoutAction_bp.route("/get_workout", methods=["GET"])
 def getWorkoutSession():
+    """
+Get workout session details
+---
+tags:
+  - workoutAction
+parameters:
+  - name: session_id
+    in: query
+responses:
+  200:
+    description: Workout session
+"""
     try:
         u_id = session.get("user_id")
         if not u_id:
@@ -179,6 +213,30 @@ def getWorkoutSession():
 
 @workoutAction_bp.route("/mark_workout_done", methods=["PATCH"])
 def markDone():
+    """
+End workout session
+---
+tags:
+  - workouts
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - session_id
+      properties:
+        session_id:
+          type: integer
+responses:
+  200:
+    description: Workout session ended
+  400:
+    description: Invalid session
+  401:
+    description: Unauthorized
+"""
     try:
         data = request.get_json() or {}
         u_id = session.get("user_id")
@@ -208,6 +266,20 @@ def markDone():
 
 @workoutAction_bp.route("/schedule", methods=["GET"])
 def getWorkoutSchedule():
+    """
+Get workout schedule
+---
+tags:
+  - workoutAction
+parameters:
+  - name: start_date
+    in: query
+  - name: end_date
+    in: query
+responses:
+  200:
+    description: Schedule events
+"""
     try:
         u_id = session.get("user_id")
         if not u_id:
@@ -243,6 +315,18 @@ def getWorkoutSchedule():
 
 @workoutAction_bp.route("/schedule", methods=["POST"])
 def createWorkoutScheduleEvent():
+    """
+Create workout schedule event
+---
+tags:
+  - workoutAction
+parameters:
+  - name: body
+    in: body
+responses:
+  201:
+    description: Event created
+"""
     try:
         u_id = session.get("user_id")
         if not u_id:
@@ -304,6 +388,18 @@ def createWorkoutScheduleEvent():
 
 @workoutAction_bp.route("/schedule/<int:event_id>", methods=["PATCH"])
 def updateWorkoutScheduleEvent(event_id):
+    """
+Update workout schedule event
+---
+tags:
+  - workoutAction
+parameters:
+  - name: event_id
+    in: path
+responses:
+  200:
+    description: Event updated
+"""
     try:
         u_id = session.get("user_id")
         if not u_id:
@@ -367,6 +463,18 @@ def updateWorkoutScheduleEvent(event_id):
 
 @workoutAction_bp.route("/schedule/<int:event_id>", methods=["DELETE"])
 def deleteWorkoutScheduleEvent(event_id):
+    """
+Delete workout schedule event
+---
+tags:
+  - workoutAction
+parameters:
+  - name: event_id
+    in: path
+responses:
+  200:
+    description: Event deleted
+"""
     try:
         u_id = session.get("user_id")
         if not u_id:

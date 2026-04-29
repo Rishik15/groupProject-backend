@@ -5,6 +5,39 @@ from app.services.payments.add_Payment_Method import add_payment_method
 
 @payments_bp.route("/add-card", methods=["POST"])
 def add_payment_method_route():
+    """
+Add payment method
+---
+tags:
+  - payments
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - card_number
+        - card_brand
+        - expiry_month
+        - expiry_year
+      properties:
+        card_number:
+          type: string
+        card_brand:
+          type: string
+        expiry_month:
+          type: integer
+        expiry_year:
+          type: integer
+responses:
+  201:
+    description: Payment method added
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+    """
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401

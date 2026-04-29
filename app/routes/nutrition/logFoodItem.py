@@ -6,6 +6,58 @@ import traceback
 
 @nutrition_bp.route("/log-food-item", methods=["POST"])
 def log_food_item_route():
+    """
+Log a food item
+---
+tags:
+  - nutrition
+consumes:
+  - multipart/form-data
+parameters:
+  - name: name
+    in: formData
+    type: string
+    required: true
+  - name: calories
+    in: formData
+    type: number
+    required: true
+  - name: protein
+    in: formData
+    type: number
+    required: true
+  - name: carbs
+    in: formData
+    type: number
+    required: true
+  - name: fats
+    in: formData
+    type: number
+    required: true
+  - name: servings
+    in: formData
+    type: number
+    required: false
+  - name: eaten_at
+    in: formData
+    type: string
+    required: true
+  - name: notes
+    in: formData
+    type: string
+    required: false
+  - name: photo
+    in: formData
+    type: file
+    required: false
+responses:
+  201:
+    description: Food item logged
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+    """
     user_id = session.get("user_id")
 
     if not user_id:

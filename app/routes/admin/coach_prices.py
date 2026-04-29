@@ -9,6 +9,19 @@ from app.services.admin.coach_prices import (
 
 @admin_bp.route("/coach-prices/pending", methods=["GET"])
 def admin_get_pending_coach_prices():
+    """
+Get pending coach price requests
+---
+tags:
+  - admin
+responses:
+  200:
+    description: List of price requests
+  401:
+    description: Unauthorized
+  403:
+    description: Forbidden
+"""
     try:
         user_id = session.get("user_id")
 
@@ -33,6 +46,34 @@ def admin_get_pending_coach_prices():
 
 @admin_bp.route("/coach-prices/approve", methods=["PATCH"])
 def admin_approve_coach_price():
+    """
+Approve coach price request
+---
+tags:
+  - admin
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - request_id
+      properties:
+        request_id:
+          type: integer
+        admin_action:
+          type: string
+responses:
+  200:
+    description: Request approved
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+  403:
+    description: Forbidden
+"""
     try:
         user_id = session.get("user_id")
 
@@ -68,6 +109,34 @@ def admin_approve_coach_price():
 
 @admin_bp.route("/coach-prices/reject", methods=["PATCH"])
 def admin_reject_coach_price():
+    """
+Reject coach price request
+---
+tags:
+  - admin
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - request_id
+      properties:
+        request_id:
+          type: integer
+        admin_action:
+          type: string
+responses:
+  200:
+    description: Request rejected
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+  403:
+    description: Forbidden
+"""
     try:
         user_id = session.get("user_id")
 

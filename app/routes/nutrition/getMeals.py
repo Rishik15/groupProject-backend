@@ -5,6 +5,17 @@ from app.services.nutrition.get_Meals import get_meals
 
 @nutrition_bp.route("/meals", methods=["GET"])
 def get_meals_route():
+    """
+Get available meals
+---
+tags:
+  - nutrition
+responses:
+  200:
+    description: List of meals
+  401:
+    description: Unauthorized
+"""
     if not session.get("user_id"):
         return jsonify({"error": "Unauthorized"}), 401
 

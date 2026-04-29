@@ -14,6 +14,19 @@ from app.services.predictions.markets import (
 
 @admin_bp.route("/predictions/review", methods=["GET"])
 def admin_get_prediction_review_queue():
+    """
+Get prediction markets pending review
+---
+tags:
+  - admin-predictions
+responses:
+  200:
+    description: Review queue
+  401:
+    description: Unauthorized
+  403:
+    description: Forbidden
+"""
     try:
         user_id = session.get("user_id")
 
@@ -39,6 +52,31 @@ def admin_get_prediction_review_queue():
 
 @admin_bp.route("/predictions/approve", methods=["PATCH"])
 def admin_approve_prediction_market():
+    """
+Approve prediction market
+---
+tags:
+  - admin-predictions
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required: [market_id]
+      properties:
+        market_id:
+          type: integer
+        admin_action:
+          type: string
+responses:
+  200:
+    description: Market approved
+  400:
+    description: Missing market_id
+  401:
+    description: Unauthorized
+"""
     try:
         user_id = session.get("user_id")
 
@@ -76,6 +114,27 @@ def admin_approve_prediction_market():
 
 @admin_bp.route("/predictions/reject", methods=["PATCH"])
 def admin_reject_prediction_market():
+    """
+Reject prediction market
+---
+tags:
+  - admin-predictions
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required: [market_id]
+      properties:
+        market_id:
+          type: integer
+        admin_action:
+          type: string
+responses:
+  200:
+    description: Market rejected
+"""
     try:
         user_id = session.get("user_id")
 
@@ -113,6 +172,15 @@ def admin_reject_prediction_market():
 
 @admin_bp.route("/predictions/pending-settlement", methods=["GET"])
 def admin_get_pending_settlement_queue():
+    """
+Get pending settlements
+---
+tags:
+  - admin-predictions
+responses:
+  200:
+    description: Pending settlement markets
+"""
     try:
         user_id = session.get("user_id")
 
@@ -138,6 +206,29 @@ def admin_get_pending_settlement_queue():
 
 @admin_bp.route("/predictions/settle", methods=["PATCH"])
 def admin_settle_prediction_market():
+    """
+Settle prediction market
+---
+tags:
+  - admin-predictions
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required: [market_id, result]
+      properties:
+        market_id:
+          type: integer
+        result:
+          type: string
+        admin_action:
+          type: string
+responses:
+  200:
+    description: Market settled
+"""
     try:
         user_id = session.get("user_id")
 
@@ -183,6 +274,15 @@ def admin_settle_prediction_market():
 
 @admin_bp.route("/predictions/cancel-review", methods=["GET"])
 def admin_get_prediction_cancel_review_queue():
+    """
+Get cancellation requests
+---
+tags:
+  - admin-predictions
+responses:
+  200:
+    description: Cancellation queue
+"""
     try:
         user_id = session.get("user_id")
 
@@ -208,6 +308,22 @@ def admin_get_prediction_cancel_review_queue():
 
 @admin_bp.route("/predictions/approve-cancel", methods=["PATCH"])
 def admin_approve_prediction_market_cancellation():
+    """
+Approve market cancellation
+---
+tags:
+  - admin-predictions
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required: [market_id]
+responses:
+  200:
+    description: Cancellation approved
+"""
     try:
         user_id = session.get("user_id")
 
@@ -245,6 +361,22 @@ def admin_approve_prediction_market_cancellation():
 
 @admin_bp.route("/predictions/reject-cancel", methods=["PATCH"])
 def admin_reject_prediction_market_cancellation():
+    """
+Reject market cancellation
+---
+tags:
+  - admin-predictions
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required: [market_id]
+responses:
+  200:
+    description: Cancellation rejected
+"""
     try:
         user_id = session.get("user_id")
 

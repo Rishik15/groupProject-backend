@@ -9,6 +9,17 @@ from app.services.auth.coachApplicationActivation import getCoachModeActivated
 
 @auth_bp.route("/me", methods=["GET"])
 def me():
+    """
+    Get current user
+    ---
+    tags:
+      - auth
+    responses:
+      200:
+        description: User data
+      401:
+        description: Not authenticated
+    """
     if "user_id" not in session:
         return {"authenticated": False}, 401
 

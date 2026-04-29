@@ -5,6 +5,49 @@ from app.services import run_query
 
 @workouts_bp.route("/create", methods=["POST"])
 def create_workout_plan_route():
+    """
+Create workout plan
+---
+tags:
+  - workouts
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - name
+        - days
+      properties:
+        name:
+          type: string
+        days:
+          type: array
+          items:
+            type: object
+            properties:
+              day_label:
+                type: string
+              exercises:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    exercise_id:
+                      type: integer
+                    sets:
+                      type: integer
+                    reps:
+                      type: integer
+responses:
+  201:
+    description: Workout plan created
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+    """
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"error": "Not logged in"}), 401

@@ -8,6 +8,28 @@ from app.utils.Contract.getClientId import getClientIdFromContract
 
 @calendar_bp.route("/events", methods=["GET"])
 def get_my_calendar_events():
+    """
+Get user calendar events
+---
+tags:
+  - calendar
+parameters:
+  - name: start_date
+    in: query
+    type: string
+    required: true
+  - name: end_date
+    in: query
+    type: string
+    required: true
+responses:
+  200:
+    description: Calendar events
+  400:
+    description: Invalid or missing dates
+  401:
+    description: Unauthorized
+"""
     try:
         user_id = session.get("user_id")
 
@@ -48,6 +70,31 @@ def get_my_calendar_events():
 
 @calendar_bp.route("/events", methods=["POST"])
 def create_my_workout_event():
+    """
+Create workout calendar event
+---
+tags:
+  - calendar
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - event_date
+        - start_time
+        - end_time
+        - workout_plan_id
+        - workout_day_id
+responses:
+  201:
+    description: Event created
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+"""
     try:
         user_id = session.get("user_id")
 
@@ -143,6 +190,30 @@ def create_my_workout_event():
 
 @calendar_bp.route("/events", methods=["PATCH"])
 def update_my_workout_event():
+    """
+Update workout event
+---
+tags:
+  - calendar
+parameters:
+  - name: event_id
+    in: query
+    type: integer
+    required: true
+  - name: body
+    in: body
+    schema:
+      type: object
+responses:
+  200:
+    description: Event updated
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+  404:
+    description: Event not found
+"""
     try:
         user_id = session.get("user_id")
         event_id = request.args.get("event_id")
@@ -291,6 +362,26 @@ def update_my_workout_event():
 
 @calendar_bp.route("/events", methods=["DELETE"])
 def delete_my_workout_event():
+    """
+Delete workout event
+---
+tags:
+  - calendar
+parameters:
+  - name: event_id
+    in: query
+    type: integer
+    required: true
+responses:
+  200:
+    description: Event deleted
+  400:
+    description: Invalid event_id
+  401:
+    description: Unauthorized
+  404:
+    description: Event not found
+"""
     try:
         user_id = session.get("user_id")
         event_id = request.args.get("event_id")
@@ -323,6 +414,34 @@ def delete_my_workout_event():
 
 @calendar_bp.route("/contracts/events", methods=["GET"])
 def get_contract_calendar_events():
+    """
+Get contract calendar events
+---
+tags:
+  - calendar
+parameters:
+  - name: contract_id
+    in: query
+    type: integer
+    required: true
+  - name: start_date
+    in: query
+    type: string
+    required: true
+  - name: end_date
+    in: query
+    type: string
+    required: true
+responses:
+  200:
+    description: Contract events
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+  403:
+    description: Forbidden
+"""
     try:
         coach_id = session.get("user_id")
         contract_id = request.args.get("contract_id")
@@ -367,6 +486,35 @@ def get_contract_calendar_events():
 
 @calendar_bp.route("/contracts/events", methods=["POST"])
 def create_contract_coach_session_event():
+    """
+Create coach session event
+---
+tags:
+  - calendar
+parameters:
+  - name: contract_id
+    in: query
+    type: integer
+    required: true
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - event_date
+        - start_time
+        - end_time
+responses:
+  201:
+    description: Coach session created
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+  403:
+    description: Forbidden
+"""
     try:
         coach_id = session.get("user_id")
         contract_id = request.args.get("contract_id")
@@ -442,6 +590,34 @@ def create_contract_coach_session_event():
 
 @calendar_bp.route("/contracts/events", methods=["PATCH"])
 def update_contract_coach_session_event():
+    """
+Update coach session event
+---
+tags:
+  - calendar
+parameters:
+  - name: contract_id
+    in: query
+    type: integer
+    required: true
+  - name: event_id
+    in: query
+    type: integer
+    required: true
+  - name: body
+    in: body
+    schema:
+      type: object
+responses:
+  200:
+    description: Coach session updated
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+  403:
+    description: Forbidden
+"""
     try:
         coach_id = session.get("user_id")
         contract_id = request.args.get("contract_id")
@@ -559,6 +735,30 @@ def update_contract_coach_session_event():
 
 @calendar_bp.route("/contracts/events", methods=["DELETE"])
 def delete_contract_coach_session_event():
+    """
+Delete coach session event
+---
+tags:
+  - calendar
+parameters:
+  - name: contract_id
+    in: query
+    type: integer
+    required: true
+  - name: event_id
+    in: query
+    type: integer
+    required: true
+responses:
+  200:
+    description: Coach session deleted
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+  403:
+    description: Forbidden
+"""
     try:
         coach_id = session.get("user_id")
         contract_id = request.args.get("contract_id")

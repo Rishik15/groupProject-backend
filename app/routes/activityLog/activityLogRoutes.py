@@ -13,6 +13,21 @@ from app.services.activityLog.activityLogService import (
 
 @activity_log_bp.route("/logs", methods=["GET"])
 def get_activity_logs_route():
+    """
+Get activity logs
+---
+tags:
+  - activity-log
+parameters:
+  - name: session_id
+    in: query
+    type: integer
+responses:
+  200:
+    description: Activity logs
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
 
     if not user_id:
@@ -31,6 +46,17 @@ def get_activity_logs_route():
 
 @activity_log_bp.route("/full-logs", methods=["GET"])
 def get_full_activity_logs_route():
+    """
+Get full activity history
+---
+tags:
+  - activity-log
+responses:
+  200:
+    description: Full activity logs
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
 
     if not user_id:
@@ -46,6 +72,22 @@ def get_full_activity_logs_route():
 
 @activity_log_bp.route("/strength", methods=["POST"])
 def log_strength_set_route():
+    """
+Log strength set
+---
+tags:
+  - activity-log
+parameters:
+  - name: body
+    in: body
+    schema:
+      type: object
+responses:
+  200:
+    description: Strength set logged
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
 
     if not user_id:
@@ -63,6 +105,28 @@ def log_strength_set_route():
 
 @activity_log_bp.route("/strength", methods=["PATCH"])
 def update_strength_set_route():
+    """
+Update strength set
+---
+tags:
+  - activity-log
+parameters:
+  - name: set_log_id
+    in: query
+    type: integer
+    required: true
+  - name: body
+    in: body
+    schema:
+      type: object
+responses:
+  200:
+    description: Strength set updated
+  400:
+    description: Missing set_log_id
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
 
     if not user_id:
@@ -85,6 +149,22 @@ def update_strength_set_route():
 
 @activity_log_bp.route("/cardio", methods=["POST"])
 def log_cardio_activity_route():
+    """
+Log cardio activity
+---
+tags:
+  - activity-log
+parameters:
+  - name: body
+    in: body
+    schema:
+      type: object
+responses:
+  200:
+    description: Cardio logged
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
 
     if not user_id:
@@ -102,6 +182,28 @@ def log_cardio_activity_route():
 
 @activity_log_bp.route("/cardio", methods=["PATCH"])
 def update_cardio_log_route():
+    """
+Update cardio log
+---
+tags:
+  - activity-log
+parameters:
+  - name: cardio_log_id
+    in: query
+    type: integer
+    required: true
+  - name: body
+    in: body
+    schema:
+      type: object
+responses:
+  200:
+    description: Cardio updated
+  400:
+    description: Missing cardio_log_id
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
 
     if not user_id:

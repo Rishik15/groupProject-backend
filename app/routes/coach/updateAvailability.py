@@ -4,6 +4,46 @@ from app.services.coach.update_Availability import update_coach_availability
 
 @coach_bp.route("/availability/update", methods=["POST"])
 def update_availability_route():
+    """
+Update coach availability
+---
+tags:
+  - coach
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      properties:
+        num_days:
+          type: integer
+        day_of_week:
+          type: array
+          items:
+            type: string
+        start_time:
+          type: array
+          items:
+            type: string
+        end_time:
+          type: array
+          items:
+            type: string
+        recurring:
+          type: array
+          items:
+            type: boolean
+        active:
+          type: array
+          items:
+            type: boolean
+responses:
+  200:
+    description: Availability updated
+  401:
+    description: Unauthorized
+    """
     u_id = session.get("user_id")
     role = session.get("role")
 

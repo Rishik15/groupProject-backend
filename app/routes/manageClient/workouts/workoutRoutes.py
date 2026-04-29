@@ -122,6 +122,32 @@ def _validate_plan_day_for_client(client_id, workout_plan_id, workout_day_id):
 
 @manage_workouts_bp.route("/events", methods=["GET"])
 def get_events_route():
+    """
+Get client workout events
+---
+tags:
+  - manage-client-workouts
+parameters:
+  - name: contract_id
+    in: query
+    type: integer
+    required: true
+  - name: start_date
+    in: query
+    type: string
+    required: true
+  - name: end_date
+    in: query
+    type: string
+    required: true
+responses:
+  200:
+    description: Events list
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+"""
     coach_id, client_id, error = _get_client_id_from_args()
 
     if error:
@@ -153,6 +179,32 @@ def get_events_route():
 
 @manage_workouts_bp.route("/events", methods=["POST"])
 def create_event_route():
+    """
+Create client workout event
+---
+tags:
+  - manage-client-workouts
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - contract_id
+        - event_date
+        - start_time
+        - end_time
+        - workout_plan_id
+        - workout_day_id
+responses:
+  201:
+    description: Event created
+  400:
+    description: Invalid input
+  403:
+    description: Invalid plan/day
+"""
     data = request.get_json() or {}
 
     coach_id, client_id, error = _get_client_id_from_body(data)
@@ -209,6 +261,26 @@ def create_event_route():
 
 @manage_workouts_bp.route("/events", methods=["PATCH"])
 def update_event_route():
+    """
+Update client workout event
+---
+tags:
+  - manage-client-workouts
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - contract_id
+        - event_id
+responses:
+  200:
+    description: Event updated
+  404:
+    description: Event not found
+"""
     data = request.get_json() or {}
 
     coach_id, client_id, error = _get_client_id_from_body(data)
@@ -273,6 +345,26 @@ def update_event_route():
 
 @manage_workouts_bp.route("/events", methods=["DELETE"])
 def delete_event_route():
+    """
+Delete client workout event
+---
+tags:
+  - manage-client-workouts
+parameters:
+  - name: contract_id
+    in: query
+    type: integer
+    required: true
+  - name: event_id
+    in: query
+    type: integer
+    required: true
+responses:
+  200:
+    description: Event deleted
+  404:
+    description: Event not found
+"""
     coach_id, client_id, error = _get_client_id_from_args()
 
     if error:
@@ -293,6 +385,20 @@ def delete_event_route():
 
 @manage_workouts_bp.route("/client-plans", methods=["GET"])
 def get_client_plans_route():
+    """
+Get client workout plans
+---
+tags:
+  - manage-client-workouts
+parameters:
+  - name: contract_id
+    in: query
+    type: integer
+    required: true
+responses:
+  200:
+    description: Client plans
+"""
     coach_id, client_id, error = _get_client_id_from_args()
 
     if error:
@@ -305,6 +411,15 @@ def get_client_plans_route():
 
 @manage_workouts_bp.route("/coach-plans", methods=["GET"])
 def get_coach_plans_route():
+    """
+Get coach workout plans
+---
+tags:
+  - manage-client-workouts
+responses:
+  200:
+    description: Coach plans
+"""
     coach_id = _get_coach_id()
 
     if not coach_id:
@@ -317,6 +432,24 @@ def get_coach_plans_route():
 
 @manage_workouts_bp.route("/plan-days", methods=["GET"])
 def get_plan_days_route():
+    """
+Get client plan days
+---
+tags:
+  - manage-client-workouts
+parameters:
+  - name: contract_id
+    in: query
+    type: integer
+    required: true
+  - name: plan_id
+    in: query
+    type: integer
+    required: true
+responses:
+  200:
+    description: Plan days
+"""
     coach_id, client_id, error = _get_client_id_from_args()
 
     if error:
@@ -334,6 +467,20 @@ def get_plan_days_route():
 
 @manage_workouts_bp.route("/coach-plan-days", methods=["GET"])
 def get_coach_plan_days_route():
+    """
+Get coach plan days
+---
+tags:
+  - manage-client-workouts
+parameters:
+  - name: plan_id
+    in: query
+    type: integer
+    required: true
+responses:
+  200:
+    description: Plan days
+"""
     coach_id = _get_coach_id()
 
     if not coach_id:
@@ -351,6 +498,31 @@ def get_coach_plan_days_route():
 
 @manage_workouts_bp.route("/assign-plan", methods=["POST"])
 def assign_plan_route():
+    """
+Assign workout plan to client
+---
+tags:
+  - manage-client-workouts
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - contract_id
+        - plan_id
+      properties:
+        contract_id:
+          type: integer
+        plan_id:
+          type: integer
+        note:
+          type: string
+responses:
+  200:
+    description: Plan assigned
+"""
     data = request.get_json() or {}
 
     coach_id, client_id, error = _get_client_id_from_body(data)
@@ -375,6 +547,15 @@ def assign_plan_route():
 
 @manage_workouts_bp.route("/system-plans", methods=["GET"])
 def get_system_plans_route():
+    """
+Get system workout plans
+---
+tags:
+  - manage-client-workouts
+responses:
+  200:
+    description: System plans
+"""
     coach_id = _get_coach_id()
 
     if not coach_id:

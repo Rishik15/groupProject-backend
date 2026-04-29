@@ -5,6 +5,17 @@ from app.services.nutrition.get_Weekly_Calories import get_weekly_calories
 
 @nutrition_bp.route("/getWeeklyCaloriesSummary", methods=["GET"])
 def get_weekly_calories_summary_route():
+    """
+Get weekly calorie summary
+---
+tags:
+  - nutrition
+responses:
+  200:
+    description: Weekly calorie summary
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
 
     if not user_id:

@@ -7,6 +7,7 @@ from app.config import Config
 from . import db, bcrypt
 from . import socketio
 
+from flasgger import Swagger
 
 def create_app():
     app = Flask(__name__, static_folder="../static")
@@ -41,7 +42,16 @@ def create_app():
         from app.sockets import register_socket_events
 
         register_socket_events(socketio)
+    
+    @app.route("/openapi.json", methods=["GET"])
+    def openapi_json():
+        return send_from_directory(
+            os.path.join(app.root_path, "..", "documentation"),
+            "openapi.json",
+        )
+    Swagger(app) 
 
     return app
 
 app = create_app()
+

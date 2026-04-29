@@ -5,6 +5,30 @@ from . import coach_bp
 
 @coach_bp.route("/update", methods=["PATCH"])
 def handle_update():
+    """
+Update coach profile
+---
+tags:
+  - coach
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      properties:
+        price:
+          type: number
+        coach_description:
+          type: string
+responses:
+  200:
+    description: Profile updated
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+    """
     try:
         user_id = session.get("user_id")
         data = request.get_json()

@@ -5,6 +5,28 @@ from app.services.admin.reports import get_admin_reports, close_admin_report
 
 @admin_bp.route("/reports/list", methods=["POST"])
 def admin_get_reports():
+    """
+Get reports by status
+---
+tags:
+  - admin
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+responses:
+  200:
+    description: List of reports
+  400:
+    description: Invalid input
+"""
     try:
         user_id = session.get("user_id")
 
@@ -38,6 +60,26 @@ def admin_get_reports():
 
 @admin_bp.route("/reports/close", methods=["PATCH"])
 def admin_close_report():
+    """
+Close report
+---
+tags:
+  - admin
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - report_id
+      properties:
+        report_id:
+          type: integer
+responses:
+  200:
+    description: Report closed
+"""
     try:
         user_id = session.get("user_id")
 

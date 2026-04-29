@@ -5,6 +5,38 @@ from app.services.client.report_Coach import create_user_report
 
 @client_bp.route("/reportCoach", methods=["POST"])
 def reportCoach():
+    """
+Report a coach
+---
+tags:
+  - client
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - coach_id
+        - reason
+        - description
+      properties:
+        coach_id:
+          type: integer
+        reason:
+          type: string
+        description:
+          type: string
+        terminate_requested:
+          type: boolean
+responses:
+  200:
+    description: Report submitted
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401

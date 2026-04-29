@@ -5,6 +5,17 @@ from app.services.admin.dashboard import get_dashboard_stats
 
 @admin_bp.route("/dashboard/health", methods=["GET"])
 def admin_health():
+    """
+Check admin route health
+---
+tags:
+  - admin
+responses:
+  200:
+    description: Admin routes active
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
 
     if not user_id:
@@ -18,6 +29,39 @@ def admin_health():
 
 @admin_bp.route("/dashboard/stats", methods=["GET"])
 def admin_dashboard_stats():
+    """
+Get admin dashboard statistics
+---
+tags:
+  - admin
+responses:
+  200:
+    description: Dashboard stats
+    schema:
+      type: object
+      properties:
+        message:
+          type: string
+        stats:
+          type: object
+          properties:
+            total_users:
+              type: integer
+            active_coaches:
+              type: integer
+            pending_reviews:
+              type: integer
+            pending_coach_applications:
+              type: integer
+            open_reports:
+              type: integer
+            monthly_revenue:
+              type: number
+  401:
+    description: Unauthorized
+  403:
+    description: Forbidden
+    """
     try:
         user_id = session.get("user_id")
 

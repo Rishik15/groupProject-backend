@@ -5,6 +5,17 @@ from app.services.dashboard.client.getDailyNutrition import getNutrition
 
 @dashboard_client_bp.route("/nutrition", methods=["GET"])
 def get_daily_nutrition_route():
+    """
+Get daily nutrition
+---
+tags:
+  - dashboard-client
+responses:
+  200:
+    description: Nutrition data
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
 
     if not user_id:

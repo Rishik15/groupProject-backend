@@ -10,6 +10,19 @@ from app.services.admin.exercises import (
 
 @admin_bp.route("/exercises", methods=["GET"])
 def admin_get_exercises():
+    """
+Get all exercises (admin)
+---
+tags:
+  - admin
+responses:
+  200:
+    description: List of exercises
+  401:
+    description: Unauthorized
+  403:
+    description: Forbidden
+"""
     try:
         user_id = session.get("user_id")
 
@@ -34,6 +47,29 @@ def admin_get_exercises():
 
 @admin_bp.route("/exercises", methods=["POST"])
 def admin_create_exercise():
+    """
+Create exercise
+---
+tags:
+  - admin
+parameters:
+  - name: body
+    in: body
+    schema:
+      type: object
+      properties:
+        exercise_name:
+          type: string
+        equipment:
+          type: string
+        video_url:
+          type: string
+responses:
+  201:
+    description: Exercise created
+  400:
+    description: Invalid input
+"""
     try:
         user_id = session.get("user_id")
 
@@ -73,6 +109,25 @@ def admin_create_exercise():
 
 @admin_bp.route("/exercises", methods=["PATCH"])
 def admin_update_exercise():
+    """
+Update exercise
+---
+tags:
+  - admin
+parameters:
+  - name: body
+    in: body
+    schema:
+      type: object
+      properties:
+        exercise_id:
+          type: integer
+        exercise_name:
+          type: string
+responses:
+  200:
+    description: Exercise updated
+"""
     try:
         user_id = session.get("user_id")
 
@@ -112,6 +167,23 @@ def admin_update_exercise():
 
 @admin_bp.route("/exercises", methods=["DELETE"])
 def admin_delete_exercise():
+    """
+Delete exercise
+---
+tags:
+  - admin
+parameters:
+  - name: body
+    in: body
+    schema:
+      type: object
+      properties:
+        exercise_id:
+          type: integer
+responses:
+  200:
+    description: Exercise deleted
+"""
     try:
         user_id = session.get("user_id")
 

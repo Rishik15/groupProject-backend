@@ -62,6 +62,22 @@ def get_client_from_contract(contract_id_raw, coach_id):
 
 @coach_session_bp.route("/events", methods=["GET"])
 def get_coach_session_events():
+    """
+Get coach session events
+---
+tags:
+  - coachsession
+parameters:
+  - name: start_date
+    in: query
+    type: string
+  - name: end_date
+    in: query
+    type: string
+responses:
+  200:
+    description: Events list
+"""
     try:
         coach_id = session.get("user_id")
 
@@ -97,6 +113,19 @@ def get_coach_session_events():
 
 @coach_session_bp.route("/events", methods=["POST"])
 def create_coach_session_event():
+    """
+Create coach session event
+---
+tags:
+  - coachsession
+parameters:
+  - name: body
+    in: body
+    required: true
+responses:
+  201:
+    description: Event created
+"""
     try:
         coach_id = session.get("user_id")
 
@@ -184,6 +213,19 @@ def create_coach_session_event():
 
 @coach_session_bp.route("/events", methods=["PATCH"])
 def update_coach_session_event():
+    """
+Update coach session event
+---
+tags:
+  - coachsession
+parameters:
+  - name: event_id
+    in: query
+    required: true
+responses:
+  200:
+    description: Event updated
+"""
     try:
         coach_id = session.get("user_id")
 
@@ -303,6 +345,19 @@ def update_coach_session_event():
 
 @coach_session_bp.route("/events", methods=["DELETE"])
 def delete_coach_session_event():
+    """
+Delete coach session event
+---
+tags:
+  - coachsession
+parameters:
+  - name: event_id
+    in: query
+    required: true
+responses:
+  200:
+    description: Event deleted
+"""
     try:
         coach_id = session.get("user_id")
 
@@ -340,6 +395,19 @@ def delete_coach_session_event():
 
 @coach_session_bp.route("/status", methods=["PATCH"])
 def update_coach_session_status():
+    """
+Update coach session status
+---
+tags:
+  - coachsession
+parameters:
+  - name: event_id
+    in: query
+    required: true
+responses:
+  200:
+    description: Status updated
+"""
     try:
         coach_id = session.get("user_id")
 
