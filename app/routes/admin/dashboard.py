@@ -5,6 +5,17 @@ from app.services.admin.dashboard import get_dashboard_stats
 
 @admin_bp.route("/dashboard/health", methods=["GET"])
 def admin_health():
+    """
+Check admin route health
+---
+tags:
+  - admin
+responses:
+  200:
+    description: Admin routes active
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
 
     if not user_id:

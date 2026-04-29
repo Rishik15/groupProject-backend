@@ -5,6 +5,17 @@ from app.services.survey.reward import reward_daily_survey
 
 @survey_bp.route("/daily/reward", methods=["POST"])
 def reward_daily_survey_route():
+    """
+Claim daily survey reward
+---
+tags:
+  - survey
+responses:
+  200:
+    description: Reward granted
+  401:
+    description: Unauthorized
+"""
     try:
         user_id = session.get("user_id")
 

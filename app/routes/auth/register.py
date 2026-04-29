@@ -85,6 +85,30 @@ def register():
 
 @auth_bp.route("/updateRole", methods=["POST"])
 def update_role():
+    """
+Update user role
+---
+tags:
+  - auth
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          enum: [client, coach]
+responses:
+  200:
+    description: Role updated
+  400:
+    description: Invalid role
+  401:
+    description: Unauthorized
+"""
     if "user_id" not in session:
         return {"error": "Unauthorized"}, 401
 

@@ -5,6 +5,17 @@ from app.services.metric.clientMetrics import clientMetrics
 
 @metric_bp.route("/clientMetrics", methods=["GET"])
 def getClientMetrics():
+    """
+Get client metrics
+---
+tags:
+  - metrics
+responses:
+  200:
+    description: Metrics data
+  401:
+    description: Unauthorized
+"""
     userId = session.get("user_id")
 
     if not userId:

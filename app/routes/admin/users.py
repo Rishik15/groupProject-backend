@@ -143,6 +143,31 @@ responses:
 
 @admin_bp.route("/users/deactivate", methods=["PATCH"])
 def admin_deactivate_user():
+    """
+Deactivate user (admin only)
+---
+tags:
+  - admin
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required: [user_id]
+      properties:
+        user_id:
+          type: integer
+        suspension_reason:
+          type: string
+responses:
+  200:
+    description: User deactivated
+  400:
+    description: Invalid input
+  403:
+    description: Forbidden
+"""
     try:
         user_id = session.get("user_id")
 

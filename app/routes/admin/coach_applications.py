@@ -127,6 +127,33 @@ responses:
 
 @admin_bp.route("/coach-applications/reject", methods=["PATCH"])
 def admin_reject_coach_application():
+    """
+Reject coach application
+---
+tags:
+  - admin
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required: [application_id]
+      properties:
+        application_id:
+          type: integer
+        admin_action:
+          type: string
+responses:
+  200:
+    description: Application rejected
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+  403:
+    description: Forbidden
+"""
     try:
         user_id = session.get("user_id")
 

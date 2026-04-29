@@ -5,6 +5,41 @@ from app.services.coach.update_certs import update_coach_certification
 
 @coach_bp.route("/certifications/update", methods=["PATCH"])
 def update_certification_route():
+    """
+Update coach certification
+---
+tags:
+  - coach
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required: [role, cert_id, cert_name, provider_name]
+      properties:
+        role:
+          type: string
+        cert_id:
+          type: integer
+        cert_name:
+          type: string
+        provider_name:
+          type: string
+        description:
+          type: string
+        expires_date:
+          type: string
+responses:
+  200:
+    description: Certification updated
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+  403:
+    description: Forbidden
+"""
     try:
 
         coach_id = session.get("user_id")

@@ -33,6 +33,15 @@ def _coerce_email_verified(value):
 
 @auth_bp.route("/googleLogin/start", methods=["GET"])
 def google_login_start():
+    """
+Start Google login
+---
+tags:
+  - auth-google
+responses:
+  302:
+    description: Redirect to Google
+"""
     session.pop("google_login_state", None)
     session.pop("google_login_code_verifier", None)
     session.pop("google_oauth_state", None)
@@ -57,6 +66,15 @@ def google_login_start():
 
 @auth_bp.route("/googleLogin/callback", methods=["GET"])
 def google_login_callback():
+    """
+Google login callback
+---
+tags:
+  - auth-google
+responses:
+  302:
+    description: Redirect after login
+"""
     saved_state = session.get("google_login_state")
     if not saved_state:
         return jsonify({"error": "Missing OAuth state"}), 400
@@ -129,6 +147,15 @@ def google_login_callback():
 
 @auth_bp.route("/googleLogin/status", methods=["GET"])
 def google_login_status():
+    """
+Google login callback
+---
+tags:
+  - auth-google
+responses:
+  302:
+    description: Redirect after login
+"""
     if "user_id" not in session:
         return jsonify({"authenticated": False}), 401
 
