@@ -83,8 +83,9 @@ class TestFormatStrengthLogs:
             "ended_at": None,
             "plan_name": "Push Day",
             "day_label": "Day 1",
+            "can_edit": 1,
         }]
-        result = _format_strength_logs(rows, can_edit=True)
+        result = _format_strength_logs(rows)
         assert len(result) == 1
         assert result[0]["exerciseName"] == "Bench Press"
         assert result[0]["weight"] == 100.0
@@ -92,7 +93,7 @@ class TestFormatStrengthLogs:
 
     def test_empty_rows_returns_empty_list(self):
         from app.services.activityLog.activityLogService import _format_strength_logs
-        assert _format_strength_logs([], can_edit=False) == []
+        assert _format_strength_logs([]) == []
 
     def test_null_weight_and_rpe(self):
         from app.services.activityLog.activityLogService import _format_strength_logs
@@ -101,9 +102,9 @@ class TestFormatStrengthLogs:
             "exercise_name": "Squat", "set_number": 1, "reps": 5,
             "weight": None, "rpe": None, "performed_at": None,
             "started_at": None, "ended_at": None,
-            "plan_name": None, "day_label": None,
+            "plan_name": None, "day_label": None, "can_edit": 0,
         }]
-        result = _format_strength_logs(rows, can_edit=False)
+        result = _format_strength_logs(rows)
         assert result[0]["weight"] is None
         assert result[0]["rpe"] is None
 
@@ -115,8 +116,9 @@ class TestFormatCardioLogs:
             "cardio_log_id": 1, "session_id": 10, "user_id": 2,
             "performed_at": "2024-01-01 10:00:00", "steps": 5000,
             "distance_km": 3.5, "duration_min": 30, "calories": 200, "avg_hr": 140,
+            "can_edit": 1,
         }]
-        result = _format_cardio_logs(rows, can_edit=True)
+        result = _format_cardio_logs(rows)
         assert result[0]["steps"] == 5000
         assert result[0]["distanceKm"] == 3.5
         assert result[0]["canEdit"] is True
@@ -127,8 +129,9 @@ class TestFormatCardioLogs:
             "cardio_log_id": 1, "session_id": 1, "user_id": 2,
             "performed_at": None, "steps": None,
             "distance_km": None, "duration_min": None, "calories": None, "avg_hr": None,
+            "can_edit": 0,
         }]
-        result = _format_cardio_logs(rows, can_edit=False)
+        result = _format_cardio_logs(rows)
         assert result[0]["distanceKm"] is None
 
 class TestGetActivityLogs:
@@ -140,12 +143,13 @@ class TestGetActivityLogs:
             "exercise_name": "Bench Press", "set_number": 1, "reps": 10,
             "weight": 100.0, "rpe": 8.0, "performed_at": "2024-01-01",
             "started_at": None, "ended_at": None,
-            "plan_name": None, "day_label": None,
+            "plan_name": None, "day_label": None, "can_edit": 1,
         }
         cardio_row = {
             "cardio_log_id": 1, "session_id": 10, "user_id": 2,
             "performed_at": "2024-01-01", "steps": 1000,
             "distance_km": 1.0, "duration_min": 10, "calories": 100, "avg_hr": 120,
+            "can_edit": 1,
         }
 
         with patch(f"{PatchTarget}.run_query", side_effect=[strength_row, cardio_row]):
@@ -198,7 +202,7 @@ class TestGetFullActivityLogs:
             "exercise_name": "Squat", "set_number": 1, "reps": 5,
             "weight": 120.0, "rpe": 9.0, "performed_at": "2024-01-01",
             "started_at": None, "ended_at": None,
-            "plan_name": "Leg Day", "day_label": "Day 2",
+            "plan_name": "Leg Day", "day_label": "Day 2", "can_edit": 0,
         }
 
         with patch(f"{PatchTarget}.run_query", side_effect=[[strength_row], []]):
