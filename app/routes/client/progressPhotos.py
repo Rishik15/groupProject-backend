@@ -10,6 +10,32 @@ from app.services.media import save_user_uploaded_image
 
 @client_bp.route("/progress-photo", methods=["POST"])
 def upload_progress_photo():
+    """
+Upload progress photo
+---
+tags:
+  - client
+consumes:
+  - multipart/form-data
+parameters:
+  - name: photo
+    in: formData
+    type: file
+    required: true
+  - name: caption
+    in: formData
+    type: string
+  - name: taken_at
+    in: formData
+    type: string
+responses:
+  200:
+    description: Photo uploaded
+  401:
+    description: Unauthorized
+  403:
+    description: Forbidden
+"""
     try:
         user_id = session.get("user_id")
         role = session.get("role")
@@ -57,6 +83,19 @@ def upload_progress_photo():
 
 @client_bp.route("/progress-photos", methods=["GET"])
 def list_progress_photos():
+    """
+Get progress photos
+---
+tags:
+  - client
+responses:
+  200:
+    description: List of progress photos
+  401:
+    description: Unauthorized
+  403:
+    description: Forbidden
+"""
     try:
         user_id = session.get("user_id")
         role = session.get("role")

@@ -27,6 +27,20 @@ def get_client_id_from_contract():
 
 @manage_dashboard_bp.route("/metrics", methods=["GET"])
 def getMetrics():
+    """
+Get client metrics (coach view)
+---
+tags:
+  - manage-client-dashboard
+parameters:
+  - name: contract_id
+    in: query
+    type: integer
+    required: true
+responses:
+  200:
+    description: Metrics data
+"""
     client_id, error = get_client_id_from_contract()
     if error:
         return error
@@ -36,6 +50,20 @@ def getMetrics():
 
 @manage_dashboard_bp.route("/calories", methods=["GET"])
 def get_calories_metrics():
+    """
+Get client calories (coach view)
+---
+tags:
+  - manage-client-dashboard
+parameters:
+  - name: contract_id
+    in: query
+    type: integer
+    required: true
+responses:
+  200:
+    description: Calories data
+"""
     client_id, error = get_client_id_from_contract()
     if error:
         return error
@@ -46,6 +74,20 @@ def get_calories_metrics():
 
 @manage_dashboard_bp.route("/nutrition", methods=["GET"])
 def get_daily_nutrition_route():
+    """
+Get client nutrition (coach view)
+---
+tags:
+  - manage-client-dashboard
+parameters:
+  - name: contract_id
+    in: query
+    type: integer
+    required: true
+responses:
+  200:
+    description: Nutrition data
+"""
     client_id, error = get_client_id_from_contract()
     if error:
         return error
@@ -56,6 +98,20 @@ def get_daily_nutrition_route():
 
 @manage_dashboard_bp.route("/weight", methods=["GET"])
 def get_weight_metrics():
+    """
+Get client weight (coach view)
+---
+tags:
+  - manage-client-dashboard
+parameters:
+  - name: contract_id
+    in: query
+    type: integer
+    required: true
+responses:
+  200:
+    description: Weight data
+"""
     client_id, error = get_client_id_from_contract()
     if error:
         return error
@@ -66,6 +122,20 @@ def get_weight_metrics():
 
 @manage_dashboard_bp.route("/workout-completion", methods=["GET"])
 def get_workout_completion():
+    """
+Get client workout completion (coach view)
+---
+tags:
+  - manage-client-dashboard
+parameters:
+  - name: contract_id
+    in: query
+    type: integer
+    required: true
+responses:
+  200:
+    description: Workout completion data
+"""
     client_id, error = get_client_id_from_contract()
     if error:
         return error

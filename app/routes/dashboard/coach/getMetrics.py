@@ -5,6 +5,17 @@ from app.services.dashboard.coach.getMetrics import get_coach_metrics
 
 @dashboard_coach_bp.route("/metric", methods=["GET"])
 def getCoachMetrics():
+    """
+Get coach metrics
+---
+tags:
+  - dashboard-coach
+responses:
+  200:
+    description: Coach metrics
+  401:
+    description: Unauthorized
+"""
     coach_id = session.get("user_id")
 
     if not coach_id:

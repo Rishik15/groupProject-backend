@@ -5,6 +5,17 @@ from app.services.dashboard.client.getWeight import get_user_weight
 
 @dashboard_client_bp.route("/weight", methods=["GET"])
 def get_weight_metrics():
+    """
+Get weight metrics
+---
+tags:
+  - dashboard-client
+responses:
+  200:
+    description: Weekly weight data
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
 
     if not user_id:

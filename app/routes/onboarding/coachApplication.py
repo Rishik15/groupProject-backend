@@ -6,6 +6,35 @@ from app.services.onboarding.coachApplication import addCoachApplication
 
 @onboard_bp.route("/coachApplication", methods=["POST"])
 def coach_application():
+    """
+Submit coach application
+---
+tags:
+  - onboarding
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - coach_description
+        - price
+      properties:
+        coach_description:
+          type: string
+        price:
+          type: number
+        years_experience:
+          type: integer
+responses:
+  200:
+    description: Application submitted
+  400:
+    description: Missing required fields
+  401:
+    description: Unauthorized
+"""
     try:
         data = request.get_json() or {}
 

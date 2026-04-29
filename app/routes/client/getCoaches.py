@@ -4,6 +4,17 @@ from app.services.client.get_Coaches import getUsersCoaches
 
 @client_bp.route("/getCoaches", methods=["GET"]) # Added .route here
 def getCoaches():
+    """
+Get user's coaches
+---
+tags:
+  - client
+responses:
+  200:
+    description: List of coaches
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
 
     if not user_id:

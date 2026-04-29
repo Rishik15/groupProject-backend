@@ -4,6 +4,30 @@ from flask import jsonify, request, session
 
 @client_bp.route("/update-metrics", methods=["PUT"]) 
 def handle_update_metrics():
+    """
+Update client metrics
+---
+tags:
+  - client
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      properties:
+        weight:
+          type: number
+        height:
+          type: number
+        goal_weight:
+          type: number
+responses:
+  200:
+    description: Metrics updated
+  400:
+    description: No fields provided
+"""
     data = request.get_json()
     u_id = session.get('user_id') or data.get('user_id')
     

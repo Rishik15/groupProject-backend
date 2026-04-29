@@ -14,6 +14,21 @@ def format_datetime(value):
 
 @payments_bp.route("/history", methods=["GET"])
 def get_payment_history_route():
+    """
+Get payment history
+---
+tags:
+  - payments
+responses:
+  200:
+    description: Payment history list
+    schema:
+      type: array
+      items:
+        type: object
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401

@@ -5,6 +5,32 @@ from app.services.payments.set_Default_Payment_Method import set_default_payment
 
 @payments_bp.route("/payment-methods/set-default", methods=["PUT"])
 def set_default_payment_method_route():
+    """
+Set default payment method
+---
+tags:
+  - payments
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - payment_method_id
+      properties:
+        payment_method_id:
+          type: integer
+responses:
+  200:
+    description: Default method updated
+  400:
+    description: Missing payment_method_id
+  401:
+    description: Unauthorized
+  404:
+    description: Not found
+"""
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401

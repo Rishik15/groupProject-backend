@@ -5,6 +5,17 @@ from app.services.dashboard.client.getWorkouts import get_workout_completion_ser
 
 @dashboard_client_bp.route("/workout-completion", methods=["GET"])
 def get_workout_completion():
+    """
+Get workout completion metrics
+---
+tags:
+  - dashboard-client
+responses:
+  200:
+    description: Workout completion data
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
 
     if not user_id:

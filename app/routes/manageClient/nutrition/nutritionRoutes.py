@@ -41,6 +41,20 @@ def to_number_or_none(value):
 
 @manage_nutrition_bp.route("/getNutritionToday", methods=["GET"])
 def get_nutrition_today_contract():
+    """
+Get client nutrition today
+---
+tags:
+  - manage-client-nutrition
+parameters:
+  - name: contract_id
+    in: query
+    type: integer
+    required: true
+responses:
+  200:
+    description: Nutrition data
+"""
     try:
         client_id, error = get_client_id_from_contract()
 
@@ -57,6 +71,20 @@ def get_nutrition_today_contract():
 
 @manage_nutrition_bp.route("/getWeeklyCaloriesSummary", methods=["GET"])
 def get_weekly_calories_summary_contract():
+    """
+Get client weekly calories
+---
+tags:
+  - manage-client-nutrition
+parameters:
+  - name: contract_id
+    in: query
+    type: integer
+    required: true
+responses:
+  200:
+    description: Weekly calories
+"""
     try:
         client_id, error = get_client_id_from_contract()
 
@@ -73,6 +101,20 @@ def get_weekly_calories_summary_contract():
 
 @manage_nutrition_bp.route("/goals", methods=["GET"])
 def get_nutrition_goals_contract():
+    """
+Get client nutrition goals
+---
+tags:
+  - manage-client-nutrition
+parameters:
+  - name: contract_id
+    in: query
+    type: integer
+    required: true
+responses:
+  200:
+    description: Nutrition goals
+"""
     try:
         client_id, error = get_client_id_from_contract()
 
@@ -89,6 +131,26 @@ def get_nutrition_goals_contract():
 
 @manage_nutrition_bp.route("/goals", methods=["POST", "PATCH"])
 def set_nutrition_goals_contract():
+    """
+Set client nutrition goals
+---
+tags:
+  - manage-client-nutrition
+parameters:
+  - name: contract_id
+    in: query
+    type: integer
+    required: true
+  - name: body
+    in: body
+    schema:
+      type: object
+responses:
+  200:
+    description: Goals updated
+  400:
+    description: No valid fields
+"""
     try:
         client_id, error = get_client_id_from_contract()
 

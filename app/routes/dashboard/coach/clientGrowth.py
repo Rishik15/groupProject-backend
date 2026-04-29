@@ -6,7 +6,17 @@ from app.services.dashboard.coach.getClientGrowth import getClientGrowthLast3Mon
 
 @dashboard_coach_bp.route("/clientGrowth", methods=["GET"])
 def client_growth():
-
+    """
+Get client growth metrics
+---
+tags:
+  - dashboard-coach
+responses:
+  200:
+    description: Client growth data
+  401:
+    description: Unauthorized
+"""
     if "user_id" not in session:
         return {"error": "Unauthorized"}, 401
 
