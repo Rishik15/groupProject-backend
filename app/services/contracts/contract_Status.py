@@ -24,7 +24,7 @@ def get_contract_status(user_id: int, coach_id: int):
 
     row = result[0]
 
-    if row["active"] == 1 and row["end_date"] is None:
+    if row["active"] == 1:
         return "active"
 
     if row["active"] == 0 and row["end_date"] is None:
@@ -45,7 +45,6 @@ def get_client_active_coach(user_id: int):
             ON ui.user_id = ucc.coach_id
         WHERE ucc.user_id = :user_id
           AND ucc.active = 1
-          AND ucc.end_date IS NULL
         ORDER BY ucc.created_at DESC
         LIMIT 1
         """,
