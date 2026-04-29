@@ -3,7 +3,6 @@ from datetime import timedelta
 from dotenv import load_dotenv
 
 load_dotenv("/app/.env")
-load_dotenv()
 
 
 class Config:
