@@ -164,7 +164,7 @@ class TestGetCoachReviewRoute:
         with patch(f"{ROUTE}.getReviews", return_value=dict(FAKE_REVIEW_DATA)):
             with patch(f"{ROUTE}.clientKnowsCoach", return_value=True):
                 with patch(f"{ROUTE}.hasExistingReview", return_value=False):
-                    res = auth_client.get("/coach/get_review?coach_id=3")
+                    res = auth_client.get("/coach/get_review?coach_id=3&mode=client")
         assert res.status_code == 200
         assert res.get_json()["can_review"] is True
 
@@ -172,7 +172,7 @@ class TestGetCoachReviewRoute:
         with patch(f"{ROUTE}.getReviews", return_value=dict(FAKE_REVIEW_DATA)):
             with patch(f"{ROUTE}.clientKnowsCoach", return_value=True):
                 with patch(f"{ROUTE}.hasExistingReview", return_value=True):
-                    res = auth_client.get("/coach/get_review?coach_id=3")
+                    res = auth_client.get("/coach/get_review?coach_id=3&mode=client")
         assert res.status_code == 200
         assert res.get_json()["can_review"] is False
 
@@ -183,32 +183,32 @@ class TestLeaveCoachReviewRoute:
         assert res.status_code == 401
 
     def test_missingCoachId(self, auth_client):
-        res = auth_client.post("/coach/leave_review", json={"rating": 5})
+        res = auth_client.post("/coach/leave_review", json={"rating": 5, "mode": "client"})
         assert res.status_code == 400
 
     def test_invalidCoachId(self, auth_client):
-        res = auth_client.post("/coach/leave_review", json={"coach_id": "abc", "rating": 5})
+        res = auth_client.post("/coach/leave_review", json={"coach_id": "abc", "rating": 5, "mode": "client"})
         assert res.status_code == 400
 
-    def test_onlyClientsCanReview(self, coach_client):
-        res = coach_client.post("/coach/leave_review", json={"coach_id": 3, "rating": 5})
+    def test_onlyClientsCanReview(self, auth_client):
+        res = auth_client.post("/coach/leave_review", json={"coach_id": 3, "rating": 5, "mode": "coach"})
         assert res.status_code == 403
 
     def test_clientDoesNotKnowCoach(self, auth_client):
         with patch(f"{ROUTE}.clientKnowsCoach", return_value=False):
-            res = auth_client.post("/coach/leave_review", json={"coach_id": 3, "rating": 5})
+            res = auth_client.post("/coach/leave_review", json={"coach_id": 3, "rating": 5, "mode": "client"})
         assert res.status_code == 403
 
     def test_alreadyReviewed(self, auth_client):
         with patch(f"{ROUTE}.clientKnowsCoach", return_value=True):
             with patch(f"{ROUTE}.hasExistingReview", return_value=True):
-                res = auth_client.post("/coach/leave_review", json={"coach_id": 3, "rating": 5})
+                res = auth_client.post("/coach/leave_review", json={"coach_id": 3, "rating": 5, "mode": "client"})
         assert res.status_code == 409
 
     def test_invalidRating(self, auth_client):
         with patch(f"{ROUTE}.clientKnowsCoach", return_value=True):
             with patch(f"{ROUTE}.hasExistingReview", return_value=False):
-                res = auth_client.post("/coach/leave_review", json={"coach_id": 3, "rating": 6})
+                res = auth_client.post("/coach/leave_review", json={"coach_id": 3, "rating": 6, "mode": "client"})
         assert res.status_code == 400
 
     def test_success(self, auth_client):
@@ -216,6 +216,6 @@ class TestLeaveCoachReviewRoute:
             with patch(f"{ROUTE}.hasExistingReview", return_value=False):
                 with patch(f"{ROUTE}.postReview", return_value=None):
                     res = auth_client.post("/coach/leave_review", json={
-                        "coach_id": 3, "rating": 5, "review_text": "Great coach!"
+                        "coach_id": 3, "rating": 5, "review_text": "Great coach!", "mode": "client"
                     })
         assert res.status_code == 200

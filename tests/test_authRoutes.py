@@ -42,13 +42,13 @@ class TestLoginRoute:
                 with patch(f"{LOGIN}.getUserRoles", return_value=FAKE_ROLES):
                     with patch(f"{LOGIN}.getUserInfo", return_value=FAKE_USER_INFO):
                         with patch(f"{LOGIN}.getCoachApplicationStatus", return_value=None):
-                            res = client.post("/auth/login", json={
-                                "email": "alex@example.com",
-                                "password": "Rishik@1"
-                            })
+                            with patch(f"{LOGIN}.maybe_send_daily_survey_notification", return_value=None):
+                                res = client.post("/auth/login", json={
+                                    "email": "alex@example.com",
+                                    "password": "Rishik@1"
+                                })
         assert res.status_code == 200
         assert res.get_json()["success"] is True
-
 
 class TestRegisterRoute:
     def test_invalidRole(self, client):
