@@ -4,7 +4,42 @@ from . import coach_bp
 
 @coach_bp.route("/certificates", methods=["POST"])
 def add_cert():
-
+    """
+Add coach certification
+---
+tags:
+  - coach
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - role
+        - cert_name
+        - provider_name
+      properties:
+        role:
+          type: string
+        cert_name:
+          type: string
+        provider_name:
+          type: string
+        description:
+          type: string
+        issued_date:
+          type: string
+          format: date
+        expires_date:
+          type: string
+          format: date
+responses:
+  201:
+    description: Certification added
+  403:
+    description: Forbidden
+    """
     coach_id = session.get("user_id")
 
     data = request.get_json()

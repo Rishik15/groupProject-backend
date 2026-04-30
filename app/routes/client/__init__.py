@@ -12,3 +12,5 @@ from . import updateProfile
 from . import progressPhotos
 from . import getCoaches
 from . import reportCoach
+from . import reports
+from . import getPreviousCoaches

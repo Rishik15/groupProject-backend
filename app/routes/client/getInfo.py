@@ -7,6 +7,17 @@ from app.services.client.getUserInfo import getUserInfo
 
 @client_bp.route("/getInfo", methods=["GET"])
 def getInfo():
+    """
+Get client info
+---
+tags:
+  - client
+responses:
+  200:
+    description: User info
+  401:
+    description: Not authenticated
+"""
     if "user_id" not in session:
         return {"authenticated": False}, 401
 

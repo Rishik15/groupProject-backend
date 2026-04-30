@@ -10,6 +10,15 @@ from app.services.admin.videos import (
 
 @admin_bp.route("/videos/pending", methods=["GET"])
 def admin_get_pending_videos():
+    """
+Get pending videos
+---
+tags:
+  - admin
+responses:
+  200:
+    description: List of pending videos
+"""
     try:
         user_id = session.get("user_id")
 
@@ -34,6 +43,23 @@ def admin_get_pending_videos():
 
 @admin_bp.route("/videos/approve", methods=["PATCH"])
 def admin_approve_video():
+    """
+Approve video
+---
+tags:
+  - admin
+parameters:
+  - name: body
+    in: body
+    schema:
+      type: object
+      properties:
+        exercise_id:
+          type: integer
+responses:
+  200:
+    description: Video approved
+"""
     try:
         user_id = session.get("user_id")
 
@@ -67,6 +93,25 @@ def admin_approve_video():
 
 @admin_bp.route("/videos/reject", methods=["PATCH"])
 def admin_reject_video():
+    """
+Reject video
+---
+tags:
+  - admin
+parameters:
+  - name: body
+    in: body
+    schema:
+      type: object
+      properties:
+        exercise_id:
+          type: integer
+        video_review_note:
+          type: string
+responses:
+  200:
+    description: Video rejected
+"""
     try:
         user_id = session.get("user_id")
 
@@ -102,6 +147,23 @@ def admin_reject_video():
 
 @admin_bp.route("/videos/remove", methods=["PATCH"])
 def admin_remove_video():
+    """
+Remove video
+---
+tags:
+  - admin
+parameters:
+  - name: body
+    in: body
+    schema:
+      type: object
+      properties:
+        exercise_id:
+          type: integer
+responses:
+  200:
+    description: Video removed
+"""
     try:
         user_id = session.get("user_id")
 

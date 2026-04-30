@@ -4,6 +4,15 @@ from flask import jsonify, session
 
 @auth_bp.route("/delete", methods=["DELETE"])
 def delete_user_account():
+    """
+Delete user account
+---
+tags:
+  - auth
+responses:
+  200:
+    description: Account deleted
+"""
     u_id = session.get('user_id')
 
     try:

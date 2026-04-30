@@ -10,6 +10,36 @@ from app.services.auth.coachApplicationStatus import getCoachApplicationStatus
 
 @auth_bp.route("/register", methods=["POST"])
 def register():
+    """
+    Register user
+    ---
+    tags:
+      - auth
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [email, password, name, role]
+            properties:
+              email:
+                type: string
+              password:
+                type: string
+              name:
+                type: string
+              role:
+                type: string
+                enum: [client, coach]
+    responses:
+      200:
+        description: Registration successful
+      400:
+        description: Invalid role
+      409:
+        description: User already exists
+    """
     data = request.get_json() or {}
 
     email = data.get("email")
@@ -55,6 +85,30 @@ def register():
 
 @auth_bp.route("/updateRole", methods=["POST"])
 def update_role():
+    """
+Update user role
+---
+tags:
+  - auth
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required: [role]
+      properties:
+        role:
+          type: string
+          enum: [client, coach]
+responses:
+  200:
+    description: Role updated
+  400:
+    description: Invalid role
+  401:
+    description: Unauthorized
+"""
     if "user_id" not in session:
         return {"error": "Unauthorized"}, 401
 

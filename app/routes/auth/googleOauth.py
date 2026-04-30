@@ -22,6 +22,15 @@ def _get_google_email_from_credentials(credentials):
 
 @auth_bp.route("/googleOauth/start", methods=["GET"])
 def google_oauth_start():
+    """
+Start Google Drive OAuth
+---
+tags:
+  - google-oauth
+responses:
+  302:
+    description: Redirect to Google
+"""
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
@@ -47,6 +56,15 @@ def google_oauth_start():
 
 @auth_bp.route("/googleOauth/callback", methods=["GET"])
 def google_oauth_callback():
+    """
+Callback Google Drive OAuth
+---
+tags:
+  - google-oauth
+responses:
+  302:
+    description: Redirect to Google
+"""
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
@@ -93,6 +111,15 @@ def google_oauth_callback():
 
 @auth_bp.route("/googleOauth/status", methods=["GET"])
 def google_oauth_status():
+    """
+Status Google Drive OAuth
+---
+tags:
+  - google-oauth
+responses:
+  302:
+    description: Redirect to Google
+"""
     if "user_id" not in session:
         return jsonify({"authenticated": False}), 401
 
@@ -116,6 +143,15 @@ def google_oauth_status():
 
 @auth_bp.route("/googleOauth/disconnect", methods=["POST"])
 def google_oauth_disconnect():
+    """
+Disconnect Google Drive OAuth
+---
+tags:
+  - google-oauth
+responses:
+  302:
+    description: Redirect to Google
+"""
     if "user_id" not in session:
         return jsonify({"error": "Unauthorized"}), 401
 
@@ -125,6 +161,15 @@ def google_oauth_disconnect():
 
 @auth_bp.route("/googleOauth/personal/start", methods=["GET"])
 def google_oauth_personal_start():
+    """
+Personal Start Google Drive OAuth
+---
+tags:
+  - google-oauth
+responses:
+  302:
+    description: Redirect to Google
+"""
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
@@ -150,6 +195,15 @@ def google_oauth_personal_start():
 
 @auth_bp.route("/googleOauth/personal/callback", methods=["GET"])
 def google_oauth_personal_callback():
+    """
+Callback Personal Google Drive OAuth
+---
+tags:
+  - google-oauth
+responses:
+  302:
+    description: Redirect to Google
+"""
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
@@ -194,6 +248,15 @@ def google_oauth_personal_callback():
 
 @auth_bp.route("/googleOauth/personal/status", methods=["GET"])
 def google_oauth_personal_status():
+    """
+Status Personal Google Drive OAuth
+---
+tags:
+  - google-oauth
+responses:
+  302:
+    description: Redirect to Google
+"""
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"authenticated": False}), 401
@@ -223,6 +286,15 @@ def google_oauth_personal_status():
 
 @auth_bp.route("/googleOauth/personal/disconnect", methods=["POST"])
 def google_oauth_personal_disconnect():
+    """
+Disconnect Personal Google Drive OAuth
+---
+tags:
+  - google-oauth
+responses:
+  302:
+    description: Redirect to Google
+"""
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
@@ -236,6 +308,15 @@ def google_oauth_personal_disconnect():
 
 @auth_bp.route("/googleOauth/effectiveStatus", methods=["GET"])
 def google_oauth_effective_status():
+    """
+Effective Status Google Drive OAuth
+---
+tags:
+  - google-oauth
+responses:
+  302:
+    description: Redirect to Google
+"""
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"authenticated": False}), 401

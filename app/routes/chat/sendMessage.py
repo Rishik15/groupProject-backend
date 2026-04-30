@@ -6,6 +6,36 @@ from app.services.chat.emitMessage import handle_emit_message
 
 @chat_bp.route("/sendMessage", methods=["POST"])
 def sendMessage():
+    """
+Send chat message
+---
+tags:
+  - chat
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - message
+        - conv_id
+        - sender_mode
+      properties:
+        message:
+          type: string
+        conv_id:
+          type: integer
+        sender_mode:
+          type: string
+responses:
+  200:
+    description: Message sent
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+"""
     try:
         data = request.get_json()
 

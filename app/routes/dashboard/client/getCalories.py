@@ -5,6 +5,17 @@ from app.services.dashboard.client.getCalories import get_calories_metrics_servi
 
 @dashboard_client_bp.route("/calories", methods=["GET"])
 def get_calories_metrics():
+    """
+Get calorie metrics
+---
+tags:
+  - dashboard-client
+responses:
+  200:
+    description: Weekly calories
+  401:
+    description: Unauthorized
+"""
     user_id = session.get("user_id")
 
     if not user_id:

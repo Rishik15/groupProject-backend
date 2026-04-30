@@ -4,6 +4,18 @@ from app.services.exercises.search_Exercises import search_exercises
 
 @exercise_bp.route("/search", methods=["POST"])
 def search_exercises_route():
+    """
+Search exercises
+---
+tags:
+  - exercise
+parameters:
+  - name: body
+    in: body
+responses:
+  200:
+    description: Exercise list
+"""
     data = request.get_json()
 
     # Mapping 'equipment' from JSON to 'filters' in the service

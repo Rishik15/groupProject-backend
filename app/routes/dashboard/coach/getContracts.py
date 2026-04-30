@@ -6,7 +6,17 @@ from app.services.dashboard.coach.getCoachContracts import getCoachContracts
 
 @dashboard_coach_bp.route("/contracts", methods=["GET"])
 def get_contracts():
-
+    """
+Get coach contracts summary
+---
+tags:
+  - dashboard-coach
+responses:
+  200:
+    description: Contracts breakdown
+  401:
+    description: Unauthorized
+"""
     if "user_id" not in session:
         return {"error": "Unauthorized"}, 401
 

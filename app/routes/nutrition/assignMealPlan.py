@@ -5,6 +5,36 @@ from app.services.nutrition.assign_Meal_Plan import assign_meal_plan
 
 @nutrition_bp.route("/meal-plans/assign", methods=["POST"])
 def assign_meal_plan_route():
+    """
+Assign meal plan to user
+---
+tags:
+  - nutrition
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - meal_plan_id
+      properties:
+        meal_plan_id:
+          type: integer
+        start_date:
+          type: string
+        force:
+          type: boolean
+responses:
+  201:
+    description: Meal plan assigned
+  400:
+    description: Invalid input
+  401:
+    description: Unauthorized
+  409:
+    description: Existing plan conflict
+"""
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401

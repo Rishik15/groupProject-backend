@@ -59,8 +59,7 @@ def requestContract(
         {"coach_id": coach_id},
         fetch=True,
         commit=False,
-        fetch=True,
-        commit=False,
+
     )
 
     if not coach_info:
@@ -130,6 +129,5 @@ def requestContract(
         },
         fetch=False,
         commit=True,
-        fetch=False,
-        commit=True,
+
     )

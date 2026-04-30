@@ -6,6 +6,40 @@ from app.services.onboarding import onboardUser
 
 @onboard_bp.route("/", methods=["POST"])
 def onboardSurvey():
+    """
+Submit onboarding survey
+---
+tags:
+  - onboarding
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - weight
+        - height
+        - dob
+      properties:
+        weight:
+          type: number
+        height:
+          type: number
+        dob:
+          type: string
+        goal_weight:
+          type: number
+        profile_picture:
+          type: string
+responses:
+  200:
+    description: Onboarding completed
+  400:
+    description: Missing required fields
+  401:
+    description: Unauthorized
+"""
     try:
         data = request.get_json() or {}
 

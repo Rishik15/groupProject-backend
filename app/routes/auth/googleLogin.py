@@ -5,6 +5,9 @@ from google.auth.transport.requests import Request
 
 from . import auth_bp
 from app.services.auth.googleLoginService import resolve_or_create_google_user
+from app.services.auth.getUser import getUserInfo
+from app.services.auth.getUserRoles import getUserRoles
+from app.services.auth.coachApplicationStatus import getCoachApplicationStatus
 
 
 def build_google_login_flow(state: str | None = None):
@@ -58,10 +61,12 @@ def google_login_start():
 @auth_bp.route("/googleLogin/callback", methods=["GET"])
 def google_login_callback():
     saved_state = session.get("google_login_state")
+
     if not saved_state:
         return jsonify({"error": "Missing OAuth state"}), 400
 
     code_verifier = session.get("google_login_code_verifier")
+
     if not code_verifier:
         return jsonify({"error": "Missing code verifier"}), 400
 
@@ -108,14 +113,12 @@ def google_login_callback():
     if user is None:
         return jsonify({"error": "Failed to resolve Google user"}), 500
 
-    session.permanent = True
-    session["user_id"] = user["user_id"]
-    session["auth_provider"] = "google"
+    user_id = int(user["user_id"])
 
-    if user.get("role"):
-        session["role"] = user["role"]
-    else:
-        session.pop("role", None)
+    session.permanent = True
+    session["user_id"] = user_id
+    session["auth_provider"] = "google"
+    session["role"] = user.get("role")
 
     session.pop("google_login_state", None)
     session.pop("google_login_code_verifier", None)
@@ -132,12 +135,21 @@ def google_login_status():
     if "user_id" not in session:
         return jsonify({"authenticated": False}), 401
 
+    user_id = int(session.get("user_id"))
+
+    roles = getUserRoles(user_id)
+    user_info = getUserInfo(user_id)
+    coach_application_status = getCoachApplicationStatus(user_id)
+
     return (
         jsonify(
             {
                 "authenticated": True,
-                "user_id": session.get("user_id"),
+                "user_id": user_id,
                 "role": session.get("role"),
+                "roles": roles,
+                "user": user_info,
+                "coach_application_status": coach_application_status,
                 "auth_provider": session.get("auth_provider", "password"),
             }
         ),

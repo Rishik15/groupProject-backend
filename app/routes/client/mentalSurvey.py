@@ -6,6 +6,32 @@ from datetime import date
 
 @client_bp.route("/mental-survey", methods=["POST"])
 def handle_mental_survey():
+    """
+Submit mental survey
+---
+tags:
+  - client
+parameters:
+  - name: body
+    in: body
+    required: true
+    schema:
+      type: object
+      required:
+        - mood_score
+      properties:
+        mood_score:
+          type: number
+        notes:
+          type: string
+responses:
+  201:
+    description: Survey recorded
+  400:
+    description: Missing fields
+  409:
+    description: Already submitted
+"""
     data = request.get_json()
     u_id = session.get('user_id') or data.get('user_id')
     score = data.get('mood_score')
