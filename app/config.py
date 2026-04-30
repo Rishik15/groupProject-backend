@@ -75,7 +75,7 @@ class Config:
 
     GOOGLE_OAUTH_CLIENT_SECRETS_FILE = os.getenv(
         "GOOGLE_OAUTH_CLIENT_SECRETS_FILE",
-        "/app/client_secret.json",
+        "/etc/secrets/client_secret.json",
     )
 
     GOOGLE_LOGIN_SCOPES = [
