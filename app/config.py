@@ -5,39 +5,68 @@ from dotenv import load_dotenv
 load_dotenv("/app/.env")
 
 
+def str_to_bool(value: str | None, default: bool = False) -> bool:
+    if value is None:
+        return default
+
+    return value.strip().lower() in ["true", "1", "yes", "y"]
+
+
 class Config:
-    SQLALCHEMY_DATABASE_URI = os.getenv(
-        "DATABASE_URL", "mysql+pymysql://root:root@db:3306/exercise_app"
-    )
+    SQLALCHEMY_DATABASE_URI = os.getenv("DATABASE_URL")
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
-    APP_TIMEZONE = os.getenv("APP_TIMEZONE", "UTC")
-    DB_TIMEZONE = os.getenv("DB_TIMEZONE", "+00:00")
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        "pool_pre_ping": True,
+        "pool_recycle": 280,
+        "pool_timeout": 30,
+        "connect_args": {
+            "connect_timeout": 10,
+            "read_timeout": 30,
+            "write_timeout": 30,
+            "charset": "utf8mb4",
+        },
+    }
+
+    CORS_ORIGIN = os.getenv("CORS_ORIGIN")
+
+    APP_TIMEZONE = os.getenv("APP_TIMEZONE", "America/New_York")
+    DB_TIMEZONE = os.getenv("DB_TIMEZONE", "-04:00")
 
     SECRET_KEY = os.getenv("SECRET_KEY")
 
     if not SECRET_KEY:
         raise RuntimeError("SECRET_KEY is missing. Set it in .env")
 
-    PERMANENT_SESSION_LIFETIME = timedelta(hours=4)
+    if not SQLALCHEMY_DATABASE_URI:
+        raise RuntimeError("DATABASE_URL is missing. Set it in .env")
+
+    if not CORS_ORIGIN:
+        raise RuntimeError("CORS_ORIGIN is missing. Set it in .env")
+
+    PERMANENT_SESSION_LIFETIME = timedelta(
+        hours=int(os.getenv("SESSION_LIFETIME_HOURS", "4"))
+    )
 
     SESSION_COOKIE_HTTPONLY = True
-    SESSION_COOKIE_SECURE = False
-    SESSION_COOKIE_SAMESITE = "Lax"
+    SESSION_COOKIE_SECURE = str_to_bool(os.getenv("SESSION_COOKIE_SECURE"), False)
+    SESSION_COOKIE_SAMESITE = os.getenv("SESSION_COOKIE_SAMESITE", "Lax")
 
-    MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", 200 * 1024 * 1024))
+    MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", str(16 * 1024 * 1024)))
 
     MEDIA_ROOT = os.getenv("MEDIA_ROOT", "/app/media")
     MEDIA_URL_PREFIX = os.getenv("MEDIA_URL_PREFIX", "/uploads")
     MEAL_IMAGES_SUBDIR = os.getenv("MEAL_IMAGES_SUBDIR", "meal_images")
 
+    GOOGLE_LOGIN_REDIRECT_URI = os.getenv("GOOGLE_LOGIN_REDIRECT_URI")
+    GOOGLE_LOGIN_FRONTEND_REDIRECT_URI = os.getenv("GOOGLE_LOGIN_FRONTEND_REDIRECT_URI")
+    GOOGLE_OAUTH_REDIRECT_URI = os.getenv("GOOGLE_OAUTH_REDIRECT_URI")
+
     GOOGLE_OAUTH_CLIENT_SECRETS_FILE = os.getenv(
-        "GOOGLE_OAUTH_CLIENT_SECRETS_FILE", "/app/client_secret.json"
+        "GOOGLE_OAUTH_CLIENT_SECRETS_FILE",
+        "/app/client_secret.json",
     )
 
-    GOOGLE_LOGIN_REDIRECT_URI = os.getenv(
-        "GOOGLE_LOGIN_REDIRECT_URI", "http://localhost:8080/auth/googleLogin/callback"
-    )
     GOOGLE_LOGIN_SCOPES = [
         scope.strip()
         for scope in os.getenv(
@@ -46,13 +75,7 @@ class Config:
         ).split(",")
         if scope.strip()
     ]
-    GOOGLE_LOGIN_FRONTEND_REDIRECT_URI = os.getenv(
-        "GOOGLE_LOGIN_FRONTEND_REDIRECT_URI", "http://localhost:5173"
-    )
 
-    GOOGLE_OAUTH_REDIRECT_URI = os.getenv(
-        "GOOGLE_OAUTH_REDIRECT_URI", "http://localhost:8080/auth/googleOauth/callback"
-    )
     GOOGLE_OAUTH_SCOPES = [
         scope.strip()
         for scope in os.getenv(
