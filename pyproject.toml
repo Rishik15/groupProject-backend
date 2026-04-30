@@ -5,6 +5,7 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
+    "cloudinary>=1.44.2",
     "cryptography>=46.0.5",
     "eventlet>=0.40.4",
     "flasgger>=0.9.7.1",
