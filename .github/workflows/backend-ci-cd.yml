@@ -3,15 +3,9 @@ name: Backend CI/CD
 on:
   push:
     branches: ["deployment"]
-    paths:
-      - "**"
-      - ".github/workflows/backend-ci-cd.yml"
 
   pull_request:
     branches: ["deployment"]
-    paths:
-      - "**"
-      - ".github/workflows/backend-ci-cd.yml"
 
 jobs:
   backend:
@@ -29,6 +23,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - name: Create .env file
+        run: |
+          cat > .env <<'EOF'
+          ${{ secrets.BACKEND_ENV_FILE }}
+          EOF
 
       - name: Install backend dependencies
         run: uv sync --dev
