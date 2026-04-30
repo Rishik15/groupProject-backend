@@ -1,6 +1,6 @@
 import os
 
-from flask import Flask, abort, send_from_directory, jsonify
+from flask import Flask, send_from_directory, jsonify
 from flask_cors import CORS
 from flasgger import Swagger
 from sqlalchemy import text
@@ -41,8 +41,6 @@ def create_app():
         cors_allowed_origins=app.config["CORS_ORIGIN"],
     )
 
-    os.makedirs(app.config["MEDIA_ROOT"], exist_ok=True)
-
     ping_database(app)
 
     @app.route("/health/db", methods=["GET"])
@@ -61,22 +59,6 @@ def create_app():
                 ),
                 500,
             )
-
-    @app.route("/uploads/<path:relative_path>", methods=["GET"])
-    def serve_uploaded_file(relative_path):
-        media_root = os.path.abspath(app.config["MEDIA_ROOT"])
-        requested_path = os.path.abspath(os.path.join(media_root, relative_path))
-
-        if not requested_path.startswith(media_root + os.sep):
-            abort(404)
-
-        if not os.path.isfile(requested_path):
-            abort(404)
-
-        directory = os.path.dirname(requested_path)
-        filename = os.path.basename(requested_path)
-
-        return send_from_directory(directory, filename)
 
     @app.route("/openapi.json", methods=["GET"])
     def openapi_json():

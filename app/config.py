@@ -2,7 +2,7 @@ import os
 from datetime import timedelta
 from dotenv import load_dotenv
 
-load_dotenv("/app/.env")
+load_dotenv()
 
 
 def str_to_bool(value: str | None, default: bool = False) -> bool:
@@ -54,9 +54,20 @@ class Config:
 
     MAX_CONTENT_LENGTH = int(os.getenv("MAX_CONTENT_LENGTH", str(16 * 1024 * 1024)))
 
-    MEDIA_ROOT = os.getenv("MEDIA_ROOT", "/app/media")
-    MEDIA_URL_PREFIX = os.getenv("MEDIA_URL_PREFIX", "/uploads")
     MEAL_IMAGES_SUBDIR = os.getenv("MEAL_IMAGES_SUBDIR", "meal_images")
+
+    CLOUDINARY_CLOUD_NAME = os.getenv("CLOUDINARY_CLOUD_NAME")
+    CLOUDINARY_API_KEY = os.getenv("CLOUDINARY_API_KEY")
+    CLOUDINARY_API_SECRET = os.getenv("CLOUDINARY_API_SECRET")
+
+    if not CLOUDINARY_CLOUD_NAME:
+        raise RuntimeError("CLOUDINARY_CLOUD_NAME is missing. Set it in .env")
+
+    if not CLOUDINARY_API_KEY:
+        raise RuntimeError("CLOUDINARY_API_KEY is missing. Set it in .env")
+
+    if not CLOUDINARY_API_SECRET:
+        raise RuntimeError("CLOUDINARY_API_SECRET is missing. Set it in .env")
 
     GOOGLE_LOGIN_REDIRECT_URI = os.getenv("GOOGLE_LOGIN_REDIRECT_URI")
     GOOGLE_LOGIN_FRONTEND_REDIRECT_URI = os.getenv("GOOGLE_LOGIN_FRONTEND_REDIRECT_URI")
