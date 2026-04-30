@@ -64,7 +64,8 @@ class TestRewardDailySurvey:
         with patch(f"{SVC}._get_user_row", return_value=FAKE_USER):
             with patch(f"{SVC}._get_or_create_wallet_row", return_value=FAKE_WALLET):
                 with patch(f"{SVC}._already_rewarded_today", return_value=True):
-                    result = reward_daily_survey(user_id=2)
+                    with patch(f"{SVC}.run_query", return_value=[{"balance": 100}]):
+                        result = reward_daily_survey(user_id=2)
         assert result["already_awarded"] is True
         assert result["points_awarded"] == 0
 
