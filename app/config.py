@@ -22,7 +22,7 @@ def get_env(name: str, default: str | None = None) -> str | None:
 
 
 class Config:
-    ENVIRONMENT = get_env("ENVIRONMENT", "development")
+    ENVIRONMENT = get_env("ENVIRONMENT", "production")
 
     LOCAL_DATABASE_URL = "mysql+pymysql://root:root@db:3306/exercise_app"
 

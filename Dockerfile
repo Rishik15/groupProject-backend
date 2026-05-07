@@ -8,6 +8,10 @@ COPY pyproject.toml uv.lock ./
 
 RUN uv sync
 
+COPY . .
+
 ENV PATH="/app/.venv/bin:$PATH"
 
 EXPOSE 8000
+
+CMD gunicorn --worker-class eventlet --workers 1 --bind 0.0.0.0:${PORT:-8000} --log-level info --access-logfile - --error-logfile - app.main:app
