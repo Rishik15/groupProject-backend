@@ -262,7 +262,8 @@ class TestGetTodaysMealsRoute:
 
     def test_success(self, auth_client):
         with patch(
-            f"{TODAYS_ROUTE}.get_todays_meals", return_value=[FAKE_MEAL]
+            f"{TODAYS_ROUTE}.get_todays_meals",
+            return_value=[FAKE_MEAL],
         ) as mock:
             res = auth_client.post(
                 "/nutrition/meal-plans/today",
@@ -271,7 +272,7 @@ class TestGetTodaysMealsRoute:
 
         assert res.status_code == 200
         mock.assert_called_once_with(
-            user_id=1,
+            user_id=2,
             meal_plan_id=1,
             user_timezone=TEST_TIMEZONE,
         )
@@ -328,7 +329,7 @@ class TestGetNutritionTodayRoute:
 
         assert res.status_code == 200
         mock.assert_called_once_with(
-            user_id=1,
+            user_id=2,
             user_timezone=TEST_TIMEZONE,
         )
 

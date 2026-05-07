@@ -213,7 +213,8 @@ class TestOnboardSurveyRoute:
 
     def test_success_with_all_fields(self, auth_client):
         with patch(
-            f"{ROUTE}.onboardUser.onboardClientSurvey", return_value=None
+            f"{ROUTE}.onboardUser.onboardClientSurvey",
+            return_value=None,
         ) as mock:
             res = auth_client.post(
                 "/onboard/",
@@ -230,7 +231,7 @@ class TestOnboardSurveyRoute:
         assert res.get_json()["message"] == "Client onboarding completed successfully"
 
         mock.assert_called_once_with(
-            user_id=1,
+            user_id=2,
             profile_picture=None,
             weight=70.0,
             height=175.0,
@@ -240,7 +241,8 @@ class TestOnboardSurveyRoute:
 
     def test_success_goal_weight_defaults_to_weight(self, auth_client):
         with patch(
-            f"{ROUTE}.onboardUser.onboardClientSurvey", return_value=None
+            f"{ROUTE}.onboardUser.onboardClientSurvey",
+            return_value=None,
         ) as mock:
             res = auth_client.post(
                 "/onboard/",
@@ -254,7 +256,7 @@ class TestOnboardSurveyRoute:
         assert res.status_code == 200
 
         mock.assert_called_once_with(
-            user_id=1,
+            user_id=2,
             profile_picture=None,
             weight=70.0,
             height=175.0,
@@ -264,7 +266,8 @@ class TestOnboardSurveyRoute:
 
     def test_success_with_datetime_dob(self, auth_client):
         with patch(
-            f"{ROUTE}.onboardUser.onboardClientSurvey", return_value=None
+            f"{ROUTE}.onboardUser.onboardClientSurvey",
+            return_value=None,
         ) as mock:
             res = auth_client.post(
                 "/onboard/",
@@ -278,7 +281,7 @@ class TestOnboardSurveyRoute:
         assert res.status_code == 200
 
         mock.assert_called_once_with(
-            user_id=1,
+            user_id=2,
             profile_picture=None,
             weight=70.0,
             height=175.0,
