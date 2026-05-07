@@ -2,6 +2,7 @@ from . import test_bp
 from app.services.test.returnTables import tservice
 from flask import jsonify
 
+
 @test_bp.route("/tables", methods=["GET"])
 def testBackend():
     try:
