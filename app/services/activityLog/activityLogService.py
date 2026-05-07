@@ -1,3 +1,5 @@
+from datetime import datetime, timedelta, timezone
+
 from app.services import run_query
 
 
@@ -21,11 +23,61 @@ def _to_float(value):
         return None
 
 
+def _parse_utc_datetime(value):
+    if value is None or value == "":
+        return None
+
+    try:
+        cleaned_value = str(value).strip().replace("Z", "+00:00")
+        parsed_datetime = datetime.fromisoformat(cleaned_value)
+
+        if parsed_datetime.tzinfo is None:
+            parsed_datetime = parsed_datetime.replace(tzinfo=timezone.utc)
+
+        utc_datetime = parsed_datetime.astimezone(timezone.utc)
+
+        return utc_datetime.strftime("%Y-%m-%d %H:%M:%S")
+    except (ValueError, TypeError):
+        return None
+
+
+def _get_today_utc_range(today_start_utc=None, today_end_utc=None):
+    start_utc = _parse_utc_datetime(today_start_utc)
+    end_utc = _parse_utc_datetime(today_end_utc)
+
+    if start_utc and end_utc:
+        return start_utc, end_utc
+
+    start_of_day_utc = datetime.now(timezone.utc).replace(
+        hour=0,
+        minute=0,
+        second=0,
+        microsecond=0,
+    )
+    end_of_day_utc = start_of_day_utc + timedelta(days=1)
+
+    return (
+        start_of_day_utc.strftime("%Y-%m-%d %H:%M:%S"),
+        end_of_day_utc.strftime("%Y-%m-%d %H:%M:%S"),
+    )
+
+
 def _format_datetime(value):
     if value is None:
         return None
 
-    return str(value)
+    if isinstance(value, datetime):
+        parsed_datetime = value
+    else:
+        try:
+            parsed_datetime = datetime.fromisoformat(str(value).replace(" ", "T"))
+        except (ValueError, TypeError):
+            return str(value)
+
+    if parsed_datetime.tzinfo is None:
+        parsed_datetime = parsed_datetime.replace(tzinfo=timezone.utc)
+
+    return parsed_datetime.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def _session_belongs_to_user(user_id: int, session_id: int):
@@ -105,7 +157,17 @@ def _format_cardio_logs(rows):
     return cardio_logs
 
 
-def get_activity_logs(user_id: int, session_id: int | None = None):
+def get_activity_logs(
+    user_id: int,
+    session_id: int | None = None,
+    today_start_utc: str | None = None,
+    today_end_utc: str | None = None,
+):
+    today_start_utc, today_end_utc = _get_today_utc_range(
+        today_start_utc,
+        today_end_utc,
+    )
+
     if session_id:
         session_row = _session_belongs_to_user(user_id, session_id)
 
@@ -132,8 +194,8 @@ def get_activity_logs(user_id: int, session_id: int | None = None):
             wp.plan_name,
             wd.day_label,
             CASE
-                WHEN esl.performed_at >= CURDATE()
-                AND esl.performed_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+                WHEN esl.performed_at >= :today_start_utc
+                AND esl.performed_at < :today_end_utc
                 THEN 1
                 ELSE 0
             END AS can_edit
@@ -147,11 +209,15 @@ def get_activity_logs(user_id: int, session_id: int | None = None):
         LEFT JOIN workout_day wd
             ON wd.day_id = ws.workout_day_id
         WHERE ws.user_id = :user_id
-        AND esl.performed_at >= CURDATE()
-        AND esl.performed_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+        AND esl.performed_at >= :today_start_utc
+        AND esl.performed_at < :today_end_utc
     """
 
-    strength_params = {"user_id": user_id}
+    strength_params = {
+        "user_id": user_id,
+        "today_start_utc": today_start_utc,
+        "today_end_utc": today_end_utc,
+    }
 
     if session_id:
         strength_query += " AND esl.session_id = :session_id"
@@ -178,18 +244,22 @@ def get_activity_logs(user_id: int, session_id: int | None = None):
             calories,
             avg_hr,
             CASE
-                WHEN performed_at >= CURDATE()
-                AND performed_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+                WHEN performed_at >= :today_start_utc
+                AND performed_at < :today_end_utc
                 THEN 1
                 ELSE 0
             END AS can_edit
         FROM cardio_log
         WHERE user_id = :user_id
-        AND performed_at >= CURDATE()
-        AND performed_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+        AND performed_at >= :today_start_utc
+        AND performed_at < :today_end_utc
     """
 
-    cardio_params = {"user_id": user_id}
+    cardio_params = {
+        "user_id": user_id,
+        "today_start_utc": today_start_utc,
+        "today_end_utc": today_end_utc,
+    }
 
     if session_id:
         cardio_query += " AND session_id = :session_id"
@@ -212,7 +282,16 @@ def get_activity_logs(user_id: int, session_id: int | None = None):
     }
 
 
-def get_full_activity_logs(user_id: int):
+def get_full_activity_logs(
+    user_id: int,
+    today_start_utc: str | None = None,
+    today_end_utc: str | None = None,
+):
+    today_start_utc, today_end_utc = _get_today_utc_range(
+        today_start_utc,
+        today_end_utc,
+    )
+
     strength_rows = run_query(
         """
         SELECT
@@ -230,8 +309,8 @@ def get_full_activity_logs(user_id: int):
             wp.plan_name,
             wd.day_label,
             CASE
-                WHEN esl.performed_at >= CURDATE()
-                AND esl.performed_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+                WHEN esl.performed_at >= :today_start_utc
+                AND esl.performed_at < :today_end_utc
                 THEN 1
                 ELSE 0
             END AS can_edit
@@ -247,7 +326,11 @@ def get_full_activity_logs(user_id: int):
         WHERE ws.user_id = :user_id
         ORDER BY esl.performed_at DESC, esl.set_log_id DESC
         """,
-        {"user_id": user_id},
+        {
+            "user_id": user_id,
+            "today_start_utc": today_start_utc,
+            "today_end_utc": today_end_utc,
+        },
         fetch=True,
         commit=False,
     )
@@ -265,8 +348,8 @@ def get_full_activity_logs(user_id: int):
             calories,
             avg_hr,
             CASE
-                WHEN performed_at >= CURDATE()
-                AND performed_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+                WHEN performed_at >= :today_start_utc
+                AND performed_at < :today_end_utc
                 THEN 1
                 ELSE 0
             END AS can_edit
@@ -274,7 +357,11 @@ def get_full_activity_logs(user_id: int):
         WHERE user_id = :user_id
         ORDER BY performed_at DESC, cardio_log_id DESC
         """,
-        {"user_id": user_id},
+        {
+            "user_id": user_id,
+            "today_start_utc": today_start_utc,
+            "today_end_utc": today_end_utc,
+        },
         fetch=True,
         commit=False,
     )
@@ -368,7 +455,7 @@ def log_strength_set(user_id: int, data: dict):
             :reps,
             :weight,
             :rpe,
-            NOW()
+            UTC_TIMESTAMP()
         )
         """,
         {
@@ -391,7 +478,18 @@ def log_strength_set(user_id: int, data: dict):
     }
 
 
-def update_strength_set(user_id: int, set_log_id: int, data: dict):
+def update_strength_set(
+    user_id: int,
+    set_log_id: int,
+    data: dict,
+    today_start_utc: str | None = None,
+    today_end_utc: str | None = None,
+):
+    today_start_utc, today_end_utc = _get_today_utc_range(
+        today_start_utc,
+        today_end_utc,
+    )
+
     set_number = _to_int(data.get("set_number"))
     reps = _to_int(data.get("reps"))
     weight = _to_float(data.get("weight"))
@@ -442,8 +540,8 @@ def update_strength_set(user_id: int, set_log_id: int, data: dict):
             esl.rpe = :rpe
         WHERE esl.set_log_id = :set_log_id
         AND ws.user_id = :user_id
-        AND esl.performed_at >= CURDATE()
-        AND esl.performed_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+        AND esl.performed_at >= :today_start_utc
+        AND esl.performed_at < :today_end_utc
         """,
         {
             "set_log_id": set_log_id,
@@ -452,6 +550,8 @@ def update_strength_set(user_id: int, set_log_id: int, data: dict):
             "reps": reps,
             "weight": weight,
             "rpe": rpe,
+            "today_start_utc": today_start_utc,
+            "today_end_utc": today_end_utc,
         },
         fetch=False,
         commit=True,
@@ -524,7 +624,7 @@ def log_cardio_activity(user_id: int, data: dict):
         VALUES (
             :session_id,
             :user_id,
-            NOW(),
+            UTC_TIMESTAMP(),
             :steps,
             :distance_km,
             :duration_min,
@@ -553,7 +653,18 @@ def log_cardio_activity(user_id: int, data: dict):
     }
 
 
-def update_cardio_log(user_id: int, cardio_log_id: int, data: dict):
+def update_cardio_log(
+    user_id: int,
+    cardio_log_id: int,
+    data: dict,
+    today_start_utc: str | None = None,
+    today_end_utc: str | None = None,
+):
+    today_start_utc, today_end_utc = _get_today_utc_range(
+        today_start_utc,
+        today_end_utc,
+    )
+
     steps = _to_int(data.get("steps"))
     distance_km = _to_float(data.get("distance_km"))
     duration_min = _to_int(data.get("duration_min"))
@@ -607,8 +718,8 @@ def update_cardio_log(user_id: int, cardio_log_id: int, data: dict):
             avg_hr = :avg_hr
         WHERE cardio_log_id = :cardio_log_id
         AND user_id = :user_id
-        AND performed_at >= CURDATE()
-        AND performed_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)
+        AND performed_at >= :today_start_utc
+        AND performed_at < :today_end_utc
         """,
         {
             "cardio_log_id": cardio_log_id,
@@ -618,6 +729,8 @@ def update_cardio_log(user_id: int, cardio_log_id: int, data: dict):
             "duration_min": duration_min,
             "calories": calories,
             "avg_hr": avg_hr,
+            "today_start_utc": today_start_utc,
+            "today_end_utc": today_end_utc,
         },
         fetch=False,
         commit=True,

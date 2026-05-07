@@ -52,6 +52,12 @@ def _serialize_event(row):
     if not row:
         return None
 
+    if row.get("event_date") is None:
+        return None
+
+    if row.get("start_time") is None or row.get("end_time") is None:
+        return None
+
     event_type = row.get("event_type")
     description = row.get("description") or ""
     notes = row.get("notes") or ""
@@ -178,7 +184,15 @@ def get_events_for_user_range(user_id: int, start_date: date, end_date: date):
         commit=False,
     )
 
-    return [_serialize_event(row) for row in rows]
+    events = []
+
+    for row in rows:
+        event = _serialize_event(row)
+
+        if event is not None:
+            events.append(event)
+
+    return events
 
 
 def get_event_by_id_for_user(user_id: int, event_id: int):

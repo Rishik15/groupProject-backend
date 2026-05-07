@@ -1,5 +1,6 @@
 import uuid
 from mimetypes import guess_extension
+from urllib.parse import unquote, urlparse
 
 from flask import current_app
 from werkzeug.utils import secure_filename
@@ -83,6 +84,60 @@ def _upload_to_cloudinary(
         "format": result.get("format"),
         "bytes": result.get("bytes"),
     }
+
+
+def _get_cloudinary_public_id_from_url(media_url: str | None):
+    if not media_url:
+        return None
+
+    parsed = urlparse(media_url)
+
+    if "cloudinary.com" not in parsed.netloc:
+        return None
+
+    path = unquote(parsed.path).strip("/")
+    parts = path.split("/")
+
+    if "upload" not in parts:
+        return None
+
+    upload_index = parts.index("upload")
+    public_parts = parts[upload_index + 1 :]
+
+    if not public_parts:
+        return None
+
+    if public_parts[0].startswith("v") and public_parts[0][1:].isdigit():
+        public_parts = public_parts[1:]
+
+    if not public_parts:
+        return None
+
+    public_id = "/".join(public_parts)
+
+    if "." in public_id:
+        public_id = public_id.rsplit(".", 1)[0]
+
+    return public_id or None
+
+
+def delete_uploaded_media(media_url: str | None, resource_type: str = "image"):
+    import cloudinary.uploader
+
+    public_id = _get_cloudinary_public_id_from_url(media_url)
+
+    if not public_id:
+        return False
+
+    _configure_cloudinary()
+
+    result = cloudinary.uploader.destroy(
+        public_id,
+        resource_type=resource_type,
+        invalidate=True,
+    )
+
+    return result.get("result") in {"ok", "not found"}
 
 
 def save_user_uploaded_image(user_id: int, uploaded_file, category: str):

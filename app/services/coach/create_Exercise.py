@@ -1,12 +1,16 @@
 from app.services import run_query
-from app.services.media_storage import save_exercise_video
+from app.services.media import save_exercise_video
 
-def create_exercise(coach_id, exercise_name, equipment, description=None, video_file=None):
+
+def create_exercise(
+    coach_id, exercise_name, equipment, description=None, video_file=None
+):
 
     existing = run_query(
         "SELECT exercise_id FROM exercise WHERE exercise_name = :name",
         {"name": exercise_name},
-        fetch=True, commit=False
+        fetch=True,
+        commit=False,
     )
 
     if existing:
@@ -14,10 +18,7 @@ def create_exercise(coach_id, exercise_name, equipment, description=None, video_
 
     video_url = None
     if video_file and video_file.filename:
-        result = save_exercise_video(
-            coach_id=coach_id,
-            uploaded_file=video_file
-        )
+        result = save_exercise_video(coach_id=coach_id, uploaded_file=video_file)
         video_url = result["video_url"]
 
     run_query(
@@ -30,9 +31,10 @@ def create_exercise(coach_id, exercise_name, equipment, description=None, video_
             "equipment": equipment,
             "description": description,
             "video_url": video_url,
-            "created_by": coach_id
+            "created_by": coach_id,
         },
-        fetch=False, commit=True
+        fetch=False,
+        commit=True,
     )
 
     result = run_query(
@@ -48,7 +50,8 @@ def create_exercise(coach_id, exercise_name, equipment, description=None, video_
         WHERE exercise_name = :name
         """,
         {"name": exercise_name},
-        fetch=True, commit=False
+        fetch=True,
+        commit=False,
     )
-    
+
     return result[0]

@@ -10,7 +10,6 @@ def get_payment_history(user_id: int):
             p.currency,
             p.status,
             p.payment_type,
-            p.description,
             p.paid_at,
             c.coach_id,
             ui.first_name AS coach_first_name,

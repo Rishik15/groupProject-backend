@@ -4,7 +4,6 @@ from datetime import date, datetime, time
 from app import socketio
 from app.services import run_query
 
-
 CLIENT_WORKOUT_ROUTE = "/client/workouts"
 
 
@@ -71,6 +70,12 @@ def parse_notification_metadata(metadata):
 
 def serialize_event(row):
     if not row:
+        return None
+
+    if row.get("event_date") is None:
+        return None
+
+    if row.get("start_time") is None or row.get("end_time") is None:
         return None
 
     description = row.get("description") or ""
@@ -363,6 +368,9 @@ def get_all_coach_session_events(
         WHERE cs.coach_id = :coach_id
         AND e.event_type = 'coach_session'
         AND e.event_date BETWEEN :start_date AND :end_date
+        AND e.event_date IS NOT NULL
+        AND e.start_time IS NOT NULL
+        AND e.end_time IS NOT NULL
         ORDER BY e.event_date ASC, e.start_time ASC, e.event_id ASC
         """,
         {
@@ -374,7 +382,15 @@ def get_all_coach_session_events(
         commit=False,
     )
 
-    return [serialize_event(row) for row in rows]
+    events = []
+
+    for row in rows:
+        event = serialize_event(row)
+
+        if event is not None:
+            events.append(event)
+
+    return events
 
 
 def get_coach_session_event_by_id(coach_id: int, event_id: int):
@@ -418,6 +434,9 @@ def get_coach_session_event_by_id(coach_id: int, event_id: int):
         WHERE cs.coach_id = :coach_id
         AND cs.event_id = :event_id
         AND e.event_type = 'coach_session'
+        AND e.event_date IS NOT NULL
+        AND e.start_time IS NOT NULL
+        AND e.end_time IS NOT NULL
         LIMIT 1
         """,
         {
@@ -482,6 +501,8 @@ def get_time_conflicts(
         AND e.event_type = 'coach_session'
         AND cs.status != 'cancelled'
         AND e.event_date = :event_date
+        AND e.start_time IS NOT NULL
+        AND e.end_time IS NOT NULL
         AND (:exclude_event_id IS NULL OR e.event_id != :exclude_event_id)
         AND e.start_time < :end_time
         AND e.end_time > :start_time
@@ -498,7 +519,15 @@ def get_time_conflicts(
         commit=False,
     )
 
-    return [serialize_event(row) for row in rows]
+    conflicts = []
+
+    for row in rows:
+        event = serialize_event(row)
+
+        if event is not None:
+            conflicts.append(event)
+
+    return conflicts
 
 
 def create_coach_session_event(

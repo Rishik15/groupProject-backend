@@ -15,20 +15,20 @@ def format_datetime(value):
 @payments_bp.route("/history", methods=["GET"])
 def get_payment_history_route():
     """
-Get payment history
----
-tags:
-  - payments
-responses:
-  200:
-    description: Payment history list
-    schema:
-      type: array
-      items:
-        type: object
-  401:
-    description: Unauthorized
-"""
+    Get payment history
+    ---
+    tags:
+      - payments
+    responses:
+      200:
+        description: Payment history list
+        schema:
+          type: array
+          items:
+            type: object
+      401:
+        description: Unauthorized
+    """
     user_id = session.get("user_id")
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
@@ -37,25 +37,34 @@ responses:
 
     result = []
     for p in payments:
-        result.append({
-            "payment_id":       p["payment_id"],
-            "amount":           float(p["amount"]),
-            "currency":         p["currency"],
-            "status":           p["status"],
-            "payment_type":     p["payment_type"],
-            "description":      p["description"],
-            "paid_at":          format_datetime(p["paid_at"]),
-            "coach": {
-                "coach_id":    p["coach_id"],
-                "first_name":  p["coach_first_name"],
-                "last_name":   p["coach_last_name"],
-            } if p["coach_id"] else None,
-            "payment_method": {
-                "card_brand":     p["card_brand"],
-                "card_last_four": p["card_last_four"],
-                "expiry_month":   p["expiry_month"],
-                "expiry_year":    p["expiry_year"],
-            } if p["card_brand"] else None,
-        })
+        result.append(
+            {
+                "payment_id": p["payment_id"],
+                "amount": float(p["amount"]),
+                "currency": p["currency"],
+                "status": p["status"],
+                "payment_type": p["payment_type"],
+                "paid_at": format_datetime(p["paid_at"]),
+                "coach": (
+                    {
+                        "coach_id": p["coach_id"],
+                        "first_name": p["coach_first_name"],
+                        "last_name": p["coach_last_name"],
+                    }
+                    if p["coach_id"]
+                    else None
+                ),
+                "payment_method": (
+                    {
+                        "card_brand": p["card_brand"],
+                        "card_last_four": p["card_last_four"],
+                        "expiry_month": p["expiry_month"],
+                        "expiry_year": p["expiry_year"],
+                    }
+                    if p["card_brand"]
+                    else None
+                ),
+            }
+        )
 
     return jsonify(result), 200
