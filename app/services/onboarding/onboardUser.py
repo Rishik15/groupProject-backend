@@ -1,5 +1,4 @@
 from app.services import run_query
-from datetime import datetime
 
 
 def onboardClientSurvey(
@@ -8,11 +7,8 @@ def onboardClientSurvey(
     weight: float,
     height: float,
     goal_weight: float,
-    dob=None
+    dob,
 ):
-    if dob is None:
-        dob = datetime.now()
-
     try:
         run_query(
             """
@@ -22,14 +18,14 @@ def onboardClientSurvey(
                 weight = :weight,
                 height = :height,
                 goal_weight = :goal_weight
-            WHERE user_id = :user_id; 
+            WHERE user_id = :user_id
             """,
             {
                 "user_id": user_id,
                 "profile_picture": profile_picture,
                 "weight": weight,
                 "height": height,
-                "goal_weight": goal_weight
+                "goal_weight": goal_weight,
             },
             fetch=False,
             commit=True,
@@ -38,14 +34,17 @@ def onboardClientSurvey(
         run_query(
             """
             UPDATE users_immutables 
-            SET  
-                dob = :dob
-            WHERE user_id = :user_id; 
+            SET dob = :dob
+            WHERE user_id = :user_id
             """,
-            {"user_id": user_id, "dob": dob},
+            {
+                "user_id": user_id,
+                "dob": dob,
+            },
             fetch=False,
             commit=True,
         )
+
     except Exception as e:
         raise e
 
@@ -58,13 +57,17 @@ def onboardCoachSurvey(user_id: int, desc: str, price: float):
             SET  
                 coach_description = :desc,
                 price = :price
-            WHERE 
-                coach_id = :user_id; 
+            WHERE coach_id = :user_id
             """,
-            {"user_id": user_id, "desc": desc, "price": price},
+            {
+                "user_id": user_id,
+                "desc": desc,
+                "price": price,
+            },
             fetch=False,
             commit=True,
         )
+
     except Exception as e:
         raise e
 
@@ -91,47 +94,42 @@ def insertCoachCert(
             )
             VALUES
             (
-                :cid, 
-                :certN,
-                :provN, 
-                :desc, 
-                :id, 
-                :ed
+                :coach_id, 
+                :cert_name,
+                :provider_name, 
+                :description, 
+                :issued_date, 
+                :expires_date
             )
             """,
             {
-                "cid": coach_id,
-                "certN": cert_name,
-                "provN": provider_name,
-                "desc": description,
-                "id": issued_date,
-                "ed": expires_date
+                "coach_id": coach_id,
+                "cert_name": cert_name,
+                "provider_name": provider_name,
+                "description": description,
+                "issued_date": issued_date,
+                "expires_date": expires_date,
             },
             fetch=False,
-            commit=True
+            commit=True,
         )
+
     except Exception as e:
         raise e
 
 
+def coachAvailability(coach_id, dow, st, et, rec, active):
+    day_map = {
+        "Monday": "Mon",
+        "Tuesday": "Tue",
+        "Wednesday": "Wed",
+        "Thursday": "Thu",
+        "Friday": "Fri",
+        "Saturday": "Sat",
+        "Sunday": "Sun",
+    }
 
-def coachAvailability(
-    coach_id,
-    dow,
-    st,
-    et,
-    rec,
-    active
-):
-    DAY_MAP = {
-    "Monday": "Mon",
-    "Tuesday": "Tue",
-    "Wednesday": "Wed",
-    "Thursday": "Thu",
-    "Friday": "Fri",
-    "Saturday": "Sat",
-    "Sunday": "Sun",}
-    dow = DAY_MAP.get(dow, dow)
+    dow = day_map.get(dow, dow)
 
     try:
         run_query(
@@ -147,24 +145,25 @@ def coachAvailability(
             )
             VALUES 
             (
-                :cid, 
-                :dow, 
-                :st,
-                :et, 
-                :rec, 
+                :coach_id, 
+                :day_of_week, 
+                :start_time,
+                :end_time, 
+                :recurring, 
                 :active
             )
             """,
             {
-                "cid": coach_id,
-                "dow": dow,
-                "st": st,
-                "et": et,
-                "rec": rec,
-                "active": active
+                "coach_id": coach_id,
+                "day_of_week": dow,
+                "start_time": st,
+                "end_time": et,
+                "recurring": rec,
+                "active": active,
             },
             fetch=False,
-            commit=True
+            commit=True,
         )
+
     except Exception as e:
         raise e

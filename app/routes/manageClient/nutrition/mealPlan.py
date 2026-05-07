@@ -13,6 +13,10 @@ from app.services.nutrition.get_My_Meal_Plans import get_my_meal_plans
 from app.services.nutrition.update_Meal_Plan import update_meal_plan
 
 
+def _get_session_timezone():
+    return session.get("timezone") or "America/New_York"
+
+
 def get_client_id_from_contract():
     coach_id = session.get("user_id")
 
@@ -64,12 +68,15 @@ def coach_can_access_plan(client_id, meal_plan_id, allow_system_plan=True):
 @manage_nutrition_bp.route("/meal-plans", methods=["GET"])
 def manage_meal_plans_route():
     client_id, error = get_client_id_from_contract()
+
     if error:
         return error
 
     try:
         plans = get_meal_plan_library()
+
         return jsonify({"meal_plans": plans}), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -77,6 +84,7 @@ def manage_meal_plans_route():
 @manage_nutrition_bp.route("/meal-plans/detail", methods=["GET"])
 def manage_meal_plan_detail_route():
     client_id, error = get_client_id_from_contract()
+
     if error:
         return error
 
@@ -101,6 +109,7 @@ def manage_meal_plan_detail_route():
             return jsonify({"error": "Meal plan not found"}), 404
 
         return jsonify(detail), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -108,12 +117,15 @@ def manage_meal_plan_detail_route():
 @manage_nutrition_bp.route("/meal-plans/my-plans", methods=["GET"])
 def manage_get_client_meal_plans_route():
     client_id, error = get_client_id_from_contract()
+
     if error:
         return error
 
     try:
         plans = get_my_meal_plans(client_id)
+
         return jsonify(plans), 200
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -121,6 +133,7 @@ def manage_get_client_meal_plans_route():
 @manage_nutrition_bp.route("/meal-plans/create", methods=["POST"])
 def manage_create_meal_plan_route():
     client_id, error = get_client_id_from_contract()
+
     if error:
         return error
 
@@ -136,11 +149,11 @@ def manage_create_meal_plan_route():
 
     try:
         meal_plan_id = create_meal_plan(
-            client_id,
-            plan_name,
-            meals,
-            start_date,
-            end_date,
+            user_id=client_id,
+            plan_name=plan_name,
+            meals=meals,
+            start_date=start_date,
+            end_date=end_date,
         )
 
         return (
@@ -163,6 +176,7 @@ def manage_create_meal_plan_route():
 @manage_nutrition_bp.route("/meal-plans/assign", methods=["POST"])
 def manage_assign_meal_plan_route():
     client_id, error = get_client_id_from_contract()
+
     if error:
         return error
 
@@ -186,10 +200,11 @@ def manage_assign_meal_plan_route():
             return jsonify({"error": "Meal plan not found or access denied"}), 404
 
         new_plan_id = assign_meal_plan(
-            client_id,
-            int(meal_plan_id),
-            start_date,
-            force,
+            user_id=client_id,
+            meal_plan_id=int(meal_plan_id),
+            start_date=start_date,
+            force=force,
+            user_timezone=_get_session_timezone(),
         )
 
         return (
@@ -287,6 +302,7 @@ def manage_update_meal_plan_route():
 @manage_nutrition_bp.route("/meal-plans/delete", methods=["DELETE"])
 def manage_delete_meal_plan_route():
     client_id, error = get_client_id_from_contract()
+
     if error:
         return error
 
@@ -296,7 +312,11 @@ def manage_delete_meal_plan_route():
         return jsonify({"error": "meal_plan_id is required"}), 400
 
     try:
-        delete_meal_plan(client_id, meal_plan_id)
+        delete_meal_plan(
+            user_id=client_id,
+            meal_plan_id=meal_plan_id,
+        )
+
         return jsonify({"message": "Meal plan deleted successfully"}), 200
 
     except PermissionError as e:

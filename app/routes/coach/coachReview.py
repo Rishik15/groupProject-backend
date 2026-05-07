@@ -10,6 +10,10 @@ from app.services.coach.getCoachInfo import getCoachInformation
 from flask import session, request, jsonify
 
 
+def _get_session_timezone():
+    return session.get("timezone") or "America/New_York"
+
+
 @coach_bp.route("/get_coach_info", methods=["GET"])
 def getCoachInfo():
     u_id = session.get("user_id")
@@ -53,7 +57,10 @@ def getCoachReview():
         except (TypeError, ValueError):
             return jsonify({"error": "coach_id must be an integer"}), 400
 
-        review_data = getReviews(c_id)
+        review_data = getReviews(
+            coach_id=c_id,
+            user_timezone=_get_session_timezone(),
+        )
 
         can_review = False
 

@@ -12,6 +12,10 @@ from app.services.predictions.markets import (
 )
 
 
+def _get_session_timezone():
+    return session.get("timezone") or "America/New_York"
+
+
 @admin_bp.route("/predictions/review", methods=["GET"])
 def admin_get_prediction_review_queue():
     """
@@ -33,11 +37,14 @@ responses:
         if not user_id:
             return jsonify({"error": "Unauthorized"}), 401
 
-        markets = get_admin_prediction_review_queue(int(user_id))
+        markets = get_admin_prediction_review_queue(
+            admin_user_id=int(user_id),
+            user_timezone=_get_session_timezone(),
+        )
 
         return jsonify({
             "message": "success",
-            "markets": markets
+            "markets": markets,
         }), 200
 
     except PermissionError:
@@ -94,12 +101,13 @@ responses:
         market = approve_prediction_market(
             admin_user_id=int(user_id),
             market_id=market_id,
-            admin_action=admin_action
+            admin_action=admin_action,
+            user_timezone=_get_session_timezone(),
         )
 
         return jsonify({
             "message": "success",
-            "market": market
+            "market": market,
         }), 200
 
     except PermissionError:
@@ -152,12 +160,13 @@ responses:
         market = reject_prediction_market(
             admin_user_id=int(user_id),
             market_id=market_id,
-            admin_action=admin_action
+            admin_action=admin_action,
+            user_timezone=_get_session_timezone(),
         )
 
         return jsonify({
             "message": "success",
-            "market": market
+            "market": market,
         }), 200
 
     except PermissionError:
@@ -187,11 +196,14 @@ responses:
         if not user_id:
             return jsonify({"error": "Unauthorized"}), 401
 
-        markets = get_admin_pending_settlement_queue(int(user_id))
+        markets = get_admin_pending_settlement_queue(
+            admin_user_id=int(user_id),
+            user_timezone=_get_session_timezone(),
+        )
 
         return jsonify({
             "message": "success",
-            "markets": markets
+            "markets": markets,
         }), 200
 
     except PermissionError:
@@ -251,15 +263,16 @@ responses:
             admin_user_id=int(user_id),
             market_id=market_id,
             result=result,
-            admin_action=admin_action
+            admin_action=admin_action,
+            user_timezone=_get_session_timezone(),
         )
 
         return jsonify({
             "message": "success",
             "market": market,
             "result": {
-                "result": market["result"]
-            }
+                "result": market["result"],
+            },
         }), 200
 
     except PermissionError:
@@ -289,11 +302,14 @@ responses:
         if not user_id:
             return jsonify({"error": "Unauthorized"}), 401
 
-        markets = get_admin_prediction_cancel_review_queue(int(user_id))
+        markets = get_admin_prediction_cancel_review_queue(
+            admin_user_id=int(user_id),
+            user_timezone=_get_session_timezone(),
+        )
 
         return jsonify({
             "message": "success",
-            "requests": markets
+            "requests": markets,
         }), 200
 
     except PermissionError:
@@ -341,12 +357,13 @@ responses:
         market = approve_prediction_market_cancellation(
             admin_user_id=int(user_id),
             market_id=market_id,
-            admin_action=admin_action
+            admin_action=admin_action,
+            user_timezone=_get_session_timezone(),
         )
 
         return jsonify({
             "message": "success",
-            "market": market
+            "market": market,
         }), 200
 
     except PermissionError:
@@ -394,16 +411,17 @@ responses:
         market = reject_prediction_market_cancellation(
             admin_user_id=int(user_id),
             market_id=market_id,
-            admin_action=admin_action
+            admin_action=admin_action,
+            user_timezone=_get_session_timezone(),
         )
 
         return jsonify({
             "message": "success",
             "request": {
                 "market_id": market["market_id"],
-                "status": market["cancel_request_status"]
+                "status": market["cancel_request_status"],
             },
-            "market": market
+            "market": market,
         }), 200
 
     except PermissionError:

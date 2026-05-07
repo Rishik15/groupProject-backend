@@ -8,12 +8,18 @@ from app.services.dashboard.client.getWorkouts import get_workout_completion_ser
 from app.utils.Contract.getClientId import getClientIdFromContract
 
 
+def _get_session_timezone():
+    return session.get("timezone") or "America/New_York"
+
+
 def get_client_id_from_contract():
     coach_id = session.get("user_id")
+
     if not coach_id:
         return None, ({"error": "Unauthorized"}, 401)
 
     contract_id = request.args.get("contract_id", type=int)
+
     if not contract_id:
         return None, ({"error": "contract_id is required"}, 400)
 
@@ -22,123 +28,147 @@ def get_client_id_from_contract():
     if not client_id:
         return None, ({"error": "Invalid contract or access denied"}, 404)
 
-    return client_id, None
+    return int(client_id), None
 
 
 @manage_dashboard_bp.route("/metrics", methods=["GET"])
 def getMetrics():
     """
-Get client metrics (coach view)
----
-tags:
-  - manage-client-dashboard
-parameters:
-  - name: contract_id
-    in: query
-    type: integer
-    required: true
-responses:
-  200:
-    description: Metrics data
-"""
+    Get client metrics (coach view)
+    ---
+    tags:
+      - manage-client-dashboard
+    parameters:
+      - name: contract_id
+        in: query
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Metrics data
+    """
     client_id, error = get_client_id_from_contract()
+
     if error:
         return error
 
-    return userMetrics(client_id), 200
+    return (
+        userMetrics(
+            user_id=client_id,
+            user_timezone=_get_session_timezone(),
+        ),
+        200,
+    )
 
 
 @manage_dashboard_bp.route("/calories", methods=["GET"])
 def get_calories_metrics():
     """
-Get client calories (coach view)
----
-tags:
-  - manage-client-dashboard
-parameters:
-  - name: contract_id
-    in: query
-    type: integer
-    required: true
-responses:
-  200:
-    description: Calories data
-"""
+    Get client calories (coach view)
+    ---
+    tags:
+      - manage-client-dashboard
+    parameters:
+      - name: contract_id
+        in: query
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Calories data
+    """
     client_id, error = get_client_id_from_contract()
+
     if error:
         return error
 
-    weekly = get_calories_metrics_service(client_id)
+    weekly = get_calories_metrics_service(
+        user_id=client_id,
+        user_timezone=_get_session_timezone(),
+    )
+
     return {"weekly": weekly}, 200
 
 
 @manage_dashboard_bp.route("/nutrition", methods=["GET"])
 def get_daily_nutrition_route():
     """
-Get client nutrition (coach view)
----
-tags:
-  - manage-client-dashboard
-parameters:
-  - name: contract_id
-    in: query
-    type: integer
-    required: true
-responses:
-  200:
-    description: Nutrition data
-"""
+    Get client nutrition (coach view)
+    ---
+    tags:
+      - manage-client-dashboard
+    parameters:
+      - name: contract_id
+        in: query
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Nutrition data
+    """
     client_id, error = get_client_id_from_contract()
+
     if error:
         return error
 
-    data = getNutrition(client_id)
+    data = getNutrition(
+        user_id=client_id,
+        user_timezone=_get_session_timezone(),
+    )
+
     return data, 200
 
 
 @manage_dashboard_bp.route("/weight", methods=["GET"])
 def get_weight_metrics():
     """
-Get client weight (coach view)
----
-tags:
-  - manage-client-dashboard
-parameters:
-  - name: contract_id
-    in: query
-    type: integer
-    required: true
-responses:
-  200:
-    description: Weight data
-"""
+    Get client weight (coach view)
+    ---
+    tags:
+      - manage-client-dashboard
+    parameters:
+      - name: contract_id
+        in: query
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Weight data
+    """
     client_id, error = get_client_id_from_contract()
+
     if error:
         return error
 
     weekly = get_user_weight(client_id)
+
     return {"weekly": weekly}, 200
 
 
 @manage_dashboard_bp.route("/workout-completion", methods=["GET"])
 def get_workout_completion():
     """
-Get client workout completion (coach view)
----
-tags:
-  - manage-client-dashboard
-parameters:
-  - name: contract_id
-    in: query
-    type: integer
-    required: true
-responses:
-  200:
-    description: Workout completion data
-"""
+    Get client workout completion (coach view)
+    ---
+    tags:
+      - manage-client-dashboard
+    parameters:
+      - name: contract_id
+        in: query
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Workout completion data
+    """
     client_id, error = get_client_id_from_contract()
+
     if error:
         return error
 
-    data = get_workout_completion_service(client_id)
+    data = get_workout_completion_service(
+        user_id=client_id,
+        user_timezone=_get_session_timezone(),
+    )
+
     return data, 200

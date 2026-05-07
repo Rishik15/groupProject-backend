@@ -1,9 +1,42 @@
-from datetime import datetime
+from datetime import datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from sqlalchemy import text
 from app import db
 from app.services import run_query
 
 DAILY_SURVEY_REWARD_POINTS = 100
+
+
+def _get_valid_timezone(user_timezone: str | None):
+    if not user_timezone:
+        return "America/New_York"
+
+    try:
+        ZoneInfo(user_timezone)
+        return user_timezone
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
+
+
+def _local_today_utc_range(user_timezone: str | None):
+    valid_timezone = _get_valid_timezone(user_timezone)
+    tz = ZoneInfo(valid_timezone)
+
+    today = datetime.now(tz).date()
+
+    start_local = datetime.combine(today, time.min, tzinfo=tz)
+    tomorrow_start_local = start_local + timedelta(days=1)
+
+    start_utc = start_local.astimezone(timezone.utc).replace(tzinfo=None)
+    tomorrow_start_utc = tomorrow_start_local.astimezone(timezone.utc).replace(
+        tzinfo=None
+    )
+
+    return (
+        start_utc.strftime("%Y-%m-%d %H:%M:%S"),
+        tomorrow_start_utc.strftime("%Y-%m-%d %H:%M:%S"),
+    )
 
 
 def _get_user_row(user_id: int):
@@ -63,17 +96,24 @@ def _get_or_create_wallet_row(user_id: int):
     return rows[0]
 
 
-def _already_rewarded_today(user_id: int):
+def _already_rewarded_today(user_id: int, user_timezone: str | None = None):
+    today_start_utc, tomorrow_start_utc = _local_today_utc_range(user_timezone)
+
     rows = run_query(
         """
         SELECT txn_id, created_at
         FROM points_txn
         WHERE user_id = :user_id
           AND reason = 'Daily survey reward'
-          AND DATE(created_at) = CURDATE()
+          AND created_at >= :today_start_utc
+          AND created_at < :tomorrow_start_utc
         LIMIT 1
         """,
-        params={"user_id": int(user_id)},
+        params={
+            "user_id": int(user_id),
+            "today_start_utc": today_start_utc,
+            "tomorrow_start_utc": tomorrow_start_utc,
+        },
         fetch=True,
         commit=False,
     )
@@ -81,7 +121,7 @@ def _already_rewarded_today(user_id: int):
     return len(rows) > 0
 
 
-def reward_daily_survey(user_id: int):
+def reward_daily_survey(user_id: int, user_timezone: str | None = None):
     user_id = int(user_id)
 
     user = _get_user_row(user_id)
@@ -89,12 +129,9 @@ def reward_daily_survey(user_id: int):
     if user["account_status"] != "active":
         raise ValueError("User account is not active")
 
-    wallet_before = _get_or_create_wallet_row(user_id)
+    _get_or_create_wallet_row(user_id)
 
-    print("DAILY REWARD USER:", user_id)
-    print("DAILY REWARD WALLET BEFORE:", dict(wallet_before))
-
-    if _already_rewarded_today(user_id):
+    if _already_rewarded_today(user_id, user_timezone):
         wallet_now = run_query(
             """
             SELECT user_id, balance
@@ -105,8 +142,6 @@ def reward_daily_survey(user_id: int):
             fetch=True,
             commit=False,
         )[0]
-
-        print("DAILY REWARD ALREADY AWARDED:", dict(wallet_now))
 
         return {
             "already_awarded": True,
@@ -166,8 +201,6 @@ def reward_daily_survey(user_id: int):
         fetch=True,
         commit=False,
     )[0]
-
-    print("DAILY REWARD WALLET AFTER:", dict(updated_wallet))
 
     return {
         "already_awarded": False,

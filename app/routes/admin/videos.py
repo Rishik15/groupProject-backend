@@ -8,6 +8,10 @@ from app.services.admin.videos import (
 )
 
 
+def _get_session_timezone():
+    return session.get("timezone") or "America/New_York"
+
+
 @admin_bp.route("/videos/pending", methods=["GET"])
 def admin_get_pending_videos():
     """
@@ -27,11 +31,14 @@ responses:
 
         user_id = int(user_id)
 
-        videos = get_pending_admin_videos(user_id)
+        videos = get_pending_admin_videos(
+            user_id=user_id,
+            user_timezone=_get_session_timezone(),
+        )
 
         return jsonify({
             "message": "success",
-            "videos": videos
+            "videos": videos,
         }), 200
 
     except PermissionError:
@@ -73,12 +80,13 @@ responses:
 
         video = approve_admin_video(
             user_id=user_id,
-            exercise_id=exercise_id
+            exercise_id=exercise_id,
+            user_timezone=_get_session_timezone(),
         )
 
         return jsonify({
             "message": "success",
-            "video": video
+            "video": video,
         }), 200
 
     except ValueError as e:
@@ -127,12 +135,13 @@ responses:
         video = reject_admin_video(
             user_id=user_id,
             exercise_id=exercise_id,
-            video_review_note=video_review_note
+            video_review_note=video_review_note,
+            user_timezone=_get_session_timezone(),
         )
 
         return jsonify({
             "message": "success",
-            "video": video
+            "video": video,
         }), 200
 
     except ValueError as e:
@@ -177,12 +186,13 @@ responses:
 
         video = remove_admin_video(
             user_id=user_id,
-            exercise_id=exercise_id
+            exercise_id=exercise_id,
+            user_timezone=_get_session_timezone(),
         )
 
         return jsonify({
             "message": "success",
-            "video": video
+            "video": video,
         }), 200
 
     except ValueError as e:

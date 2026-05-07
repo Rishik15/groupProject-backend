@@ -10,6 +10,10 @@ from app.services.client.progress_photos import (
 from app.services.media import delete_uploaded_media, save_user_uploaded_image
 
 
+def _get_session_timezone():
+    return session.get("timezone") or "America/New_York"
+
+
 def _validate_client_mode(mode):
     if mode != "client":
         raise PermissionError("Only clients can access progress photos")
@@ -49,6 +53,7 @@ def upload_progress_photo():
             photo_url=upload_result["photo_url"],
             caption=caption,
             taken_at=taken_at,
+            user_timezone=_get_session_timezone(),
         )
 
         return (
@@ -82,7 +87,10 @@ def list_progress_photos():
 
         user_id = int(user_id)
 
-        photos = get_progress_photos(user_id)
+        photos = get_progress_photos(
+            user_id=user_id,
+            user_timezone=_get_session_timezone(),
+        )
 
         return (
             jsonify(
@@ -121,6 +129,7 @@ def delete_progress_photo_route():
         existing_photo = get_progress_photo_by_id_for_user(
             user_id=user_id,
             progress_photo_id=progress_photo_id,
+            user_timezone=_get_session_timezone(),
         )
 
         if not existing_photo:

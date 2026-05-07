@@ -1,6 +1,50 @@
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from sqlalchemy import text
 from app import db
 from app.services import run_query
+
+
+def _get_valid_timezone(user_timezone: str | None):
+    if not user_timezone:
+        return "America/New_York"
+
+    try:
+        ZoneInfo(user_timezone)
+        return user_timezone
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
+
+
+def _format_date(value):
+    if value is None:
+        return None
+
+    return value.isoformat() if hasattr(value, "isoformat") else str(value)
+
+
+def _format_datetime(value, user_timezone: str | None = None):
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        parsed_datetime = value
+    else:
+        try:
+            parsed_datetime = datetime.fromisoformat(str(value).replace(" ", "T"))
+        except (ValueError, TypeError):
+            return str(value)
+
+    if parsed_datetime.tzinfo is None:
+        parsed_datetime = parsed_datetime.replace(tzinfo=timezone.utc)
+
+    if user_timezone:
+        parsed_datetime = parsed_datetime.astimezone(
+            ZoneInfo(_get_valid_timezone(user_timezone))
+        )
+
+    return parsed_datetime.strftime("%Y-%m-%dT%H:%M:%S")
 
 
 def _get_user_row(user_id: int):
@@ -16,7 +60,7 @@ def _get_user_row(user_id: int):
         """,
         params={"user_id": int(user_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     if not rows:
@@ -38,7 +82,7 @@ def _get_wallet_row(user_id: int):
         """,
         params={"user_id": int(user_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     if rows:
@@ -56,7 +100,7 @@ def _get_wallet_row(user_id: int):
         """,
         params={"user_id": int(user_id)},
         fetch=False,
-        commit=True
+        commit=True,
     )
 
     created_rows = run_query(
@@ -71,7 +115,7 @@ def _get_wallet_row(user_id: int):
         """,
         params={"user_id": int(user_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     return created_rows[0]
@@ -94,7 +138,7 @@ def _get_market_row(market_id: int):
         """,
         params={"market_id": int(market_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     if not rows:
@@ -125,7 +169,7 @@ def _get_prediction_row_by_id(prediction_id: int):
         """,
         params={"prediction_id": int(prediction_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     if not rows:
@@ -134,7 +178,7 @@ def _get_prediction_row_by_id(prediction_id: int):
     return rows[0]
 
 
-def _shape_prediction(row):
+def _shape_prediction(row, user_timezone: str | None = None):
     return {
         "prediction_id": row["prediction_id"],
         "market_id": row["market_id"],
@@ -143,14 +187,14 @@ def _shape_prediction(row):
         "points_wagered": int(row["points_wagered"]),
         "market_title": row.get("market_title"),
         "goal_text": row.get("goal_text"),
-        "end_date": row["end_date"].isoformat() if row.get("end_date") is not None else None,
+        "end_date": _format_date(row.get("end_date")),
         "market_status": row.get("market_status"),
-        "created_at": row["created_at"].isoformat() if row["created_at"] is not None else None,
-        "updated_at": row["updated_at"].isoformat() if row["updated_at"] is not None else None,
+        "created_at": _format_datetime(row.get("created_at"), user_timezone),
+        "updated_at": _format_datetime(row.get("updated_at"), user_timezone),
     }
 
 
-def get_my_prediction_bets(user_id: int):
+def get_my_prediction_bets(user_id: int, user_timezone: str | None = None):
     user = _get_user_row(int(user_id))
 
     if user["account_status"] != "active":
@@ -178,13 +222,19 @@ def get_my_prediction_bets(user_id: int):
         """,
         params={"user_id": int(user_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
-    return [_shape_prediction(row) for row in rows]
+    return [_shape_prediction(row, user_timezone) for row in rows]
 
 
-def place_prediction_bet(predictor_user_id: int, market_id, prediction_value, points_wagered):
+def place_prediction_bet(
+    predictor_user_id: int,
+    market_id,
+    prediction_value,
+    points_wagered,
+    user_timezone: str | None = None,
+):
     user = _get_user_row(int(predictor_user_id))
 
     if user["account_status"] != "active":
@@ -226,10 +276,10 @@ def place_prediction_bet(predictor_user_id: int, market_id, prediction_value, po
         """,
         params={
             "market_id": int(market_id),
-            "predictor_user_id": int(predictor_user_id)
+            "predictor_user_id": int(predictor_user_id),
         },
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     if existing_prediction_rows:
@@ -242,18 +292,16 @@ def place_prediction_bet(predictor_user_id: int, market_id, prediction_value, po
 
     try:
         deduct_result = db.session.execute(
-            text(
-                """
+            text("""
                 UPDATE points_wallet
                 SET balance = balance - :points_wagered
                 WHERE user_id = :user_id
                   AND balance >= :points_wagered
-                """
-            ),
+                """),
             {
                 "points_wagered": final_points_wagered,
-                "user_id": int(predictor_user_id)
-            }
+                "user_id": int(predictor_user_id),
+            },
         )
 
         if deduct_result.rowcount != 1:
@@ -261,8 +309,7 @@ def place_prediction_bet(predictor_user_id: int, market_id, prediction_value, po
             raise ValueError("Insufficient wallet balance")
 
         db.session.execute(
-            text(
-                """
+            text("""
                 INSERT INTO prediction (
                     market_id,
                     predictor_user_id,
@@ -275,32 +322,33 @@ def place_prediction_bet(predictor_user_id: int, market_id, prediction_value, po
                     :prediction_value,
                     :points_wagered
                 )
-                """
-            ),
+                """),
             {
                 "market_id": int(market_id),
                 "predictor_user_id": int(predictor_user_id),
                 "prediction_value": normalized_prediction_value,
-                "points_wagered": final_points_wagered
-            }
+                "points_wagered": final_points_wagered,
+            },
         )
 
-        prediction_id_row = db.session.execute(
-            text(
-                """
+        prediction_id_row = (
+            db.session.execute(
+                text("""
                 SELECT prediction_id
                 FROM prediction
                 WHERE market_id = :market_id
                   AND predictor_user_id = :predictor_user_id
                 ORDER BY prediction_id DESC
                 LIMIT 1
-                """
-            ),
-            {
-                "market_id": int(market_id),
-                "predictor_user_id": int(predictor_user_id)
-            }
-        ).mappings().first()
+                """),
+                {
+                    "market_id": int(market_id),
+                    "predictor_user_id": int(predictor_user_id),
+                },
+            )
+            .mappings()
+            .first()
+        )
 
         if not prediction_id_row:
             db.session.rollback()
@@ -309,8 +357,7 @@ def place_prediction_bet(predictor_user_id: int, market_id, prediction_value, po
         prediction_id = prediction_id_row["prediction_id"]
 
         db.session.execute(
-            text(
-                """
+            text("""
                 INSERT INTO points_txn (
                     user_id,
                     delta_points,
@@ -325,15 +372,14 @@ def place_prediction_bet(predictor_user_id: int, market_id, prediction_value, po
                     :ref_type,
                     :ref_id
                 )
-                """
-            ),
+                """),
             {
                 "user_id": int(predictor_user_id),
                 "delta_points": -final_points_wagered,
                 "reason": "Prediction market wager",
                 "ref_type": "prediction",
-                "ref_id": int(prediction_id)
-            }
+                "ref_id": int(prediction_id),
+            },
         )
 
         db.session.commit()
@@ -345,4 +391,7 @@ def place_prediction_bet(predictor_user_id: int, market_id, prediction_value, po
         db.session.rollback()
         raise
 
-    return _shape_prediction(_get_prediction_row_by_id(int(prediction_id)))
+    return _shape_prediction(
+        _get_prediction_row_by_id(int(prediction_id)),
+        user_timezone,
+    )

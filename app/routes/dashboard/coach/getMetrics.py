@@ -3,6 +3,10 @@ from flask import session
 from app.services.dashboard.coach.getMetrics import get_coach_metrics
 
 
+def _get_session_timezone():
+    return session.get("timezone") or "America/New_York"
+
+
 @dashboard_coach_bp.route("/metric", methods=["GET"])
 def getCoachMetrics():
     """
@@ -21,6 +25,9 @@ responses:
     if not coach_id:
         return {"error": "Unauthorized"}, 401
 
-    data = get_coach_metrics(coach_id)
+    data = get_coach_metrics(
+        coach_id=int(coach_id),
+        user_timezone=_get_session_timezone(),
+    )
 
     return data, 200

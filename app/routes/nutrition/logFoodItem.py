@@ -4,59 +4,63 @@ from app.services.nutrition.log_Food_Item import log_food_item
 import traceback
 
 
+def _get_session_timezone():
+    return session.get("timezone") or "America/New_York"
+
+
 @nutrition_bp.route("/log-food-item", methods=["POST"])
 def log_food_item_route():
     """
-Log a food item
----
-tags:
-  - nutrition
-consumes:
-  - multipart/form-data
-parameters:
-  - name: name
-    in: formData
-    type: string
-    required: true
-  - name: calories
-    in: formData
-    type: number
-    required: true
-  - name: protein
-    in: formData
-    type: number
-    required: true
-  - name: carbs
-    in: formData
-    type: number
-    required: true
-  - name: fats
-    in: formData
-    type: number
-    required: true
-  - name: servings
-    in: formData
-    type: number
-    required: false
-  - name: eaten_at
-    in: formData
-    type: string
-    required: true
-  - name: notes
-    in: formData
-    type: string
-    required: false
-  - name: photo
-    in: formData
-    type: file
-    required: false
-responses:
-  201:
-    description: Food item logged
-  400:
-    description: Invalid input
-  401:
-    description: Unauthorized
+    Log a food item
+    ---
+    tags:
+      - nutrition
+    consumes:
+      - multipart/form-data
+    parameters:
+      - name: name
+        in: formData
+        type: string
+        required: true
+      - name: calories
+        in: formData
+        type: number
+        required: true
+      - name: protein
+        in: formData
+        type: number
+        required: true
+      - name: carbs
+        in: formData
+        type: number
+        required: true
+      - name: fats
+        in: formData
+        type: number
+        required: true
+      - name: servings
+        in: formData
+        type: number
+        required: false
+      - name: eaten_at
+        in: formData
+        type: string
+        required: true
+      - name: notes
+        in: formData
+        type: string
+        required: false
+      - name: photo
+        in: formData
+        type: file
+        required: false
+    responses:
+      201:
+        description: Food item logged
+      400:
+        description: Invalid input
+      401:
+        description: Unauthorized
     """
     user_id = session.get("user_id")
 
@@ -72,10 +76,6 @@ responses:
     eaten_at = request.form.get("eaten_at")
     notes = request.form.get("notes")
     photo = request.files.get("photo")
-
-    print("LOG FOOD FORM:", request.form)
-    print("LOG FOOD FILES:", request.files)
-    print("EATEN_AT:", eaten_at)
 
     if not name:
         return jsonify({"error": "name is required"}), 400
@@ -112,6 +112,7 @@ responses:
             eaten_at=eaten_at,
             notes=notes,
             uploaded_file=photo,
+            user_timezone=_get_session_timezone(),
         )
 
         return (

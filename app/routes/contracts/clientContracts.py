@@ -17,6 +17,10 @@ def parse_bool(value):
     return False
 
 
+def _get_session_timezone():
+    return session.get("timezone") or "America/New_York"
+
+
 @contract_bp.route("/requestContract", methods=["POST"])
 def requestContractRoute():
     user_id = session.get("user_id")
@@ -78,6 +82,7 @@ def requestContractRoute():
             card_brand=card_brand,
             expiry_month=int(expiry_month) if expiry_month else None,
             expiry_year=int(expiry_year) if expiry_year else None,
+            user_timezone=_get_session_timezone(),
         )
 
         return (

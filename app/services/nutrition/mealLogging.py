@@ -1,5 +1,18 @@
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from .. import run_query
-from datetime import datetime
+
+
+def _get_valid_timezone(user_timezone: str | None):
+    if not user_timezone:
+        return "America/New_York"
+
+    try:
+        ZoneInfo(user_timezone)
+        return user_timezone
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
 
 
 def _coerce_db_datetime(value):
@@ -10,13 +23,58 @@ def _coerce_db_datetime(value):
         return value
 
     if isinstance(value, str):
-        return datetime.fromisoformat(value)
+        return datetime.fromisoformat(value.replace(" ", "T"))
 
     raise TypeError("unsupported datetime value returned from db")
 
 
+def _local_input_to_utc_string(value: str, user_timezone: str | None):
+    if value is None or str(value).strip() == "":
+        raise ValueError("eaten_at is required")
+
+    cleaned_value = str(value).strip().replace("Z", "+00:00")
+
+    try:
+        parsed_datetime = datetime.fromisoformat(cleaned_value)
+    except ValueError:
+        raise ValueError("eaten_at must be a valid datetime")
+
+    if parsed_datetime.tzinfo is None:
+        parsed_datetime = parsed_datetime.replace(
+            tzinfo=ZoneInfo(_get_valid_timezone(user_timezone))
+        )
+
+    utc_datetime = parsed_datetime.astimezone(timezone.utc)
+
+    return utc_datetime.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _format_datetime(value, user_timezone: str | None = None):
+    if value is None:
+        return None
+
+    parsed_datetime = _coerce_db_datetime(value)
+
+    if parsed_datetime.tzinfo is None:
+        parsed_datetime = parsed_datetime.replace(tzinfo=timezone.utc)
+
+    if user_timezone:
+        parsed_datetime = parsed_datetime.astimezone(
+            ZoneInfo(_get_valid_timezone(user_timezone))
+        )
+
+    return parsed_datetime.strftime("%Y-%m-%dT%H:%M:%S")
+
+
 def partialFoodItemUpdate(
-    user_id, food_id, name, calories, protein, carbs, fats, image_url
+    user_id,
+    food_id,
+    name,
+    calories,
+    protein,
+    carbs,
+    fats,
+    image_url,
 ):
     try:
         run_query(
@@ -49,7 +107,7 @@ def partialFoodItemUpdate(
         raise e
 
 
-def getFoodItem(user_id: int):
+def getFoodItem(user_id: int, user_timezone: str | None = None):
     try:
         rows = run_query(
             """
@@ -73,8 +131,8 @@ def getFoodItem(user_id: int):
         )
 
         for row in rows:
-            row["created_at"] = _coerce_db_datetime(row["created_at"]).isoformat()
-            row["updated_at"] = _coerce_db_datetime(row["updated_at"]).isoformat()
+            row["created_at"] = _format_datetime(row["created_at"], user_timezone)
+            row["updated_at"] = _format_datetime(row["updated_at"], user_timezone)
 
         return rows
 
@@ -83,7 +141,13 @@ def getFoodItem(user_id: int):
 
 
 def createFoodItem(
-    user_id: int, name: str, cals: int, pro: float, carbs: float, fats: float, img: str
+    user_id: int,
+    name: str,
+    cals: int,
+    pro: float,
+    carbs: float,
+    fats: float,
+    img: str,
 ):
     try:
         run_query(
@@ -158,7 +222,11 @@ def _getFoodItemsForMeal(user_id: int, food_item_ids: list[int]):
 
 
 def _createMeal(
-    meal_name: str, calories: int, protein: float, carbs: float, fats: float
+    meal_name: str,
+    calories: int,
+    protein: float,
+    carbs: float,
+    fats: float,
 ):
     try:
         run_query(
@@ -214,17 +282,21 @@ def mealLogInsert(
     servings: int,
     notes: str | None,
     photo_url: str | None,
-    food_item_ids: list[int]
+    food_item_ids: list[int],
+    user_timezone: str | None = None,
 ):
     try:
-        eaten_dt = datetime.fromisoformat(eaten_at)
+        eaten_at_utc = _local_input_to_utc_string(eaten_at, user_timezone)
 
         if len(food_item_ids) != 1:
             raise ValueError("exactly one food item must be provided")
 
         food_item_id = food_item_ids[0]
 
-        food_rows = _getFoodItemsForMeal(user_id=user_id, food_item_ids=[food_item_id])
+        food_rows = _getFoodItemsForMeal(
+            user_id=user_id,
+            food_item_ids=[food_item_id],
+        )
 
         if not food_rows:
             raise ValueError("food item not found for this user")
@@ -255,7 +327,7 @@ def mealLogInsert(
             params={
                 "uid": user_id,
                 "food_item_id": food_item_id,
-                "eaten_at": eaten_dt.isoformat(),
+                "eaten_at": eaten_at_utc,
                 "servings": servings,
                 "notes": notes,
                 "photo_url": photo_url,
@@ -267,7 +339,13 @@ def mealLogInsert(
     except Exception as e:
         raise e
 
-def getLoggedMeals(user_id: int, start_dt: str | None = None, end_dt: str | None = None):
+
+def getLoggedMeals(
+    user_id: int,
+    start_dt: str | None = None,
+    end_dt: str | None = None,
+    user_timezone: str | None = None,
+):
     try:
         query = """
             SELECT
@@ -297,23 +375,23 @@ def getLoggedMeals(user_id: int, start_dt: str | None = None, end_dt: str | None
         params = {"uid": user_id}
 
         if start_dt is not None:
-            start_obj = datetime.fromisoformat(start_dt)
+            start_obj = datetime.fromisoformat(str(start_dt).replace(" ", "T"))
             query += " AND ml.eaten_at >= :start_dt"
-            params["start_dt"] = start_obj.isoformat()
+            params["start_dt"] = start_obj.strftime("%Y-%m-%d %H:%M:%S")
 
         if end_dt is not None:
-            end_obj = datetime.fromisoformat(end_dt)
+            end_obj = datetime.fromisoformat(str(end_dt).replace(" ", "T"))
             query += " AND ml.eaten_at <= :end_dt"
-            params["end_dt"] = end_obj.isoformat()
+            params["end_dt"] = end_obj.strftime("%Y-%m-%d %H:%M:%S")
 
         query += " ORDER BY ml.eaten_at DESC, ml.log_id DESC"
 
         rows = run_query(query=query, params=params, fetch=True, commit=False)
 
         for row in rows:
-            row["eaten_at"] = _coerce_db_datetime(row["eaten_at"]).isoformat()
-            row["created_at"] = _coerce_db_datetime(row["created_at"]).isoformat()
-            row["updated_at"] = _coerce_db_datetime(row["updated_at"]).isoformat()
+            row["eaten_at"] = _format_datetime(row["eaten_at"], user_timezone)
+            row["created_at"] = _format_datetime(row["created_at"], user_timezone)
+            row["updated_at"] = _format_datetime(row["updated_at"], user_timezone)
 
         return rows
 

@@ -37,7 +37,7 @@ def activateCoachMode(user_id: int):
     run_query(
         """
         UPDATE coach_application
-        SET activated_at = COALESCE(activated_at, NOW())
+        SET activated_at = COALESCE(activated_at, UTC_TIMESTAMP())
         WHERE user_id = :user_id
         AND status = 'approved'
         """,

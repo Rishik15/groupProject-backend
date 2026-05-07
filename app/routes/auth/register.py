@@ -1,3 +1,5 @@
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from . import auth_bp
 from app import bcrypt
 from flask import request, session
@@ -6,6 +8,17 @@ from app.services.auth.client import addClient, initialize_client_role
 from app.services.auth.getUser import getUserInfo, getUserOnboardingStatus
 from app.services.auth.getUserRoles import getUserRoles
 from app.services.auth.coachApplicationStatus import getCoachApplicationStatus
+
+
+def get_valid_timezone(value: str | None) -> str:
+    if not value:
+        return "America/New_York"
+
+    try:
+        ZoneInfo(value)
+        return value
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
 
 
 @auth_bp.route("/register", methods=["POST"])
@@ -46,6 +59,7 @@ def register():
     password = data.get("password")
     name = data.get("name")
     role = data.get("role")
+    user_timezone = get_valid_timezone(data.get("timezone"))
 
     if role not in {"client", "coach"}:
         return {"error": "role must be 'client' or 'coach'"}, 400
@@ -68,8 +82,8 @@ def register():
 
     session.permanent = True
     session["user_id"] = user_id
-
     session["role"] = role
+    session["timezone"] = user_timezone
 
     roles = getUserRoles(user_id)
     user_info = getUserInfo(user_id)
@@ -80,40 +94,42 @@ def register():
         "roles": roles,
         "user": user_info,
         "coach_application_status": coach_application_status,
+        "timezone": user_timezone,
     }, 200
 
 
 @auth_bp.route("/updateRole", methods=["POST"])
 def update_role():
     """
-Update user role
----
-tags:
-  - auth
-parameters:
-  - name: body
-    in: body
-    required: true
-    schema:
-      type: object
-      required: [role]
-      properties:
-        role:
-          type: string
-          enum: [client, coach]
-responses:
-  200:
-    description: Role updated
-  400:
-    description: Invalid role
-  401:
-    description: Unauthorized
-"""
+    Update user role
+    ---
+    tags:
+      - auth
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required: [role]
+          properties:
+            role:
+              type: string
+              enum: [client, coach]
+    responses:
+      200:
+        description: Role updated
+      400:
+        description: Invalid role
+      401:
+        description: Unauthorized
+    """
     if "user_id" not in session:
         return {"error": "Unauthorized"}, 401
 
     data = request.get_json() or {}
     role = data.get("role")
+    user_timezone = get_valid_timezone(data.get("timezone") or session.get("timezone"))
 
     if role not in {"client", "coach"}:
         return {"error": "role must be 'client' or 'coach'"}, 400
@@ -123,6 +139,7 @@ responses:
     initialize_client_role(user_id, commit=True)
 
     session["role"] = role
+    session["timezone"] = user_timezone
 
     user = getUserInfo(user_id)
     roles = getUserRoles(user_id)
@@ -137,4 +154,5 @@ responses:
         "user": user,
         "coach_application_status": coach_application_status,
         "needs_onboarding": needs_onboarding,
+        "timezone": user_timezone,
     }, 200

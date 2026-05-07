@@ -1,7 +1,19 @@
 import json
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.services import run_query
+
+
+def _get_valid_timezone(user_timezone: str | None):
+    if not user_timezone:
+        return "America/New_York"
+
+    try:
+        ZoneInfo(user_timezone)
+        return user_timezone
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
 
 
 def parse_metadata(metadata):
@@ -20,9 +32,22 @@ def parse_metadata(metadata):
     return {}
 
 
-def make_json_safe(value):
+def make_json_safe(value, user_timezone: str | None = None):
+    if value is None:
+        return None
+
     if isinstance(value, datetime):
-        return value.isoformat()
+        parsed_datetime = value
+
+        if parsed_datetime.tzinfo is None:
+            parsed_datetime = parsed_datetime.replace(tzinfo=timezone.utc)
+
+        if user_timezone:
+            parsed_datetime = parsed_datetime.astimezone(
+                ZoneInfo(_get_valid_timezone(user_timezone))
+            )
+
+        return parsed_datetime.strftime("%Y-%m-%dT%H:%M:%S")
 
     if isinstance(value, date):
         return value.isoformat()
@@ -33,7 +58,11 @@ def make_json_safe(value):
     return value
 
 
-def get_user_notifications(user_id: int, mode: str):
+def get_user_notifications(
+    user_id: int,
+    mode: str,
+    user_timezone: str | None = None,
+):
     result = run_query(
         """
         SELECT 
@@ -76,8 +105,8 @@ def get_user_notifications(user_id: int, mode: str):
             "title": row["title"],
             "body": row["body"],
             "isRead": bool(row["is_read"]),
-            "createdAt": make_json_safe(row.get("created_at")),
-            "updatedAt": make_json_safe(row.get("updated_at")),
+            "createdAt": make_json_safe(row.get("created_at"), user_timezone),
+            "updatedAt": make_json_safe(row.get("updated_at"), user_timezone),
         }
         for row in result
     ]

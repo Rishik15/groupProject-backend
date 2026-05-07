@@ -6,42 +6,18 @@ from app.services.coach.assign_Client_Plan import assign_plan_to_client
 @coach_bp.route("/assign", methods=["POST"])
 def assign_plan_to_client_route():
     """
-Add coach certification
----
-tags:
-  - coach
-parameters:
-  - name: body
-    in: body
-    required: true
-    schema:
-      type: object
-      required:
-        - role
-        - cert_name
-        - provider_name
-      properties:
-        role:
-          type: string
-        cert_name:
-          type: string
-        provider_name:
-          type: string
-        description:
-          type: string
-        issued_date:
-          type: string
-          format: date
-        expires_date:
-          type: string
-          format: date
-responses:
-  201:
-    description: Certification added
-  403:
-    description: Forbidden
+    Assign workout plan to client
+    ---
+    tags:
+      - coach
+    responses:
+      201:
+        description: Plan assigned
+      403:
+        description: Forbidden
     """
-    data = request.get_json()
+    data = request.get_json() or {}
+
     client_user_id = data.get("client_user_id")
     plan_id = data.get("plan_id")
     note = data.get("note")
@@ -49,18 +25,22 @@ responses:
 
     if not coach_id:
         return jsonify({"error": "Not logged in"}), 401
+
     if not client_user_id or not plan_id:
         return jsonify({"error": "client_user_id and plan_id are required"}), 400
 
     try:
         assign_plan_to_client(
-            coach_id=coach_id,
-            client_user_id=client_user_id,
-            plan_id=plan_id,
-            note=note
+            coach_id=int(coach_id),
+            client_id=int(client_user_id),
+            plan_id=int(plan_id),
+            note=note,
         )
+
         return jsonify({"message": "Plan assigned to client successfully"}), 201
+
     except PermissionError as e:
         return jsonify({"error": str(e)}), 403
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500

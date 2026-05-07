@@ -2,7 +2,6 @@ from app.services import run_query
 
 
 def get_last_message(user_id, other_user_id):
-
     query = """
         SELECT 
             m.content,

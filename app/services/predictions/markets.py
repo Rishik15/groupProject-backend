@@ -1,8 +1,56 @@
-from datetime import datetime
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from sqlalchemy import text
+
 from app import db
 from app.services import run_query
 from app.services.admin.dashboard import _is_admin
+
+
+def _get_valid_timezone(user_timezone: str | None):
+    if not user_timezone:
+        return "America/New_York"
+
+    try:
+        ZoneInfo(user_timezone)
+        return user_timezone
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
+
+
+def _get_local_today(user_timezone: str | None):
+    tz = ZoneInfo(_get_valid_timezone(user_timezone))
+    return datetime.now(tz).date()
+
+
+def _format_datetime(value, user_timezone: str | None):
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        parsed_datetime = value
+    else:
+        try:
+            parsed_datetime = datetime.fromisoformat(str(value).replace(" ", "T"))
+        except (ValueError, TypeError):
+            return str(value)
+
+    if parsed_datetime.tzinfo is None:
+        parsed_datetime = parsed_datetime.replace(tzinfo=timezone.utc)
+
+    local_datetime = parsed_datetime.astimezone(
+        ZoneInfo(_get_valid_timezone(user_timezone))
+    )
+
+    return local_datetime.strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def _format_date(value):
+    if value is None:
+        return None
+
+    return value.isoformat() if hasattr(value, "isoformat") else str(value)
 
 
 def _get_user_row(user_id: int):
@@ -19,7 +67,7 @@ def _get_user_row(user_id: int):
         """,
         params={"user_id": int(user_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     if not rows:
@@ -98,7 +146,7 @@ def _get_prediction_market_row(market_id: int):
         """,
         params={"market_id": int(market_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     if not rows:
@@ -120,7 +168,7 @@ def _get_or_create_wallet_row(user_id: int):
         """,
         params={"user_id": int(user_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     if rows:
@@ -133,7 +181,7 @@ def _get_or_create_wallet_row(user_id: int):
         """,
         params={"user_id": int(user_id)},
         fetch=False,
-        commit=True
+        commit=True,
     )
 
     created_rows = run_query(
@@ -148,7 +196,7 @@ def _get_or_create_wallet_row(user_id: int):
         """,
         params={"user_id": int(user_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     if not created_rows:
@@ -157,7 +205,7 @@ def _get_or_create_wallet_row(user_id: int):
     return created_rows[0]
 
 
-def _shape_prediction_market(row):
+def _shape_prediction_market(row, user_timezone: str | None = None):
     shaped = {
         "market_id": row["market_id"],
         "creator_user_id": row["creator_user_id"],
@@ -165,21 +213,27 @@ def _shape_prediction_market(row):
         "creator_email": row["email"],
         "title": row["title"],
         "goal_text": row["goal_text"],
-        "end_date": row["end_date"].isoformat() if row["end_date"] is not None else None,
+        "end_date": _format_date(row["end_date"]),
         "status": row["status"],
         "review_status": row["review_status"],
         "reviewed_by_admin_id": row["reviewed_by_admin_id"],
-        "reviewed_at": row["reviewed_at"].isoformat() if row["reviewed_at"] is not None else None,
+        "reviewed_at": _format_datetime(row["reviewed_at"], user_timezone),
         "review_note": row["review_note"],
         "settlement_result": row["settlement_result"],
         "settled_by_admin_id": row["settled_by_admin_id"],
-        "settled_at": row["settled_at"].isoformat() if row["settled_at"] is not None else None,
+        "settled_at": _format_datetime(row["settled_at"], user_timezone),
         "settlement_note": row["settlement_note"],
         "cancel_request_status": row["cancel_request_status"],
         "cancel_request_reason": row["cancel_request_reason"],
-        "cancel_requested_at": row["cancel_requested_at"].isoformat() if row["cancel_requested_at"] is not None else None,
+        "cancel_requested_at": _format_datetime(
+            row["cancel_requested_at"],
+            user_timezone,
+        ),
         "cancel_reviewed_by_admin_id": row["cancel_reviewed_by_admin_id"],
-        "cancel_reviewed_at": row["cancel_reviewed_at"].isoformat() if row["cancel_reviewed_at"] is not None else None,
+        "cancel_reviewed_at": _format_datetime(
+            row["cancel_reviewed_at"],
+            user_timezone,
+        ),
         "cancel_review_note": row["cancel_review_note"],
         "total_bets": int(row["total_bets"]),
         "total_points": int(row["total_points"]) if row["total_points"] is not None else 0,
@@ -187,8 +241,8 @@ def _shape_prediction_market(row):
         "no_bets": int(row["no_bets"]),
         "yes_points": int(row["yes_points"]) if row["yes_points"] is not None else 0,
         "no_points": int(row["no_points"]) if row["no_points"] is not None else 0,
-        "created_at": row["created_at"].isoformat() if row["created_at"] is not None else None,
-        "updated_at": row["updated_at"].isoformat() if row["updated_at"] is not None else None,
+        "created_at": _format_datetime(row["created_at"], user_timezone),
+        "updated_at": _format_datetime(row["updated_at"], user_timezone),
     }
 
     if row["status"] == "cancelled":
@@ -201,7 +255,7 @@ def _shape_prediction_market(row):
     return shaped
 
 
-def get_open_prediction_markets(user_id: int):
+def get_open_prediction_markets(user_id: int, user_timezone: str | None = None):
     user = _get_user_row(int(user_id))
 
     if user["account_status"] != "active":
@@ -277,13 +331,19 @@ def get_open_prediction_markets(user_id: int):
         ORDER BY pm.end_date ASC, pm.market_id DESC
         """,
         fetch=True,
-        commit=False
+        commit=False,
     )
 
-    return [_shape_prediction_market(row) for row in rows]
+    return [_shape_prediction_market(row, user_timezone) for row in rows]
 
 
-def create_prediction_market(creator_user_id: int, title: str, goal_text: str, end_date: str):
+def create_prediction_market(
+    creator_user_id: int,
+    title: str,
+    goal_text: str,
+    end_date: str,
+    user_timezone: str | None = None,
+):
     user = _get_user_row(int(creator_user_id))
 
     if user["account_status"] != "active":
@@ -306,7 +366,7 @@ def create_prediction_market(creator_user_id: int, title: str, goal_text: str, e
     except ValueError:
         raise ValueError("end_date must be in YYYY-MM-DD format")
 
-    if parsed_end_date <= datetime.utcnow().date():
+    if parsed_end_date <= _get_local_today(user_timezone):
         raise ValueError("end_date must be in the future")
 
     run_query(
@@ -358,10 +418,10 @@ def create_prediction_market(creator_user_id: int, title: str, goal_text: str, e
             "creator_user_id": int(creator_user_id),
             "title": final_title,
             "goal_text": final_goal_text,
-            "end_date": parsed_end_date
+            "end_date": parsed_end_date,
         },
         fetch=False,
-        commit=True
+        commit=True,
     )
 
     created_rows = run_query(
@@ -379,19 +439,22 @@ def create_prediction_market(creator_user_id: int, title: str, goal_text: str, e
             "creator_user_id": int(creator_user_id),
             "title": final_title,
             "goal_text": final_goal_text,
-            "end_date": parsed_end_date
+            "end_date": parsed_end_date,
         },
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     if not created_rows:
         raise ValueError("Prediction market creation failed")
 
-    return _shape_prediction_market(_get_prediction_market_row(created_rows[0]["market_id"]))
+    return _shape_prediction_market(
+        _get_prediction_market_row(created_rows[0]["market_id"]),
+        user_timezone,
+    )
 
 
-def get_my_prediction_markets(user_id: int):
+def get_my_prediction_markets(user_id: int, user_timezone: str | None = None):
     user = _get_user_row(int(user_id))
 
     if user["account_status"] != "active":
@@ -467,10 +530,10 @@ def get_my_prediction_markets(user_id: int):
         """,
         params={"user_id": int(user_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
-    return [_shape_prediction_market(row) for row in rows]
+    return [_shape_prediction_market(row, user_timezone) for row in rows]
 
 
 def get_prediction_summary(user_id: int):
@@ -489,7 +552,7 @@ def get_prediction_summary(user_id: int):
         """,
         params={"user_id": int(user_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )[0]["count"]
 
     total_markets_created = run_query(
@@ -500,7 +563,7 @@ def get_prediction_summary(user_id: int):
         """,
         params={"user_id": int(user_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )[0]["count"]
 
     open_markets_created = run_query(
@@ -512,7 +575,7 @@ def get_prediction_summary(user_id: int):
         """,
         params={"user_id": int(user_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )[0]["count"]
 
     completed_markets_participated = run_query(
@@ -526,7 +589,7 @@ def get_prediction_summary(user_id: int):
         """,
         params={"user_id": int(user_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )[0]["count"]
 
     return {
@@ -538,7 +601,7 @@ def get_prediction_summary(user_id: int):
     }
 
 
-def get_completed_prediction_markets(user_id: int):
+def get_completed_prediction_markets(user_id: int, user_timezone: str | None = None):
     user = _get_user_row(int(user_id))
 
     if user["account_status"] != "active":
@@ -613,10 +676,10 @@ def get_completed_prediction_markets(user_id: int):
         ORDER BY pm.updated_at DESC, pm.market_id DESC
         """,
         fetch=True,
-        commit=False
+        commit=False,
     )
 
-    return [_shape_prediction_market(row) for row in rows]
+    return [_shape_prediction_market(row, user_timezone) for row in rows]
 
 
 def get_prediction_leaderboard(user_id: int):
@@ -638,7 +701,7 @@ def get_prediction_leaderboard(user_id: int):
         ORDER BY COALESCE(pw.balance, 0) DESC, ui.user_id ASC
         """,
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     leaderboard = []
@@ -649,14 +712,17 @@ def get_prediction_leaderboard(user_id: int):
             "rank": rank,
             "user_id": row["user_id"],
             "name": row["name"],
-            "balance": int(row["balance"])
+            "balance": int(row["balance"]),
         })
         rank += 1
 
     return leaderboard
 
 
-def get_admin_prediction_review_queue(admin_user_id: int):
+def get_admin_prediction_review_queue(
+    admin_user_id: int,
+    user_timezone: str | None = None,
+):
     if not _is_admin(admin_user_id):
         raise PermissionError("Forbidden")
 
@@ -729,13 +795,18 @@ def get_admin_prediction_review_queue(admin_user_id: int):
         ORDER BY pm.created_at ASC, pm.market_id ASC
         """,
         fetch=True,
-        commit=False
+        commit=False,
     )
 
-    return [_shape_prediction_market(row) for row in rows]
+    return [_shape_prediction_market(row, user_timezone) for row in rows]
 
 
-def approve_prediction_market(admin_user_id: int, market_id, admin_action=None):
+def approve_prediction_market(
+    admin_user_id: int,
+    market_id,
+    admin_action=None,
+    user_timezone: str | None = None,
+):
     if not _is_admin(admin_user_id):
         raise PermissionError("Forbidden")
 
@@ -747,7 +818,11 @@ def approve_prediction_market(admin_user_id: int, market_id, admin_action=None):
     if market["review_status"] != "pending":
         raise ValueError("Only pending prediction markets can be approved")
 
-    final_admin_action = admin_action.strip() if isinstance(admin_action, str) and admin_action.strip() else "Approved by admin"
+    final_admin_action = (
+        admin_action.strip()
+        if isinstance(admin_action, str) and admin_action.strip()
+        else "Approved by admin"
+    )
 
     run_query(
         """
@@ -755,7 +830,7 @@ def approve_prediction_market(admin_user_id: int, market_id, admin_action=None):
         SET
             review_status = 'approved',
             reviewed_by_admin_id = :admin_user_id,
-            reviewed_at = NOW(),
+            reviewed_at = UTC_TIMESTAMP(),
             review_note = :review_note
         WHERE market_id = :market_id
           AND review_status = 'pending'
@@ -763,16 +838,24 @@ def approve_prediction_market(admin_user_id: int, market_id, admin_action=None):
         params={
             "admin_user_id": int(admin_user_id),
             "review_note": final_admin_action,
-            "market_id": int(market_id)
+            "market_id": int(market_id),
         },
         fetch=False,
-        commit=True
+        commit=True,
     )
 
-    return _shape_prediction_market(_get_prediction_market_row(int(market_id)))
+    return _shape_prediction_market(
+        _get_prediction_market_row(int(market_id)),
+        user_timezone,
+    )
 
 
-def reject_prediction_market(admin_user_id: int, market_id, admin_action=None):
+def reject_prediction_market(
+    admin_user_id: int,
+    market_id,
+    admin_action=None,
+    user_timezone: str | None = None,
+):
     if not _is_admin(admin_user_id):
         raise PermissionError("Forbidden")
 
@@ -784,7 +867,11 @@ def reject_prediction_market(admin_user_id: int, market_id, admin_action=None):
     if market["review_status"] != "pending":
         raise ValueError("Only pending prediction markets can be rejected")
 
-    final_admin_action = admin_action.strip() if isinstance(admin_action, str) and admin_action.strip() else "Rejected by admin"
+    final_admin_action = (
+        admin_action.strip()
+        if isinstance(admin_action, str) and admin_action.strip()
+        else "Rejected by admin"
+    )
 
     run_query(
         """
@@ -793,7 +880,7 @@ def reject_prediction_market(admin_user_id: int, market_id, admin_action=None):
             review_status = 'rejected',
             status = 'cancelled',
             reviewed_by_admin_id = :admin_user_id,
-            reviewed_at = NOW(),
+            reviewed_at = UTC_TIMESTAMP(),
             review_note = :review_note
         WHERE market_id = :market_id
           AND review_status = 'pending'
@@ -801,16 +888,22 @@ def reject_prediction_market(admin_user_id: int, market_id, admin_action=None):
         params={
             "admin_user_id": int(admin_user_id),
             "review_note": final_admin_action,
-            "market_id": int(market_id)
+            "market_id": int(market_id),
         },
         fetch=False,
-        commit=True
+        commit=True,
     )
 
-    return _shape_prediction_market(_get_prediction_market_row(int(market_id)))
+    return _shape_prediction_market(
+        _get_prediction_market_row(int(market_id)),
+        user_timezone,
+    )
 
 
-def get_admin_pending_settlement_queue(admin_user_id: int):
+def get_admin_pending_settlement_queue(
+    admin_user_id: int,
+    user_timezone: str | None = None,
+):
     if not _is_admin(admin_user_id):
         raise PermissionError("Forbidden")
 
@@ -885,13 +978,19 @@ def get_admin_pending_settlement_queue(admin_user_id: int):
         ORDER BY pm.end_date ASC, pm.market_id ASC
         """,
         fetch=True,
-        commit=False
+        commit=False,
     )
 
-    return [_shape_prediction_market(row) for row in rows]
+    return [_shape_prediction_market(row, user_timezone) for row in rows]
 
 
-def settle_prediction_market(admin_user_id: int, market_id, result, admin_action=None):
+def settle_prediction_market(
+    admin_user_id: int,
+    market_id,
+    result,
+    admin_action=None,
+    user_timezone: str | None = None,
+):
     if not _is_admin(admin_user_id):
         raise PermissionError("Forbidden")
 
@@ -899,6 +998,7 @@ def settle_prediction_market(admin_user_id: int, market_id, result, admin_action
         raise ValueError("market_id is required")
 
     normalized_result = str(result).strip().lower()
+
     if normalized_result not in ("yes", "no", "cancelled"):
         raise ValueError("result must be 'yes', 'no', or 'cancelled'")
 
@@ -913,7 +1013,11 @@ def settle_prediction_market(admin_user_id: int, market_id, result, admin_action
     if market["settlement_result"] is not None:
         raise ValueError("Prediction market already settled")
 
-    final_admin_action = admin_action.strip() if isinstance(admin_action, str) and admin_action.strip() else "Settled by admin"
+    final_admin_action = (
+        admin_action.strip()
+        if isinstance(admin_action, str) and admin_action.strip()
+        else "Settled by admin"
+    )
 
     predictions = run_query(
         """
@@ -928,7 +1032,7 @@ def settle_prediction_market(admin_user_id: int, market_id, result, admin_action
         """,
         params={"market_id": int(market_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     total_pool = sum(int(row["points_wagered"]) for row in predictions)
@@ -949,8 +1053,8 @@ def settle_prediction_market(admin_user_id: int, market_id, result, admin_action
                     ),
                     {
                         "user_id": user_id,
-                        "balance": refund_points
-                    }
+                        "balance": refund_points,
+                    },
                 )
 
                 db.session.execute(
@@ -975,8 +1079,8 @@ def settle_prediction_market(admin_user_id: int, market_id, result, admin_action
                     {
                         "user_id": user_id,
                         "delta_points": refund_points,
-                        "ref_id": int(market_id)
-                    }
+                        "ref_id": int(market_id),
+                    },
                 )
 
             db.session.execute(
@@ -987,7 +1091,7 @@ def settle_prediction_market(admin_user_id: int, market_id, result, admin_action
                         status = 'cancelled',
                         settlement_result = 'cancelled',
                         settled_by_admin_id = :admin_user_id,
-                        settled_at = NOW(),
+                        settled_at = UTC_TIMESTAMP(),
                         settlement_note = :settlement_note
                     WHERE market_id = :market_id
                       AND status = 'closed'
@@ -997,13 +1101,14 @@ def settle_prediction_market(admin_user_id: int, market_id, result, admin_action
                 {
                     "admin_user_id": int(admin_user_id),
                     "settlement_note": final_admin_action,
-                    "market_id": int(market_id)
-                }
+                    "market_id": int(market_id),
+                },
             )
 
         else:
             winners = [
-                row for row in predictions
+                row
+                for row in predictions
                 if str(row["prediction_value"]).strip().lower() == normalized_result
             ]
 
@@ -1016,7 +1121,7 @@ def settle_prediction_market(admin_user_id: int, market_id, result, admin_action
                             status = 'cancelled',
                             settlement_result = 'cancelled',
                             settled_by_admin_id = :admin_user_id,
-                            settled_at = NOW(),
+                            settled_at = UTC_TIMESTAMP(),
                             settlement_note = :settlement_note
                         WHERE market_id = :market_id
                           AND status = 'closed'
@@ -1026,8 +1131,8 @@ def settle_prediction_market(admin_user_id: int, market_id, result, admin_action
                     {
                         "admin_user_id": int(admin_user_id),
                         "settlement_note": "No winners found; market cancelled during settlement.",
-                        "market_id": int(market_id)
-                    }
+                        "market_id": int(market_id),
+                    },
                 )
 
                 for row in predictions:
@@ -1044,8 +1149,8 @@ def settle_prediction_market(admin_user_id: int, market_id, result, admin_action
                         ),
                         {
                             "user_id": user_id,
-                            "balance": refund_points
-                        }
+                            "balance": refund_points,
+                        },
                     )
 
                     db.session.execute(
@@ -1070,8 +1175,8 @@ def settle_prediction_market(admin_user_id: int, market_id, result, admin_action
                         {
                             "user_id": user_id,
                             "delta_points": refund_points,
-                            "ref_id": int(market_id)
-                        }
+                            "ref_id": int(market_id),
+                        },
                     )
 
             else:
@@ -1092,8 +1197,8 @@ def settle_prediction_market(admin_user_id: int, market_id, result, admin_action
                         ),
                         {
                             "user_id": user_id,
-                            "balance": payout
-                        }
+                            "balance": payout,
+                        },
                     )
 
                     db.session.execute(
@@ -1118,8 +1223,8 @@ def settle_prediction_market(admin_user_id: int, market_id, result, admin_action
                         {
                             "user_id": user_id,
                             "delta_points": payout,
-                            "ref_id": int(market_id)
-                        }
+                            "ref_id": int(market_id),
+                        },
                     )
 
                 db.session.execute(
@@ -1130,7 +1235,7 @@ def settle_prediction_market(admin_user_id: int, market_id, result, admin_action
                             status = 'settled',
                             settlement_result = :settlement_result,
                             settled_by_admin_id = :admin_user_id,
-                            settled_at = NOW(),
+                            settled_at = UTC_TIMESTAMP(),
                             settlement_note = :settlement_note
                         WHERE market_id = :market_id
                           AND status = 'closed'
@@ -1141,8 +1246,8 @@ def settle_prediction_market(admin_user_id: int, market_id, result, admin_action
                         "settlement_result": normalized_result,
                         "admin_user_id": int(admin_user_id),
                         "settlement_note": final_admin_action,
-                        "market_id": int(market_id)
-                    }
+                        "market_id": int(market_id),
+                    },
                 )
 
         db.session.commit()
@@ -1151,10 +1256,17 @@ def settle_prediction_market(admin_user_id: int, market_id, result, admin_action
         db.session.rollback()
         raise
 
-    return _shape_prediction_market(_get_prediction_market_row(int(market_id)))
+    return _shape_prediction_market(
+        _get_prediction_market_row(int(market_id)),
+        user_timezone,
+    )
 
 
-def close_prediction_market(user_id: int, market_id):
+def close_prediction_market(
+    user_id: int,
+    market_id,
+    user_timezone: str | None = None,
+):
     user = _get_user_row(int(user_id))
 
     if user["account_status"] != "active":
@@ -1185,16 +1297,24 @@ def close_prediction_market(user_id: int, market_id):
         """,
         params={
             "market_id": int(market_id),
-            "user_id": int(user_id)
+            "user_id": int(user_id),
         },
         fetch=False,
-        commit=True
+        commit=True,
     )
 
-    return _shape_prediction_market(_get_prediction_market_row(int(market_id)))
+    return _shape_prediction_market(
+        _get_prediction_market_row(int(market_id)),
+        user_timezone,
+    )
 
 
-def request_prediction_market_cancellation(user_id: int, market_id, reason: str):
+def request_prediction_market_cancellation(
+    user_id: int,
+    market_id,
+    reason: str,
+    user_timezone: str | None = None,
+):
     user = _get_user_row(int(user_id))
 
     if user["account_status"] != "active":
@@ -1204,6 +1324,7 @@ def request_prediction_market_cancellation(user_id: int, market_id, reason: str)
         raise ValueError("market_id is required")
 
     final_reason = reason.strip() if isinstance(reason, str) else ""
+
     if not final_reason:
         raise ValueError("reason is required")
 
@@ -1230,7 +1351,7 @@ def request_prediction_market_cancellation(user_id: int, market_id, reason: str)
         SET
             cancel_request_status = 'pending',
             cancel_request_reason = :reason,
-            cancel_requested_at = NOW(),
+            cancel_requested_at = UTC_TIMESTAMP(),
             cancel_reviewed_by_admin_id = NULL,
             cancel_reviewed_at = NULL,
             cancel_review_note = NULL
@@ -1243,16 +1364,22 @@ def request_prediction_market_cancellation(user_id: int, market_id, reason: str)
         params={
             "reason": final_reason,
             "market_id": int(market_id),
-            "user_id": int(user_id)
+            "user_id": int(user_id),
         },
         fetch=False,
-        commit=True
+        commit=True,
     )
 
-    return _shape_prediction_market(_get_prediction_market_row(int(market_id)))
+    return _shape_prediction_market(
+        _get_prediction_market_row(int(market_id)),
+        user_timezone,
+    )
 
 
-def get_admin_prediction_cancel_review_queue(admin_user_id: int):
+def get_admin_prediction_cancel_review_queue(
+    admin_user_id: int,
+    user_timezone: str | None = None,
+):
     if not _is_admin(admin_user_id):
         raise PermissionError("Forbidden")
 
@@ -1325,13 +1452,18 @@ def get_admin_prediction_cancel_review_queue(admin_user_id: int):
         ORDER BY pm.cancel_requested_at ASC, pm.market_id ASC
         """,
         fetch=True,
-        commit=False
+        commit=False,
     )
 
-    return [_shape_prediction_market(row) for row in rows]
+    return [_shape_prediction_market(row, user_timezone) for row in rows]
 
 
-def approve_prediction_market_cancellation(admin_user_id: int, market_id, admin_action=None):
+def approve_prediction_market_cancellation(
+    admin_user_id: int,
+    market_id,
+    admin_action=None,
+    user_timezone: str | None = None,
+):
     if not _is_admin(admin_user_id):
         raise PermissionError("Forbidden")
 
@@ -1343,7 +1475,11 @@ def approve_prediction_market_cancellation(admin_user_id: int, market_id, admin_
     if market["cancel_request_status"] != "pending":
         raise ValueError("Only pending cancellation requests can be approved")
 
-    final_admin_action = admin_action.strip() if isinstance(admin_action, str) and admin_action.strip() else "Cancellation approved by admin"
+    final_admin_action = (
+        admin_action.strip()
+        if isinstance(admin_action, str) and admin_action.strip()
+        else "Cancellation approved by admin"
+    )
 
     predictions = run_query(
         """
@@ -1357,7 +1493,7 @@ def approve_prediction_market_cancellation(admin_user_id: int, market_id, admin_
         """,
         params={"market_id": int(market_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     try:
@@ -1375,8 +1511,8 @@ def approve_prediction_market_cancellation(admin_user_id: int, market_id, admin_
                 ),
                 {
                     "user_id": user_id,
-                    "balance": refund_points
-                }
+                    "balance": refund_points,
+                },
             )
 
             db.session.execute(
@@ -1401,8 +1537,8 @@ def approve_prediction_market_cancellation(admin_user_id: int, market_id, admin_
                 {
                     "user_id": user_id,
                     "delta_points": refund_points,
-                    "ref_id": int(market_id)
-                }
+                    "ref_id": int(market_id),
+                },
             )
 
         db.session.execute(
@@ -1414,10 +1550,10 @@ def approve_prediction_market_cancellation(admin_user_id: int, market_id, admin_
                     settlement_result = 'cancelled',
                     cancel_request_status = 'approved',
                     cancel_reviewed_by_admin_id = :admin_user_id,
-                    cancel_reviewed_at = NOW(),
+                    cancel_reviewed_at = UTC_TIMESTAMP(),
                     cancel_review_note = :cancel_review_note,
                     settled_by_admin_id = :admin_user_id,
-                    settled_at = NOW(),
+                    settled_at = UTC_TIMESTAMP(),
                     settlement_note = :settlement_note
                 WHERE market_id = :market_id
                   AND cancel_request_status = 'pending'
@@ -1427,8 +1563,8 @@ def approve_prediction_market_cancellation(admin_user_id: int, market_id, admin_
                 "admin_user_id": int(admin_user_id),
                 "cancel_review_note": final_admin_action,
                 "settlement_note": final_admin_action,
-                "market_id": int(market_id)
-            }
+                "market_id": int(market_id),
+            },
         )
 
         db.session.commit()
@@ -1437,10 +1573,18 @@ def approve_prediction_market_cancellation(admin_user_id: int, market_id, admin_
         db.session.rollback()
         raise
 
-    return _shape_prediction_market(_get_prediction_market_row(int(market_id)))
+    return _shape_prediction_market(
+        _get_prediction_market_row(int(market_id)),
+        user_timezone,
+    )
 
 
-def reject_prediction_market_cancellation(admin_user_id: int, market_id, admin_action=None):
+def reject_prediction_market_cancellation(
+    admin_user_id: int,
+    market_id,
+    admin_action=None,
+    user_timezone: str | None = None,
+):
     if not _is_admin(admin_user_id):
         raise PermissionError("Forbidden")
 
@@ -1452,7 +1596,11 @@ def reject_prediction_market_cancellation(admin_user_id: int, market_id, admin_a
     if market["cancel_request_status"] != "pending":
         raise ValueError("Only pending cancellation requests can be rejected")
 
-    final_admin_action = admin_action.strip() if isinstance(admin_action, str) and admin_action.strip() else "Cancellation rejected by admin"
+    final_admin_action = (
+        admin_action.strip()
+        if isinstance(admin_action, str) and admin_action.strip()
+        else "Cancellation rejected by admin"
+    )
 
     run_query(
         """
@@ -1460,7 +1608,7 @@ def reject_prediction_market_cancellation(admin_user_id: int, market_id, admin_a
         SET
             cancel_request_status = 'rejected',
             cancel_reviewed_by_admin_id = :admin_user_id,
-            cancel_reviewed_at = NOW(),
+            cancel_reviewed_at = UTC_TIMESTAMP(),
             cancel_review_note = :cancel_review_note
         WHERE market_id = :market_id
           AND cancel_request_status = 'pending'
@@ -1468,10 +1616,13 @@ def reject_prediction_market_cancellation(admin_user_id: int, market_id, admin_a
         params={
             "admin_user_id": int(admin_user_id),
             "cancel_review_note": final_admin_action,
-            "market_id": int(market_id)
+            "market_id": int(market_id),
         },
         fetch=False,
-        commit=True
+        commit=True,
     )
 
-    return _shape_prediction_market(_get_prediction_market_row(int(market_id)))
+    return _shape_prediction_market(
+        _get_prediction_market_row(int(market_id)),
+        user_timezone,
+    )

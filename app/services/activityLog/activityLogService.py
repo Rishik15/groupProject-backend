@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.services import run_query
 
@@ -23,48 +24,45 @@ def _to_float(value):
         return None
 
 
-def _parse_utc_datetime(value):
-    if value is None or value == "":
-        return None
+def _get_valid_timezone(user_timezone: str | None):
+    if not user_timezone:
+        return "America/New_York"
 
     try:
-        cleaned_value = str(value).strip().replace("Z", "+00:00")
-        parsed_datetime = datetime.fromisoformat(cleaned_value)
-
-        if parsed_datetime.tzinfo is None:
-            parsed_datetime = parsed_datetime.replace(tzinfo=timezone.utc)
-
-        utc_datetime = parsed_datetime.astimezone(timezone.utc)
-
-        return utc_datetime.strftime("%Y-%m-%d %H:%M:%S")
-    except (ValueError, TypeError):
-        return None
+        ZoneInfo(user_timezone)
+        return user_timezone
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
 
 
-def _get_today_utc_range(today_start_utc=None, today_end_utc=None):
-    start_utc = _parse_utc_datetime(today_start_utc)
-    end_utc = _parse_utc_datetime(today_end_utc)
+def _get_today_utc_range(user_timezone: str | None):
+    valid_timezone = _get_valid_timezone(user_timezone)
+    tz = ZoneInfo(valid_timezone)
 
-    if start_utc and end_utc:
-        return start_utc, end_utc
+    today = datetime.now(tz).date()
 
-    start_of_day_utc = datetime.now(timezone.utc).replace(
-        hour=0,
-        minute=0,
-        second=0,
-        microsecond=0,
+    today_start_local = datetime.combine(today, time.min, tzinfo=tz)
+    tomorrow_start_local = today_start_local + timedelta(days=1)
+
+    today_start_utc = today_start_local.astimezone(timezone.utc).replace(
+        tzinfo=None,
     )
-    end_of_day_utc = start_of_day_utc + timedelta(days=1)
+    tomorrow_start_utc = tomorrow_start_local.astimezone(timezone.utc).replace(
+        tzinfo=None,
+    )
 
     return (
-        start_of_day_utc.strftime("%Y-%m-%d %H:%M:%S"),
-        end_of_day_utc.strftime("%Y-%m-%d %H:%M:%S"),
+        today_start_utc.strftime("%Y-%m-%d %H:%M:%S"),
+        tomorrow_start_utc.strftime("%Y-%m-%d %H:%M:%S"),
     )
 
 
-def _format_datetime(value):
+def _format_datetime(value, user_timezone: str | None):
     if value is None:
         return None
+
+    valid_timezone = _get_valid_timezone(user_timezone)
+    tz = ZoneInfo(valid_timezone)
 
     if isinstance(value, datetime):
         parsed_datetime = value
@@ -77,7 +75,9 @@ def _format_datetime(value):
     if parsed_datetime.tzinfo is None:
         parsed_datetime = parsed_datetime.replace(tzinfo=timezone.utc)
 
-    return parsed_datetime.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    local_datetime = parsed_datetime.astimezone(tz)
+
+    return local_datetime.strftime("%Y-%m-%dT%H:%M:%S")
 
 
 def _session_belongs_to_user(user_id: int, session_id: int):
@@ -105,7 +105,7 @@ def _session_belongs_to_user(user_id: int, session_id: int):
     return rows[0]
 
 
-def _format_strength_logs(rows):
+def _format_strength_logs(rows, user_timezone: str | None):
     strength_logs = []
 
     for row in rows:
@@ -119,9 +119,9 @@ def _format_strength_logs(rows):
                 "reps": row["reps"],
                 "weight": float(row["weight"]) if row["weight"] is not None else None,
                 "rpe": float(row["rpe"]) if row["rpe"] is not None else None,
-                "performedAt": _format_datetime(row["performed_at"]),
-                "startedAt": _format_datetime(row.get("started_at")),
-                "endedAt": _format_datetime(row.get("ended_at")),
+                "performedAt": _format_datetime(row["performed_at"], user_timezone),
+                "startedAt": _format_datetime(row.get("started_at"), user_timezone),
+                "endedAt": _format_datetime(row.get("ended_at"), user_timezone),
                 "workoutPlanName": row.get("plan_name"),
                 "workoutDayLabel": row.get("day_label"),
                 "canEdit": bool(row["can_edit"]),
@@ -131,7 +131,7 @@ def _format_strength_logs(rows):
     return strength_logs
 
 
-def _format_cardio_logs(rows):
+def _format_cardio_logs(rows, user_timezone: str | None):
     cardio_logs = []
 
     for row in rows:
@@ -140,7 +140,7 @@ def _format_cardio_logs(rows):
                 "cardioLogId": row["cardio_log_id"],
                 "sessionId": row["session_id"],
                 "userId": row["user_id"],
-                "performedAt": _format_datetime(row["performed_at"]),
+                "performedAt": _format_datetime(row["performed_at"], user_timezone),
                 "steps": row["steps"],
                 "distanceKm": (
                     float(row["distance_km"])
@@ -159,14 +159,10 @@ def _format_cardio_logs(rows):
 
 def get_activity_logs(
     user_id: int,
+    user_timezone: str | None,
     session_id: int | None = None,
-    today_start_utc: str | None = None,
-    today_end_utc: str | None = None,
 ):
-    today_start_utc, today_end_utc = _get_today_utc_range(
-        today_start_utc,
-        today_end_utc,
-    )
+    today_start_utc, today_end_utc = _get_today_utc_range(user_timezone)
 
     if session_id:
         session_row = _session_belongs_to_user(user_id, session_id)
@@ -277,20 +273,17 @@ def get_activity_logs(
     return {
         "success": True,
         "sessionId": session_id,
-        "strengthLogs": _format_strength_logs(strength_rows),
-        "cardioLogs": _format_cardio_logs(cardio_rows),
+        "timezone": _get_valid_timezone(user_timezone),
+        "strengthLogs": _format_strength_logs(strength_rows, user_timezone),
+        "cardioLogs": _format_cardio_logs(cardio_rows, user_timezone),
     }
 
 
 def get_full_activity_logs(
     user_id: int,
-    today_start_utc: str | None = None,
-    today_end_utc: str | None = None,
+    user_timezone: str | None,
 ):
-    today_start_utc, today_end_utc = _get_today_utc_range(
-        today_start_utc,
-        today_end_utc,
-    )
+    today_start_utc, today_end_utc = _get_today_utc_range(user_timezone)
 
     strength_rows = run_query(
         """
@@ -368,8 +361,9 @@ def get_full_activity_logs(
 
     return {
         "success": True,
-        "strengthLogs": _format_strength_logs(strength_rows),
-        "cardioLogs": _format_cardio_logs(cardio_rows),
+        "timezone": _get_valid_timezone(user_timezone),
+        "strengthLogs": _format_strength_logs(strength_rows, user_timezone),
+        "cardioLogs": _format_cardio_logs(cardio_rows, user_timezone),
     }
 
 
@@ -480,15 +474,11 @@ def log_strength_set(user_id: int, data: dict):
 
 def update_strength_set(
     user_id: int,
+    user_timezone: str | None,
     set_log_id: int,
     data: dict,
-    today_start_utc: str | None = None,
-    today_end_utc: str | None = None,
 ):
-    today_start_utc, today_end_utc = _get_today_utc_range(
-        today_start_utc,
-        today_end_utc,
-    )
+    today_start_utc, today_end_utc = _get_today_utc_range(user_timezone)
 
     set_number = _to_int(data.get("set_number"))
     reps = _to_int(data.get("reps"))
@@ -655,15 +645,11 @@ def log_cardio_activity(user_id: int, data: dict):
 
 def update_cardio_log(
     user_id: int,
+    user_timezone: str | None,
     cardio_log_id: int,
     data: dict,
-    today_start_utc: str | None = None,
-    today_end_utc: str | None = None,
 ):
-    today_start_utc, today_end_utc = _get_today_utc_range(
-        today_start_utc,
-        today_end_utc,
-    )
+    today_start_utc, today_end_utc = _get_today_utc_range(user_timezone)
 
     steps = _to_int(data.get("steps"))
     distance_km = _to_float(data.get("distance_km"))

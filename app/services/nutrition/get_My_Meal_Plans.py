@@ -1,7 +1,7 @@
 from app.services import run_query
 
 
-def get_my_meal_plans(user_id):
+def get_my_meal_plans(user_id, today):
     return run_query(
         """
         SELECT
@@ -12,8 +12,22 @@ def get_my_meal_plans(user_id):
             total_calories
         FROM meal_plan
         WHERE user_id = :user_id
-        ORDER BY created_at DESC
+          AND (
+              end_date IS NULL
+              OR end_date >= :today
+          )
+        ORDER BY
+            CASE
+                WHEN start_date IS NULL THEN 1
+                ELSE 0
+            END,
+            start_date ASC,
+            created_at DESC
         """,
-        {"user_id": user_id},
-        fetch=True, commit=False
+        {
+            "user_id": user_id,
+            "today": today,
+        },
+        fetch=True,
+        commit=False,
     )

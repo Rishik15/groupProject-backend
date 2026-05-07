@@ -1,3 +1,5 @@
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from flask import current_app, jsonify, redirect, request, session
 from google_auth_oauthlib.flow import Flow
 from google.oauth2 import id_token
@@ -8,6 +10,32 @@ from app.services.auth.googleLoginService import resolve_or_create_google_user
 from app.services.auth.getUser import getUserInfo
 from app.services.auth.getUserRoles import getUserRoles
 from app.services.auth.coachApplicationStatus import getCoachApplicationStatus
+
+
+def get_valid_timezone(value: str | None) -> str:
+    if not value:
+        return "America/New_York"
+
+    try:
+        ZoneInfo(value)
+        return value
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
+
+
+def save_timezone_from_request():
+    timezone = (
+        request.args.get("timezone")
+        or request.headers.get("X-Timezone")
+        or session.get("timezone")
+    )
+
+    timezone = get_valid_timezone(timezone)
+
+    session["timezone"] = timezone
+    session.modified = True
+
+    return timezone
 
 
 def build_google_login_flow(state: str | None = None):
@@ -36,12 +64,16 @@ def _coerce_email_verified(value):
 
 @auth_bp.route("/googleLogin/start", methods=["GET"])
 def google_login_start():
+    user_timezone = save_timezone_from_request()
+
     session.pop("google_login_state", None)
     session.pop("google_login_code_verifier", None)
     session.pop("google_oauth_state", None)
     session.pop("google_oauth_code_verifier", None)
     session.pop("google_oauth_personal_state", None)
     session.pop("google_oauth_personal_code_verifier", None)
+
+    session["timezone"] = user_timezone
 
     flow = build_google_login_flow()
 
@@ -119,6 +151,7 @@ def google_login_callback():
     session["user_id"] = user_id
     session["auth_provider"] = "google"
     session["role"] = user.get("role")
+    session["timezone"] = get_valid_timezone(session.get("timezone"))
 
     session.pop("google_login_state", None)
     session.pop("google_login_code_verifier", None)
@@ -134,6 +167,8 @@ def google_login_callback():
 def google_login_status():
     if "user_id" not in session:
         return jsonify({"authenticated": False}), 401
+
+    user_timezone = save_timezone_from_request()
 
     user_id = int(session.get("user_id"))
 
@@ -151,6 +186,7 @@ def google_login_status():
                 "user": user_info,
                 "coach_application_status": coach_application_status,
                 "auth_provider": session.get("auth_provider", "password"),
+                "timezone": user_timezone,
             }
         ),
         200,

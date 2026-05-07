@@ -7,21 +7,25 @@ from app.services.admin.coach_prices import (
 )
 
 
+def _get_session_timezone():
+    return session.get("timezone") or "America/New_York"
+
+
 @admin_bp.route("/coach-prices/pending", methods=["GET"])
 def admin_get_pending_coach_prices():
     """
-Get pending coach price requests
----
-tags:
-  - admin
-responses:
-  200:
-    description: List of price requests
-  401:
-    description: Unauthorized
-  403:
-    description: Forbidden
-"""
+    Get pending coach price requests
+    ---
+    tags:
+      - admin
+    responses:
+      200:
+        description: List of price requests
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+    """
     try:
         user_id = session.get("user_id")
 
@@ -30,12 +34,20 @@ responses:
 
         user_id = int(user_id)
 
-        requests = get_pending_coach_price_requests(user_id)
+        requests = get_pending_coach_price_requests(
+            user_id=user_id,
+            user_timezone=_get_session_timezone(),
+        )
 
-        return jsonify({
-            "message": "success",
-            "requests": requests
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": "success",
+                    "requests": requests,
+                }
+            ),
+            200,
+        )
 
     except PermissionError:
         return jsonify({"error": "Forbidden"}), 403
@@ -47,33 +59,33 @@ responses:
 @admin_bp.route("/coach-prices/approve", methods=["PATCH"])
 def admin_approve_coach_price():
     """
-Approve coach price request
----
-tags:
-  - admin
-parameters:
-  - name: body
-    in: body
-    required: true
-    schema:
-      type: object
-      required:
-        - request_id
-      properties:
-        request_id:
-          type: integer
-        admin_action:
-          type: string
-responses:
-  200:
-    description: Request approved
-  400:
-    description: Invalid input
-  401:
-    description: Unauthorized
-  403:
-    description: Forbidden
-"""
+    Approve coach price request
+    ---
+    tags:
+      - admin
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - request_id
+          properties:
+            request_id:
+              type: integer
+            admin_action:
+              type: string
+    responses:
+      200:
+        description: Request approved
+      400:
+        description: Invalid input
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+    """
     try:
         user_id = session.get("user_id")
 
@@ -89,13 +101,19 @@ responses:
         result = approve_coach_price_request(
             admin_user_id=user_id,
             request_id=request_id,
-            admin_action=admin_action
+            admin_action=admin_action,
+            user_timezone=_get_session_timezone(),
         )
 
-        return jsonify({
-            "message": "success",
-            "request": result
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": "success",
+                    "request": result,
+                }
+            ),
+            200,
+        )
 
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -110,33 +128,33 @@ responses:
 @admin_bp.route("/coach-prices/reject", methods=["PATCH"])
 def admin_reject_coach_price():
     """
-Reject coach price request
----
-tags:
-  - admin
-parameters:
-  - name: body
-    in: body
-    required: true
-    schema:
-      type: object
-      required:
-        - request_id
-      properties:
-        request_id:
-          type: integer
-        admin_action:
-          type: string
-responses:
-  200:
-    description: Request rejected
-  400:
-    description: Invalid input
-  401:
-    description: Unauthorized
-  403:
-    description: Forbidden
-"""
+    Reject coach price request
+    ---
+    tags:
+      - admin
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - request_id
+          properties:
+            request_id:
+              type: integer
+            admin_action:
+              type: string
+    responses:
+      200:
+        description: Request rejected
+      400:
+        description: Invalid input
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+    """
     try:
         user_id = session.get("user_id")
 
@@ -152,13 +170,19 @@ responses:
         result = reject_coach_price_request(
             admin_user_id=user_id,
             request_id=request_id,
-            admin_action=admin_action
+            admin_action=admin_action,
+            user_timezone=_get_session_timezone(),
         )
 
-        return jsonify({
-            "message": "success",
-            "request": result
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": "success",
+                    "request": result,
+                }
+            ),
+            200,
+        )
 
     except ValueError as e:
         return jsonify({"error": str(e)}), 400

@@ -1,5 +1,7 @@
-from app.services import run_query
 from datetime import datetime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+from app.services import run_query
 
 
 def _is_admin(user_id: int) -> bool:
@@ -14,13 +16,24 @@ def _is_admin(user_id: int) -> bool:
         """,
         params={"uid": user_id},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     return len(rows) > 0
 
 
-def get_dashboard_stats(user_id: int):
+def _get_valid_timezone(user_timezone: str | None):
+    if not user_timezone:
+        return "America/New_York"
+
+    try:
+        ZoneInfo(user_timezone)
+        return user_timezone
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
+
+
+def get_dashboard_stats(user_id: int, user_timezone: str | None = None):
     """
     Returns dashboard statistics for admin.
     Raises:
@@ -32,13 +45,15 @@ def get_dashboard_stats(user_id: int):
 
     total_users = run_query(
         "SELECT COUNT(*) AS count FROM users_immutables",
-        fetch=True
+        fetch=True,
     )[0]["count"]
 
     active_coaches = run_query(
         "SELECT COUNT(*) AS count FROM coach",
-        fetch=True
-    )[0]["count"]
+        fetch=True,
+    )[
+        0
+    ]["count"]
 
     pending_apps = run_query(
         """
@@ -46,7 +61,7 @@ def get_dashboard_stats(user_id: int):
         FROM coach_application
         WHERE status = 'pending'
         """,
-        fetch=True
+        fetch=True,
     )[0]["count"]
 
     open_reports = run_query(
@@ -55,10 +70,11 @@ def get_dashboard_stats(user_id: int):
         FROM user_report
         WHERE status IN ('open','reviewing')
         """,
-        fetch=True
+        fetch=True,
     )[0]["count"]
 
-    now = datetime.utcnow()
+    tz = ZoneInfo(_get_valid_timezone(user_timezone))
+    now = datetime.now(tz)
     year = now.year
     month = now.month
 
@@ -73,7 +89,7 @@ def get_dashboard_stats(user_id: int):
               )
         """,
         params={"year": year, "month": month},
-        fetch=True
+        fetch=True,
     )[0]["revenue"]
 
     return {
@@ -82,5 +98,5 @@ def get_dashboard_stats(user_id: int):
         "pending_reviews": pending_apps + open_reports,
         "pending_coach_applications": pending_apps,
         "open_reports": open_reports,
-        "monthly_revenue": float(monthly_revenue)
+        "monthly_revenue": float(monthly_revenue),
     }

@@ -11,11 +11,8 @@ from app.services.activityLog.activityLogService import (
 )
 
 
-def _get_today_range_args():
-    return {
-        "today_start_utc": request.args.get("today_start_utc"),
-        "today_end_utc": request.args.get("today_end_utc"),
-    }
+def _get_session_timezone():
+    return session.get("timezone") or "America/New_York"
 
 
 @activity_log_bp.route("/logs", methods=["GET"])
@@ -29,12 +26,6 @@ def get_activity_logs_route():
       - name: session_id
         in: query
         type: integer
-      - name: today_start_utc
-        in: query
-        type: string
-      - name: today_end_utc
-        in: query
-        type: string
     responses:
       200:
         description: Activity logs
@@ -49,13 +40,10 @@ def get_activity_logs_route():
     session_id = request.args.get("session_id")
     session_id = int(session_id) if session_id else None
 
-    today_range = _get_today_range_args()
-
     result = get_activity_logs(
         user_id=user_id,
+        user_timezone=_get_session_timezone(),
         session_id=session_id,
-        today_start_utc=today_range["today_start_utc"],
-        today_end_utc=today_range["today_end_utc"],
     )
 
     if not result.get("success"):
@@ -71,13 +59,6 @@ def get_full_activity_logs_route():
     ---
     tags:
       - activity-log
-    parameters:
-      - name: today_start_utc
-        in: query
-        type: string
-      - name: today_end_utc
-        in: query
-        type: string
     responses:
       200:
         description: Full activity logs
@@ -89,12 +70,9 @@ def get_full_activity_logs_route():
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
 
-    today_range = _get_today_range_args()
-
     result = get_full_activity_logs(
         user_id=user_id,
-        today_start_utc=today_range["today_start_utc"],
-        today_end_utc=today_range["today_end_utc"],
+        user_timezone=_get_session_timezone(),
     )
 
     if not result.get("success"):
@@ -148,12 +126,6 @@ def update_strength_set_route():
         in: query
         type: integer
         required: true
-      - name: today_start_utc
-        in: query
-        type: string
-      - name: today_end_utc
-        in: query
-        type: string
       - name: body
         in: body
         schema:
@@ -177,14 +149,12 @@ def update_strength_set_route():
         return jsonify({"error": "set_log_id is required"}), 400
 
     data = request.get_json() or {}
-    today_range = _get_today_range_args()
 
     result = update_strength_set(
         user_id=user_id,
+        user_timezone=_get_session_timezone(),
         set_log_id=int(set_log_id),
         data=data,
-        today_start_utc=today_range["today_start_utc"],
-        today_end_utc=today_range["today_end_utc"],
     )
 
     if not result.get("success"):
@@ -238,12 +208,6 @@ def update_cardio_log_route():
         in: query
         type: integer
         required: true
-      - name: today_start_utc
-        in: query
-        type: string
-      - name: today_end_utc
-        in: query
-        type: string
       - name: body
         in: body
         schema:
@@ -267,14 +231,12 @@ def update_cardio_log_route():
         return jsonify({"error": "cardio_log_id is required"}), 400
 
     data = request.get_json() or {}
-    today_range = _get_today_range_args()
 
     result = update_cardio_log(
         user_id=user_id,
+        user_timezone=_get_session_timezone(),
         cardio_log_id=int(cardio_log_id),
         data=data,
-        today_start_utc=today_range["today_start_utc"],
-        today_end_utc=today_range["today_end_utc"],
     )
 
     if not result.get("success"):

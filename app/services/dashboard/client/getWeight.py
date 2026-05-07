@@ -1,5 +1,4 @@
 from app.services import run_query
-from datetime import datetime, timedelta
 
 
 def get_user_weight(user_id):
@@ -45,6 +44,11 @@ def get_user_weight(user_id):
             else:
                 value = last_value
 
-        weeks.append({"week": f"W{week}", "avg_weight": value})
+        weeks.append(
+            {
+                "week": f"W{week}",
+                "avg_weight": value,
+            }
+        )
 
     return weeks

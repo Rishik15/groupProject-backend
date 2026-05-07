@@ -1,7 +1,43 @@
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from .. import run_query
 
 
-def _serialize_review_rows(rows):
+def _get_valid_timezone(user_timezone: str | None):
+    if not user_timezone:
+        return "America/New_York"
+
+    try:
+        ZoneInfo(user_timezone)
+        return user_timezone
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
+
+
+def _format_datetime(value, user_timezone: str | None):
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        parsed_datetime = value
+    else:
+        try:
+            parsed_datetime = datetime.fromisoformat(str(value).replace(" ", "T"))
+        except (ValueError, TypeError):
+            return str(value)
+
+    if parsed_datetime.tzinfo is None:
+        parsed_datetime = parsed_datetime.replace(tzinfo=timezone.utc)
+
+    local_datetime = parsed_datetime.astimezone(
+        ZoneInfo(_get_valid_timezone(user_timezone))
+    )
+
+    return local_datetime.strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def _serialize_review_rows(rows, user_timezone: str | None = None):
     serialized = []
 
     for row in rows:
@@ -12,19 +48,15 @@ def _serialize_review_rows(rows):
                 "review_text": row["review_text"],
                 "reviewer_first_name": row["reviewer_first_name"],
                 "reviewer_last_name": row["reviewer_last_name"],
-                "created_at": (
-                    row["created_at"].isoformat() if row.get("created_at") else None
-                ),
-                "updated_at": (
-                    row["updated_at"].isoformat() if row.get("updated_at") else None
-                ),
+                "created_at": _format_datetime(row.get("created_at"), user_timezone),
+                "updated_at": _format_datetime(row.get("updated_at"), user_timezone),
             }
         )
 
     return serialized
 
 
-def getReviews(coach_id: int):
+def getReviews(coach_id: int, user_timezone: str | None = None):
     coach_info = run_query(
         """
         SELECT
@@ -84,7 +116,7 @@ def getReviews(coach_id: int):
 
     return {
         "coach_avg_rating": avg_rating,
-        "reviews": _serialize_review_rows(reviews),
+        "reviews": _serialize_review_rows(reviews, user_timezone),
         "coach_first_name": coach_info[0]["coach_first_name"],
         "coach_last_name": coach_info[0]["coach_last_name"],
     }

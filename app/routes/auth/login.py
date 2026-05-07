@@ -1,3 +1,6 @@
+from datetime import datetime, time, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from . import auth_bp
 from app import bcrypt
 from flask import session, request
@@ -8,17 +11,43 @@ from app.services.auth.coachApplicationStatus import getCoachApplicationStatus
 from app.sockets.notifications.notifications import send_notification
 
 
-def has_completed_daily_survey_today(user_id: int):
+def get_valid_timezone(value: str | None) -> str:
+    if not value:
+        return "America/New_York"
+
+    try:
+        ZoneInfo(value)
+        return value
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
+
+
+def get_user_today_and_utc_bounds(user_timezone: str):
+    tz = ZoneInfo(user_timezone)
+
+    today = datetime.now(tz).date()
+
+    start_local = datetime.combine(today, time.min, tzinfo=tz)
+    end_local = datetime.combine(today, time.max, tzinfo=tz)
+
+    start_utc = start_local.astimezone(timezone.utc).replace(tzinfo=None)
+    end_utc = end_local.astimezone(timezone.utc).replace(tzinfo=None)
+
+    return today, start_utc, end_utc
+
+
+def has_completed_daily_survey_today(user_id: int, today):
     rows = run_query(
         """
         SELECT survey_id
         FROM mental_wellness_survey
         WHERE user_id = :user_id
-        AND survey_date = CURDATE()
+          AND survey_date = :today
         LIMIT 1
         """,
         {
             "user_id": user_id,
+            "today": today,
         },
         fetch=True,
         commit=False,
@@ -27,20 +56,23 @@ def has_completed_daily_survey_today(user_id: int):
     return bool(rows)
 
 
-def get_daily_survey_notification_today(user_id: int):
+def get_daily_survey_notification_today(user_id: int, start_utc, end_utc):
     rows = run_query(
         """
         SELECT notification_id
         FROM notification
         WHERE user_id = :user_id
-        AND mode = 'client'
-        AND type = 'daily_survey'
-        AND DATE(created_at) = CURDATE()
+          AND mode = 'client'
+          AND type = 'daily_survey'
+          AND created_at >= :start_utc
+          AND created_at <= :end_utc
         ORDER BY notification_id DESC
         LIMIT 1
         """,
         {
             "user_id": user_id,
+            "start_utc": start_utc,
+            "end_utc": end_utc,
         },
         fetch=True,
         commit=False,
@@ -71,11 +103,17 @@ def update_daily_survey_notification(notification_id: int):
     )
 
 
-def maybe_send_daily_survey_notification(user_id: int):
-    if has_completed_daily_survey_today(user_id):
+def maybe_send_daily_survey_notification(user_id: int, user_timezone: str):
+    today, start_utc, end_utc = get_user_today_and_utc_bounds(user_timezone)
+
+    if has_completed_daily_survey_today(user_id, today):
         return
 
-    existing_notification = get_daily_survey_notification_today(user_id)
+    existing_notification = get_daily_survey_notification_today(
+        user_id,
+        start_utc,
+        end_utc,
+    )
 
     if existing_notification:
         update_daily_survey_notification(existing_notification["notification_id"])
@@ -106,6 +144,7 @@ def login():
 
     email = data.get("email")
     password = data.get("password")
+    user_timezone = get_valid_timezone(data.get("timezone"))
 
     user = getUserCreds(email)
 
@@ -124,12 +163,14 @@ def login():
     session.permanent = True
     session["user_id"] = user_id
     session["role"] = user["role"]
+    session["timezone"] = user_timezone
 
-    maybe_send_daily_survey_notification(user_id)
+    maybe_send_daily_survey_notification(user_id, user_timezone)
 
     return {
         "success": True,
         "roles": roles,
         "user": user_info,
         "coach_application_status": coach_application_status,
+        "timezone": user_timezone,
     }, 200

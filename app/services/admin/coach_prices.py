@@ -1,6 +1,42 @@
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from app.services import run_query
 from app.services.admin.dashboard import _is_admin
 from app.sockets.notifications.notifications import send_notification
+
+
+def _get_valid_timezone(user_timezone: str | None):
+    if not user_timezone:
+        return "America/New_York"
+
+    try:
+        ZoneInfo(user_timezone)
+        return user_timezone
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
+
+
+def _format_datetime(value, user_timezone: str | None):
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        parsed_datetime = value
+    else:
+        try:
+            parsed_datetime = datetime.fromisoformat(str(value).replace(" ", "T"))
+        except (ValueError, TypeError):
+            return str(value)
+
+    if parsed_datetime.tzinfo is None:
+        parsed_datetime = parsed_datetime.replace(tzinfo=timezone.utc)
+
+    local_datetime = parsed_datetime.astimezone(
+        ZoneInfo(_get_valid_timezone(user_timezone))
+    )
+
+    return local_datetime.strftime("%Y-%m-%dT%H:%M:%S")
 
 
 def _get_coach_price_request_row(request_id: int):
@@ -37,7 +73,7 @@ def _get_coach_price_request_row(request_id: int):
     return rows[0]
 
 
-def _shape_coach_price_request(row):
+def _shape_coach_price_request(row, user_timezone: str | None = None):
     return {
         "request_id": row["request_id"],
         "coach_id": row["coach_id"],
@@ -51,19 +87,16 @@ def _shape_coach_price_request(row):
         "status": row["status"],
         "admin_action": row["admin_action"],
         "reviewed_by_admin_id": row["reviewed_by_admin_id"],
-        "reviewed_at": (
-            row["reviewed_at"].isoformat() if row["reviewed_at"] is not None else None
-        ),
-        "created_at": (
-            row["created_at"].isoformat() if row["created_at"] is not None else None
-        ),
-        "updated_at": (
-            row["updated_at"].isoformat() if row["updated_at"] is not None else None
-        ),
+        "reviewed_at": _format_datetime(row["reviewed_at"], user_timezone),
+        "created_at": _format_datetime(row["created_at"], user_timezone),
+        "updated_at": _format_datetime(row["updated_at"], user_timezone),
     }
 
 
-def get_pending_coach_price_requests(user_id: int):
+def get_pending_coach_price_requests(
+    user_id: int,
+    user_timezone: str | None = None,
+):
     if not _is_admin(user_id):
         raise PermissionError("Forbidden")
 
@@ -94,10 +127,15 @@ def get_pending_coach_price_requests(user_id: int):
         commit=False,
     )
 
-    return [_shape_coach_price_request(row) for row in rows]
+    return [_shape_coach_price_request(row, user_timezone) for row in rows]
 
 
-def approve_coach_price_request(admin_user_id: int, request_id, admin_action=None):
+def approve_coach_price_request(
+    admin_user_id: int,
+    request_id,
+    admin_action=None,
+    user_timezone: str | None = None,
+):
     if not _is_admin(admin_user_id):
         raise PermissionError("Forbidden")
 
@@ -132,7 +170,7 @@ def approve_coach_price_request(admin_user_id: int, request_id, admin_action=Non
             status = 'approved',
             admin_action = :admin_action,
             reviewed_by_admin_id = :admin_id,
-            reviewed_at = NOW()
+            reviewed_at = UTC_TIMESTAMP()
         WHERE request_id = :request_id
         """,
         params={
@@ -145,7 +183,7 @@ def approve_coach_price_request(admin_user_id: int, request_id, admin_action=Non
     )
 
     updated_row = _get_coach_price_request_row(int(request_id))
-    shaped = _shape_coach_price_request(updated_row)
+    shaped = _shape_coach_price_request(updated_row, user_timezone)
 
     send_notification(
         user_id=int(updated_row["coach_id"]),
@@ -165,7 +203,12 @@ def approve_coach_price_request(admin_user_id: int, request_id, admin_action=Non
     return shaped
 
 
-def reject_coach_price_request(admin_user_id: int, request_id, admin_action=None):
+def reject_coach_price_request(
+    admin_user_id: int,
+    request_id,
+    admin_action=None,
+    user_timezone: str | None = None,
+):
     if not _is_admin(admin_user_id):
         raise PermissionError("Forbidden")
 
@@ -186,7 +229,7 @@ def reject_coach_price_request(admin_user_id: int, request_id, admin_action=None
             status = 'rejected',
             admin_action = :admin_action,
             reviewed_by_admin_id = :admin_id,
-            reviewed_at = NOW()
+            reviewed_at = UTC_TIMESTAMP()
         WHERE request_id = :request_id
         """,
         params={
@@ -199,7 +242,7 @@ def reject_coach_price_request(admin_user_id: int, request_id, admin_action=None
     )
 
     updated_row = _get_coach_price_request_row(int(request_id))
-    shaped = _shape_coach_price_request(updated_row)
+    shaped = _shape_coach_price_request(updated_row, user_timezone)
 
     send_notification(
         user_id=int(updated_row["coach_id"]),

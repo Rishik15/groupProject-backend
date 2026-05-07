@@ -3,24 +3,31 @@ from . import dashboard_client_bp
 from app.services.dashboard.client.getCalories import get_calories_metrics_service
 
 
+def _get_session_timezone():
+    return session.get("timezone") or "America/New_York"
+
+
 @dashboard_client_bp.route("/calories", methods=["GET"])
 def get_calories_metrics():
     """
-Get calorie metrics
----
-tags:
-  - dashboard-client
-responses:
-  200:
-    description: Weekly calories
-  401:
-    description: Unauthorized
-"""
+    Get calorie metrics
+    ---
+    tags:
+      - dashboard-client
+    responses:
+      200:
+        description: Weekly calories
+      401:
+        description: Unauthorized
+    """
     user_id = session.get("user_id")
 
     if not user_id:
         return {"error": "Unauthorized"}, 401
 
-    weekly = get_calories_metrics_service(user_id)
+    weekly = get_calories_metrics_service(
+        user_id=int(user_id),
+        user_timezone=_get_session_timezone(),
+    )
 
     return {"weekly": weekly}, 200

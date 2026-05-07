@@ -7,16 +7,16 @@ from app.services.dashboard.coach.getRevenueMonth import getRevenueLast6Months
 @dashboard_coach_bp.route("/revenue", methods=["GET"])
 def revenue():
     """
-Get coach revenue
----
-tags:
-  - dashboard-coach
-responses:
-  200:
-    description: Revenue data
-  401:
-    description: Unauthorized
-"""
+    Get coach revenue
+    ---
+    tags:
+      - dashboard-coach
+    responses:
+      200:
+        description: Revenue data
+      401:
+        description: Unauthorized
+    """
     if "user_id" not in session:
         return {"error": "Unauthorized"}, 401
 

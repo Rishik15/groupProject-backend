@@ -6,37 +6,36 @@ from app.services.calendar import calendarEvents
 from app.utils.Contract.getClientId import getClientIdFromContract
 
 
+def _get_session_timezone():
+    return session.get("timezone") or "America/New_York"
+
+
 @calendar_bp.route("/events", methods=["GET"])
 def get_my_calendar_events():
     """
-Get user calendar events
----
-tags:
-  - calendar
-parameters:
-  - name: start_date
-    in: query
-    type: string
-    required: true
-  - name: end_date
-    in: query
-    type: string
-    required: true
-responses:
-  200:
-    description: Calendar events
-  400:
-    description: Invalid or missing dates
-  401:
-    description: Unauthorized
-"""
+    Get user calendar events
+    ---
+    tags:
+      - calendar
+    parameters:
+      - name: start_date
+        in: query
+        type: string
+        required: true
+      - name: end_date
+        in: query
+        type: string
+        required: true
+    responses:
+      200:
+        description: Calendar events
+      400:
+        description: Invalid or missing dates
+      401:
+        description: Unauthorized
+    """
     try:
         user_id = session.get("user_id")
-
-        print("CALENDAR SESSION:", dict(session))
-        print("CALENDAR COOKIES:", request.cookies)
-        print("START:", request.args.get("start_date"))
-        print("END:", request.args.get("end_date"))
 
         if not user_id:
             return jsonify({"error": "Unauthorized"}), 401
@@ -57,6 +56,7 @@ responses:
             user_id=int(user_id),
             start_date=start_date,
             end_date=end_date,
+            user_timezone=_get_session_timezone(),
         )
 
         return jsonify({"events": events}), 200
@@ -71,30 +71,30 @@ responses:
 @calendar_bp.route("/events", methods=["POST"])
 def create_my_workout_event():
     """
-Create workout calendar event
----
-tags:
-  - calendar
-parameters:
-  - name: body
-    in: body
-    required: true
-    schema:
-      type: object
-      required:
-        - event_date
-        - start_time
-        - end_time
-        - workout_plan_id
-        - workout_day_id
-responses:
-  201:
-    description: Event created
-  400:
-    description: Invalid input
-  401:
-    description: Unauthorized
-"""
+    Create workout calendar event
+    ---
+    tags:
+      - calendar
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - event_date
+            - start_time
+            - end_time
+            - workout_plan_id
+            - workout_day_id
+    responses:
+      201:
+        description: Event created
+      400:
+        description: Invalid input
+      401:
+        description: Unauthorized
+    """
     try:
         user_id = session.get("user_id")
 
@@ -162,6 +162,7 @@ responses:
             notes=notes,
             workout_plan_id=workout_plan_id,
             workout_day_id=workout_day_id,
+            user_timezone=_get_session_timezone(),
         )
 
         return (
@@ -191,29 +192,29 @@ responses:
 @calendar_bp.route("/events", methods=["PATCH"])
 def update_my_workout_event():
     """
-Update workout event
----
-tags:
-  - calendar
-parameters:
-  - name: event_id
-    in: query
-    type: integer
-    required: true
-  - name: body
-    in: body
-    schema:
-      type: object
-responses:
-  200:
-    description: Event updated
-  400:
-    description: Invalid input
-  401:
-    description: Unauthorized
-  404:
-    description: Event not found
-"""
+    Update workout event
+    ---
+    tags:
+      - calendar
+    parameters:
+      - name: event_id
+        in: query
+        type: integer
+        required: true
+      - name: body
+        in: body
+        schema:
+          type: object
+    responses:
+      200:
+        description: Event updated
+      400:
+        description: Invalid input
+      401:
+        description: Unauthorized
+      404:
+        description: Event not found
+    """
     try:
         user_id = session.get("user_id")
         event_id = request.args.get("event_id")
@@ -225,7 +226,11 @@ responses:
             return jsonify({"error": "event_id is required"}), 400
 
         event_id = int(event_id)
-        existing = calendarEvents.get_event_by_id_for_user(int(user_id), event_id)
+        existing = calendarEvents.get_event_by_id_for_user(
+            int(user_id),
+            event_id,
+            user_timezone=_get_session_timezone(),
+        )
 
         if not existing:
             return jsonify({"error": "Event not found"}), 404
@@ -334,6 +339,7 @@ responses:
             notes=notes,
             workout_plan_id=workout_plan_id,
             workout_day_id=workout_day_id,
+            user_timezone=_get_session_timezone(),
         )
 
         return (
@@ -363,25 +369,25 @@ responses:
 @calendar_bp.route("/events", methods=["DELETE"])
 def delete_my_workout_event():
     """
-Delete workout event
----
-tags:
-  - calendar
-parameters:
-  - name: event_id
-    in: query
-    type: integer
-    required: true
-responses:
-  200:
-    description: Event deleted
-  400:
-    description: Invalid event_id
-  401:
-    description: Unauthorized
-  404:
-    description: Event not found
-"""
+    Delete workout event
+    ---
+    tags:
+      - calendar
+    parameters:
+      - name: event_id
+        in: query
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Event deleted
+      400:
+        description: Invalid event_id
+      401:
+        description: Unauthorized
+      404:
+        description: Event not found
+    """
     try:
         user_id = session.get("user_id")
         event_id = request.args.get("event_id")
@@ -393,7 +399,11 @@ responses:
             return jsonify({"error": "event_id is required"}), 400
 
         event_id = int(event_id)
-        existing = calendarEvents.get_event_by_id_for_user(int(user_id), event_id)
+        existing = calendarEvents.get_event_by_id_for_user(
+            int(user_id),
+            event_id,
+            user_timezone=_get_session_timezone(),
+        )
 
         if not existing:
             return jsonify({"error": "Event not found"}), 404
@@ -415,33 +425,33 @@ responses:
 @calendar_bp.route("/contracts/events", methods=["GET"])
 def get_contract_calendar_events():
     """
-Get contract calendar events
----
-tags:
-  - calendar
-parameters:
-  - name: contract_id
-    in: query
-    type: integer
-    required: true
-  - name: start_date
-    in: query
-    type: string
-    required: true
-  - name: end_date
-    in: query
-    type: string
-    required: true
-responses:
-  200:
-    description: Contract events
-  400:
-    description: Invalid input
-  401:
-    description: Unauthorized
-  403:
-    description: Forbidden
-"""
+    Get contract calendar events
+    ---
+    tags:
+      - calendar
+    parameters:
+      - name: contract_id
+        in: query
+        type: integer
+        required: true
+      - name: start_date
+        in: query
+        type: string
+        required: true
+      - name: end_date
+        in: query
+        type: string
+        required: true
+    responses:
+      200:
+        description: Contract events
+      400:
+        description: Invalid input
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+    """
     try:
         coach_id = session.get("user_id")
         contract_id = request.args.get("contract_id")
@@ -473,6 +483,7 @@ responses:
             user_id=int(client_id),
             start_date=start_date,
             end_date=end_date,
+            user_timezone=_get_session_timezone(),
         )
 
         return jsonify({"events": events}), 200
@@ -487,34 +498,34 @@ responses:
 @calendar_bp.route("/contracts/events", methods=["POST"])
 def create_contract_coach_session_event():
     """
-Create coach session event
----
-tags:
-  - calendar
-parameters:
-  - name: contract_id
-    in: query
-    type: integer
-    required: true
-  - name: body
-    in: body
-    required: true
-    schema:
-      type: object
-      required:
-        - event_date
-        - start_time
-        - end_time
-responses:
-  201:
-    description: Coach session created
-  400:
-    description: Invalid input
-  401:
-    description: Unauthorized
-  403:
-    description: Forbidden
-"""
+    Create coach session event
+    ---
+    tags:
+      - calendar
+    parameters:
+      - name: contract_id
+        in: query
+        type: integer
+        required: true
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - event_date
+            - start_time
+            - end_time
+    responses:
+      201:
+        description: Coach session created
+      400:
+        description: Invalid input
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+    """
     try:
         coach_id = session.get("user_id")
         contract_id = request.args.get("contract_id")
@@ -569,6 +580,7 @@ responses:
             notes=notes,
             workout_plan_id=None,
             workout_day_id=None,
+            user_timezone=_get_session_timezone(),
         )
 
         return (
@@ -591,33 +603,33 @@ responses:
 @calendar_bp.route("/contracts/events", methods=["PATCH"])
 def update_contract_coach_session_event():
     """
-Update coach session event
----
-tags:
-  - calendar
-parameters:
-  - name: contract_id
-    in: query
-    type: integer
-    required: true
-  - name: event_id
-    in: query
-    type: integer
-    required: true
-  - name: body
-    in: body
-    schema:
-      type: object
-responses:
-  200:
-    description: Coach session updated
-  400:
-    description: Invalid input
-  401:
-    description: Unauthorized
-  403:
-    description: Forbidden
-"""
+    Update coach session event
+    ---
+    tags:
+      - calendar
+    parameters:
+      - name: contract_id
+        in: query
+        type: integer
+        required: true
+      - name: event_id
+        in: query
+        type: integer
+        required: true
+      - name: body
+        in: body
+        schema:
+          type: object
+    responses:
+      200:
+        description: Coach session updated
+      400:
+        description: Invalid input
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+    """
     try:
         coach_id = session.get("user_id")
         contract_id = request.args.get("contract_id")
@@ -638,7 +650,11 @@ responses:
             return jsonify({"error": "Contract not found or access denied"}), 403
 
         event_id = int(event_id)
-        existing = calendarEvents.get_event_by_id_for_user(int(client_id), event_id)
+        existing = calendarEvents.get_event_by_id_for_user(
+            int(client_id),
+            event_id,
+            user_timezone=_get_session_timezone(),
+        )
 
         if not existing:
             return jsonify({"error": "Event not found"}), 404
@@ -711,6 +727,7 @@ responses:
             description=description,
             notes=notes,
             clear_workout_fields=True,
+            user_timezone=_get_session_timezone(),
         )
 
         return (
@@ -736,29 +753,29 @@ responses:
 @calendar_bp.route("/contracts/events", methods=["DELETE"])
 def delete_contract_coach_session_event():
     """
-Delete coach session event
----
-tags:
-  - calendar
-parameters:
-  - name: contract_id
-    in: query
-    type: integer
-    required: true
-  - name: event_id
-    in: query
-    type: integer
-    required: true
-responses:
-  200:
-    description: Coach session deleted
-  400:
-    description: Invalid input
-  401:
-    description: Unauthorized
-  403:
-    description: Forbidden
-"""
+    Delete coach session event
+    ---
+    tags:
+      - calendar
+    parameters:
+      - name: contract_id
+        in: query
+        type: integer
+        required: true
+      - name: event_id
+        in: query
+        type: integer
+        required: true
+    responses:
+      200:
+        description: Coach session deleted
+      400:
+        description: Invalid input
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+    """
     try:
         coach_id = session.get("user_id")
         contract_id = request.args.get("contract_id")
@@ -779,7 +796,11 @@ responses:
             return jsonify({"error": "Contract not found or access denied"}), 403
 
         event_id = int(event_id)
-        existing = calendarEvents.get_event_by_id_for_user(int(client_id), event_id)
+        existing = calendarEvents.get_event_by_id_for_user(
+            int(client_id),
+            event_id,
+            user_timezone=_get_session_timezone(),
+        )
 
         if not existing:
             return jsonify({"error": "Event not found"}), 404

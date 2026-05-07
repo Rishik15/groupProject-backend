@@ -1,4 +1,26 @@
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from app.services import run_query
+
+
+def _get_valid_timezone(user_timezone: str | None):
+    if not user_timezone:
+        return "America/New_York"
+
+    try:
+        ZoneInfo(user_timezone)
+        return user_timezone
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
+
+
+def _get_local_now(user_timezone: str | None):
+    return datetime.now(ZoneInfo(_get_valid_timezone(user_timezone)))
+
+
+def _utc_now_string():
+    return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 
 def _format_time(value):
@@ -8,18 +30,33 @@ def _format_time(value):
     return str(value)
 
 
-def _format_datetime(value):
+def _format_datetime(value, user_timezone: str | None = None):
     if value is None:
         return None
 
-    return str(value)
+    if isinstance(value, datetime):
+        parsed_datetime = value
+    else:
+        try:
+            parsed_datetime = datetime.fromisoformat(str(value).replace(" ", "T"))
+        except (ValueError, TypeError):
+            return str(value)
+
+    if parsed_datetime.tzinfo is None:
+        parsed_datetime = parsed_datetime.replace(tzinfo=timezone.utc)
+
+    local_datetime = parsed_datetime.astimezone(
+        ZoneInfo(_get_valid_timezone(user_timezone))
+    )
+
+    return local_datetime.strftime("%Y-%m-%dT%H:%M:%S")
 
 
 def _get_session_status(row):
     session_id = row.get("session_id")
     ended_at = row.get("ended_at")
     end_time = row.get("end_time")
-    server_time = row.get("server_time")
+    local_time = row.get("local_time")
 
     if session_id and ended_at is None:
         return "active"
@@ -27,7 +64,7 @@ def _get_session_status(row):
     if session_id and ended_at is not None:
         return "completed"
 
-    if end_time and server_time and end_time < server_time:
+    if end_time and local_time and end_time < local_time:
         return "missed"
 
     return "not_started"
@@ -53,7 +90,7 @@ def _map_scheduled_event(row):
     }
 
 
-def _map_active_session(row):
+def _map_active_session(row, user_timezone: str | None = None):
     if not row:
         return None
 
@@ -65,13 +102,29 @@ def _map_active_session(row):
         "workoutDayId": row["workout_day_id"],
         "workoutDayLabel": row["workout_day_label"],
         "title": row["title"],
-        "startedAt": _format_datetime(row["started_at"]),
-        "endedAt": _format_datetime(row["ended_at"]),
+        "startedAt": _format_datetime(row["started_at"], user_timezone),
+        "endedAt": _format_datetime(row["ended_at"], user_timezone),
         "notes": row["notes"],
     }
 
 
-def get_today_scheduled_sessions(user_id: int):
+def _map_session_response(row, user_timezone: str | None = None):
+    return {
+        "sessionId": row["session_id"],
+        "eventId": row["event_id"],
+        "workoutPlanId": row["workout_plan_id"],
+        "workoutDayId": row["workout_day_id"],
+        "startedAt": _format_datetime(row["started_at"], user_timezone),
+        "endedAt": _format_datetime(row["ended_at"], user_timezone),
+        "notes": row["notes"],
+    }
+
+
+def get_today_scheduled_sessions(user_id: int, user_timezone: str | None = None):
+    local_now = _get_local_now(user_timezone)
+    local_today = local_now.date()
+    local_time = local_now.time().replace(microsecond=0)
+
     rows = run_query(
         """
         SELECT
@@ -90,7 +143,7 @@ def get_today_scheduled_sessions(user_id: int):
             ws.session_id,
             ws.started_at,
             ws.ended_at,
-            CURTIME() AS server_time
+            :local_time AS local_time
         FROM event e
         LEFT JOIN workout_plan wp
             ON wp.plan_id = e.workout_plan_id
@@ -101,10 +154,14 @@ def get_today_scheduled_sessions(user_id: int):
             AND ws.user_id = e.user_id
         WHERE e.user_id = :user_id
         AND e.event_type = 'workout'
-        AND e.event_date = CURDATE()
+        AND e.event_date = :local_today
         ORDER BY e.start_time ASC, e.event_id ASC
         """,
-        {"user_id": user_id},
+        {
+            "user_id": user_id,
+            "local_today": local_today,
+            "local_time": local_time,
+        },
         fetch=True,
         commit=False,
     )
@@ -117,7 +174,7 @@ def get_today_scheduled_sessions(user_id: int):
     }
 
 
-def get_active_session(user_id: int):
+def get_active_session(user_id: int, user_timezone: str | None = None):
     rows = run_query(
         """
         SELECT
@@ -149,7 +206,7 @@ def get_active_session(user_id: int):
         commit=False,
     )
 
-    active_session = _map_active_session(rows[0]) if rows else None
+    active_session = _map_active_session(rows[0], user_timezone) if rows else None
 
     return {
         "success": True,
@@ -157,7 +214,11 @@ def get_active_session(user_id: int):
     }
 
 
-def start_scheduled_session(user_id: int, event_id: int):
+def start_scheduled_session(
+    user_id: int,
+    event_id: int,
+    user_timezone: str | None = None,
+):
     event_rows = run_query(
         """
         SELECT
@@ -223,20 +284,13 @@ def start_scheduled_session(user_id: int, event_id: int):
     )
 
     if existing_event_session:
-        session_row = existing_event_session[0]
-
         return {
             "success": True,
             "message": "Session already exists for this event.",
-            "session": {
-                "sessionId": session_row["session_id"],
-                "eventId": session_row["event_id"],
-                "workoutPlanId": session_row["workout_plan_id"],
-                "workoutDayId": session_row["workout_day_id"],
-                "startedAt": _format_datetime(session_row["started_at"]),
-                "endedAt": _format_datetime(session_row["ended_at"]),
-                "notes": session_row["notes"],
-            },
+            "session": _map_session_response(
+                existing_event_session[0],
+                user_timezone,
+            ),
         }
 
     open_session = run_query(
@@ -261,21 +315,16 @@ def start_scheduled_session(user_id: int, event_id: int):
     )
 
     if open_session:
-        session_row = open_session[0]
-
         return {
             "success": True,
             "message": "You already have an active session.",
-            "session": {
-                "sessionId": session_row["session_id"],
-                "eventId": session_row["event_id"],
-                "workoutPlanId": session_row["workout_plan_id"],
-                "workoutDayId": session_row["workout_day_id"],
-                "startedAt": _format_datetime(session_row["started_at"]),
-                "endedAt": _format_datetime(session_row["ended_at"]),
-                "notes": session_row["notes"],
-            },
+            "session": _map_session_response(
+                open_session[0],
+                user_timezone,
+            ),
         }
+
+    started_at = _utc_now_string()
 
     session_id = run_query(
         """
@@ -291,7 +340,7 @@ def start_scheduled_session(user_id: int, event_id: int):
             :event_id,
             :workout_plan_id,
             :workout_day_id,
-            NOW()
+            :started_at
         )
         """,
         {
@@ -299,6 +348,7 @@ def start_scheduled_session(user_id: int, event_id: int):
             "event_id": event_id,
             "workout_plan_id": event["workout_plan_id"],
             "workout_day_id": event["workout_day_id"],
+            "started_at": started_at,
         },
         fetch=False,
         commit=True,
@@ -313,7 +363,7 @@ def start_scheduled_session(user_id: int, event_id: int):
             "eventId": event_id,
             "workoutPlanId": event["workout_plan_id"],
             "workoutDayId": event["workout_day_id"],
-            "startedAt": None,
+            "startedAt": _format_datetime(started_at, user_timezone),
             "endedAt": None,
             "notes": None,
         },
@@ -443,7 +493,7 @@ def finish_session(user_id: int, session_id: int):
     run_query(
         """
         UPDATE workout_session
-        SET ended_at = NOW()
+        SET ended_at = :ended_at
         WHERE session_id = :session_id
         AND user_id = :user_id
         AND ended_at IS NULL
@@ -451,6 +501,7 @@ def finish_session(user_id: int, session_id: int):
         {
             "session_id": session_id,
             "user_id": user_id,
+            "ended_at": _utc_now_string(),
         },
         fetch=False,
         commit=True,
@@ -463,7 +514,11 @@ def finish_session(user_id: int, session_id: int):
     }
 
 
-def get_due_workout_toast(user_id: int):
+def get_due_workout_toast(user_id: int, user_timezone: str | None = None):
+    local_now = _get_local_now(user_timezone)
+    local_today = local_now.date()
+    local_time = local_now.time().replace(microsecond=0)
+
     rows = run_query(
         """
         SELECT
@@ -479,13 +534,17 @@ def get_due_workout_toast(user_id: int):
             AND ws.user_id = e.user_id
         WHERE e.user_id = :user_id
         AND e.event_type = 'workout'
-        AND e.event_date = CURDATE()
-        AND e.start_time <= CURTIME()
+        AND e.event_date = :local_today
+        AND e.start_time <= :local_time
         AND ws.session_id IS NULL
         ORDER BY e.start_time ASC
         LIMIT 1
         """,
-        {"user_id": user_id},
+        {
+            "user_id": user_id,
+            "local_today": local_today,
+            "local_time": local_time,
+        },
         fetch=True,
         commit=False,
     )

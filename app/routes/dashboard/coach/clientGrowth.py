@@ -4,19 +4,23 @@ from app.services.auth.checkUser import checkUserExists
 from app.services.dashboard.coach.getClientGrowth import getClientGrowthLast3Months
 
 
+def _get_session_timezone():
+    return session.get("timezone") or "America/New_York"
+
+
 @dashboard_coach_bp.route("/clientGrowth", methods=["GET"])
 def client_growth():
     """
-Get client growth metrics
----
-tags:
-  - dashboard-coach
-responses:
-  200:
-    description: Client growth data
-  401:
-    description: Unauthorized
-"""
+    Get client growth metrics
+    ---
+    tags:
+      - dashboard-coach
+    responses:
+      200:
+        description: Client growth data
+      401:
+        description: Unauthorized
+    """
     if "user_id" not in session:
         return {"error": "Unauthorized"}, 401
 
@@ -25,6 +29,9 @@ responses:
     if not checkUserExists(user_id=coach_id):
         return {"error": "Unauthorized"}, 401
 
-    data = getClientGrowthLast3Months(coach_id)
+    data = getClientGrowthLast3Months(
+        coach_id=int(coach_id),
+        user_timezone=_get_session_timezone(),
+    )
 
     return {"client_growth": data, "count": len(data)}, 200

@@ -3,41 +3,45 @@ from app.routes.nutrition import nutrition_bp
 from app.services.nutrition.log_Meal_From_Plan import log_meal_from_plan
 
 
+def _get_session_timezone():
+    return session.get("timezone") or "America/New_York"
+
+
 @nutrition_bp.route("/meal-plans/log-meal", methods=["POST"])
 def log_meal_from_plan_route():
     """
-Log meal from meal plan
----
-tags:
-  - nutrition
-consumes:
-  - multipart/form-data
-parameters:
-  - name: meal_id
-    in: formData
-    type: integer
-    required: true
-  - name: eaten_at
-    in: formData
-    type: string
-    required: true
-  - name: servings
-    in: formData
-    type: number
-  - name: notes
-    in: formData
-    type: string
-  - name: photo
-    in: formData
-    type: file
-responses:
-  201:
-    description: Meal logged successfully
-  400:
-    description: Invalid input
-  401:
-    description: Unauthorized
-"""
+    Log meal from meal plan
+    ---
+    tags:
+      - nutrition
+    consumes:
+      - multipart/form-data
+    parameters:
+      - name: meal_id
+        in: formData
+        type: integer
+        required: true
+      - name: eaten_at
+        in: formData
+        type: string
+        required: true
+      - name: servings
+        in: formData
+        type: number
+      - name: notes
+        in: formData
+        type: string
+      - name: photo
+        in: formData
+        type: file
+    responses:
+      201:
+        description: Meal logged successfully
+      400:
+        description: Invalid input
+      401:
+        description: Unauthorized
+    """
     user_id = session.get("user_id")
 
     if not user_id:
@@ -56,13 +60,19 @@ responses:
         return jsonify({"error": "eaten_at is required"}), 400
 
     try:
+        parsed_servings = float(servings)
+
+        if parsed_servings <= 0:
+            return jsonify({"error": "servings must be greater than 0"}), 400
+
         photo_url = log_meal_from_plan(
             user_id=int(user_id),
             meal_id=int(meal_id),
-            servings=float(servings),
+            servings=parsed_servings,
             eaten_at=eaten_at,
             notes=notes,
             uploaded_file=photo,
+            user_timezone=_get_session_timezone(),
         )
 
         return (

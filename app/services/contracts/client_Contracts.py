@@ -1,8 +1,25 @@
-from datetime import date
+from datetime import datetime
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.services import run_query
 from app.services.payments.add_Payment_Method import add_payment_method
 from app.services.contracts.contract_Status import get_contract_status
+
+
+def _get_valid_timezone(user_timezone: str | None):
+    if not user_timezone:
+        return "America/New_York"
+
+    try:
+        ZoneInfo(user_timezone)
+        return user_timezone
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
+
+
+def _get_today_for_user(user_timezone: str | None):
+    valid_timezone = _get_valid_timezone(user_timezone)
+    return datetime.now(ZoneInfo(valid_timezone)).date()
 
 
 def get_client_active_contract(user_id):
@@ -14,7 +31,8 @@ def get_client_active_contract(user_id):
             ucc.agreed_price,
             CONCAT(ui.first_name, ' ', ui.last_name) AS coach_name
         FROM user_coach_contract ucc
-        JOIN users_immutables ui ON ui.user_id = ucc.coach_id
+        JOIN users_immutables ui
+            ON ui.user_id = ucc.coach_id
         WHERE ucc.user_id = :user_id
         AND ucc.active = 1
         LIMIT 1
@@ -104,6 +122,7 @@ def requestContract(
     card_brand: str = None,
     expiry_month: int = None,
     expiry_year: int = None,
+    user_timezone: str | None = None,
 ):
     active_contract = get_client_active_contract(user_id)
 
@@ -153,7 +172,7 @@ def requestContract(
         f"payment_note:Payment method saved for contract start. No charge is made when the request is sent."
     )
 
-    result = run_query(
+    contract_id = run_query(
         """
         INSERT INTO user_coach_contract
             (
@@ -180,18 +199,14 @@ def requestContract(
             "coach_id": coach_id,
             "user_id": user_id,
             "agreed_price": actual_price,
-            "start_date": date.today(),
+            "start_date": _get_today_for_user(user_timezone),
             "contract_text": contract_text,
             "is_recurring": 1 if is_recurring else 0,
         },
         fetch=False,
         commit=True,
+        return_lastrowid=True,
     )
-
-    contract_id = None
-
-    if isinstance(result, dict):
-        contract_id = result.get("lastrowid") or result.get("contract_id")
 
     return {
         "contract_id": contract_id,

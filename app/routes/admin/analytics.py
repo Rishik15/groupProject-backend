@@ -3,28 +3,32 @@ from . import admin_bp
 from app.services.admin.analytics import get_admin_engagement_analytics
 
 
+def _get_session_timezone():
+    return session.get("timezone") or "America/New_York"
+
+
 @admin_bp.route("/analytics/engagement", methods=["GET"])
 def admin_get_engagement_analytics():
     """
-Get admin engagement analytics
----
-tags:
-  - admin
-responses:
-  200:
-    description: Engagement analytics data
-    schema:
-      type: object
-      properties:
-        message:
-          type: string
-        analytics:
+    Get admin engagement analytics
+    ---
+    tags:
+      - admin
+    responses:
+      200:
+        description: Engagement analytics data
+        schema:
           type: object
-  401:
-    description: Unauthorized
-  403:
-    description: Forbidden
-"""
+          properties:
+            message:
+              type: string
+            analytics:
+              type: object
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+    """
     try:
         user_id = session.get("user_id")
 
@@ -33,12 +37,20 @@ responses:
 
         user_id = int(user_id)
 
-        analytics = get_admin_engagement_analytics(user_id)
+        analytics = get_admin_engagement_analytics(
+            user_id=user_id,
+            user_timezone=_get_session_timezone(),
+        )
 
-        return jsonify({
-            "message": "success",
-            "analytics": analytics
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": "success",
+                    "analytics": analytics,
+                }
+            ),
+            200,
+        )
 
     except PermissionError:
         return jsonify({"error": "Forbidden"}), 403

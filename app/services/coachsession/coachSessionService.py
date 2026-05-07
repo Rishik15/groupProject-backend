@@ -1,10 +1,22 @@
 import json
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app import socketio
 from app.services import run_query
 
 CLIENT_WORKOUT_ROUTE = "/client/workouts"
+
+
+def _get_valid_timezone(user_timezone: str | None):
+    if not user_timezone:
+        return "America/New_York"
+
+    try:
+        ZoneInfo(user_timezone)
+        return user_timezone
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
 
 
 def date_to_string(value):
@@ -33,9 +45,22 @@ def time_to_string(value):
     return str(value)
 
 
-def make_json_safe(value):
+def make_json_safe(value, user_timezone: str | None = None):
+    if value is None:
+        return None
+
     if isinstance(value, datetime):
-        return value.isoformat()
+        parsed_datetime = value
+
+        if parsed_datetime.tzinfo is None:
+            parsed_datetime = parsed_datetime.replace(tzinfo=timezone.utc)
+
+        if user_timezone:
+            parsed_datetime = parsed_datetime.astimezone(
+                ZoneInfo(_get_valid_timezone(user_timezone))
+            )
+
+        return parsed_datetime.strftime("%Y-%m-%dT%H:%M:%S")
 
     if isinstance(value, date):
         return value.isoformat()
@@ -44,10 +69,10 @@ def make_json_safe(value):
         return value.strftime("%H:%M:%S")
 
     if isinstance(value, list):
-        return [make_json_safe(item) for item in value]
+        return [make_json_safe(item, user_timezone) for item in value]
 
     if isinstance(value, dict):
-        return {key: make_json_safe(item) for key, item in value.items()}
+        return {key: make_json_safe(item, user_timezone) for key, item in value.items()}
 
     return value
 
@@ -117,7 +142,10 @@ def serialize_event(row):
     }
 
 
-def get_notification_by_id(notification_id: int):
+def get_notification_by_id(
+    notification_id: int,
+    user_timezone: str | None = None,
+):
     rows = run_query(
         """
         SELECT
@@ -149,7 +177,7 @@ def get_notification_by_id(notification_id: int):
 
     notification = rows[0]
     notification["metadata"] = parse_notification_metadata(notification.get("metadata"))
-    notification = make_json_safe(notification)
+    notification = make_json_safe(notification, user_timezone)
 
     return notification
 
@@ -160,6 +188,7 @@ def upsert_client_coach_session_notification(
     title: str,
     body: str,
     action: str,
+    user_timezone: str | None = None,
 ):
     metadata = {
         "route": CLIENT_WORKOUT_ROUTE,
@@ -196,7 +225,7 @@ def upsert_client_coach_session_notification(
                 title = :title,
                 body = :body,
                 is_read = FALSE,
-                updated_at = CURRENT_TIMESTAMP
+                updated_at = UTC_TIMESTAMP()
             WHERE notification_id = :notification_id
             AND user_id = :user_id
             """,
@@ -211,7 +240,7 @@ def upsert_client_coach_session_notification(
             commit=True,
         )
 
-        notification = get_notification_by_id(notification_id)
+        notification = get_notification_by_id(notification_id, user_timezone)
 
         if notification:
             socketio.emit(
@@ -261,7 +290,7 @@ def upsert_client_coach_session_notification(
         return_lastrowid=True,
     )
 
-    notification = get_notification_by_id(notification_id)
+    notification = get_notification_by_id(notification_id, user_timezone)
 
     if notification:
         socketio.emit(

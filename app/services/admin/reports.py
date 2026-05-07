@@ -1,6 +1,42 @@
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from app.services import run_query
 from app.services.admin.dashboard import _is_admin
 from app.sockets.notifications.notifications import send_notification
+
+
+def _get_valid_timezone(user_timezone: str | None):
+    if not user_timezone:
+        return "America/New_York"
+
+    try:
+        ZoneInfo(user_timezone)
+        return user_timezone
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
+
+
+def _format_datetime(value, user_timezone: str | None):
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        parsed_datetime = value
+    else:
+        try:
+            parsed_datetime = datetime.fromisoformat(str(value).replace(" ", "T"))
+        except (ValueError, TypeError):
+            return str(value)
+
+    if parsed_datetime.tzinfo is None:
+        parsed_datetime = parsed_datetime.replace(tzinfo=timezone.utc)
+
+    local_datetime = parsed_datetime.astimezone(
+        ZoneInfo(_get_valid_timezone(user_timezone))
+    )
+
+    return local_datetime.strftime("%Y-%m-%dT%H:%M:%S")
 
 
 def _validate_report_status_filter(status: str):
@@ -33,7 +69,7 @@ def _get_report_row(report_id: int):
     return rows[0]
 
 
-def _shape_report(row):
+def _shape_report(row, user_timezone: str | None = None):
     return {
         "id": row["report_id"],
         "report_id": row["report_id"],
@@ -42,14 +78,16 @@ def _shape_report(row):
         "title": f"Report against user {row['reported_user_id']}",
         "description": row["reason"],
         "status": row["status"],
-        "submittedLabel": (
-            row["created_at"].isoformat() if row["created_at"] is not None else None
-        ),
+        "submittedLabel": _format_datetime(row["created_at"], user_timezone),
         "admin_action": row["admin_action"],
     }
 
 
-def get_admin_reports(user_id: int, status: str):
+def get_admin_reports(
+    user_id: int,
+    status: str,
+    user_timezone: str | None = None,
+):
     if not _is_admin(user_id):
         raise PermissionError("Forbidden")
 
@@ -92,10 +130,15 @@ def get_admin_reports(user_id: int, status: str):
             commit=False,
         )
 
-    return [_shape_report(row) for row in rows]
+    return [_shape_report(row, user_timezone) for row in rows]
 
 
-def close_admin_report(user_id: int, report_id: int, admin_action=None):
+def close_admin_report(
+    user_id: int,
+    report_id: int,
+    admin_action=None,
+    user_timezone: str | None = None,
+):
     if not _is_admin(user_id):
         raise PermissionError("Forbidden")
 
@@ -128,7 +171,7 @@ def close_admin_report(user_id: int, report_id: int, admin_action=None):
     )
 
     updated_row = _get_report_row(int(report_id))
-    shaped_report = _shape_report(updated_row)
+    shaped_report = _shape_report(updated_row, user_timezone)
 
     send_notification(
         user_id=int(updated_row["reporter_user_id"]),

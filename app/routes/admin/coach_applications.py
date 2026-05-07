@@ -3,38 +3,42 @@ from . import admin_bp
 from app.services.admin.coach_applications import (
     get_admin_coach_applications,
     approve_coach_application,
-    reject_coach_application
+    reject_coach_application,
 )
+
+
+def _get_session_timezone():
+    return session.get("timezone") or "America/New_York"
 
 
 @admin_bp.route("/coach-applications/list", methods=["POST"])
 def admin_get_coach_applications():
     """
-Get coach applications by status
----
-tags:
-  - admin
-parameters:
-  - name: body
-    in: body
-    required: true
-    schema:
-      type: object
-      required:
-        - status
-      properties:
-        status:
-          type: string
-responses:
-  200:
-    description: List of applications
-  400:
-    description: Invalid input
-  401:
-    description: Unauthorized
-  403:
-    description: Forbidden
-"""
+    Get coach applications by status
+    ---
+    tags:
+      - admin
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - status
+          properties:
+            status:
+              type: string
+    responses:
+      200:
+        description: List of applications
+      400:
+        description: Invalid input
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+    """
     try:
         user_id = session.get("user_id")
 
@@ -49,12 +53,21 @@ responses:
 
         user_id = int(user_id)
 
-        applications = get_admin_coach_applications(user_id, status)
+        applications = get_admin_coach_applications(
+            user_id=user_id,
+            status=status,
+            user_timezone=_get_session_timezone(),
+        )
 
-        return jsonify({
-            "message": "success",
-            "applications": applications
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": "success",
+                    "applications": applications,
+                }
+            ),
+            200,
+        )
 
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -69,33 +82,33 @@ responses:
 @admin_bp.route("/coach-applications/approve", methods=["PATCH"])
 def admin_approve_coach_application():
     """
-Approve coach application
----
-tags:
-  - admin
-parameters:
-  - name: body
-    in: body
-    required: true
-    schema:
-      type: object
-      required:
-        - application_id
-      properties:
-        application_id:
-          type: integer
-        admin_action:
-          type: string
-responses:
-  200:
-    description: Application approved
-  400:
-    description: Invalid input
-  401:
-    description: Unauthorized
-  403:
-    description: Forbidden
-"""
+    Approve coach application
+    ---
+    tags:
+      - admin
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required:
+            - application_id
+          properties:
+            application_id:
+              type: integer
+            admin_action:
+              type: string
+    responses:
+      200:
+        description: Application approved
+      400:
+        description: Invalid input
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+    """
     try:
         user_id = session.get("user_id")
 
@@ -108,12 +121,22 @@ responses:
         application_id = data.get("application_id")
         admin_action = data.get("admin_action")
 
-        application = approve_coach_application(user_id, application_id, admin_action)
+        application = approve_coach_application(
+            user_id=user_id,
+            application_id=application_id,
+            admin_action=admin_action,
+            user_timezone=_get_session_timezone(),
+        )
 
-        return jsonify({
-            "message": "success",
-            "application": application
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": "success",
+                    "application": application,
+                }
+            ),
+            200,
+        )
 
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -128,32 +151,32 @@ responses:
 @admin_bp.route("/coach-applications/reject", methods=["PATCH"])
 def admin_reject_coach_application():
     """
-Reject coach application
----
-tags:
-  - admin
-parameters:
-  - name: body
-    in: body
-    required: true
-    schema:
-      type: object
-      required: [application_id]
-      properties:
-        application_id:
-          type: integer
-        admin_action:
-          type: string
-responses:
-  200:
-    description: Application rejected
-  400:
-    description: Invalid input
-  401:
-    description: Unauthorized
-  403:
-    description: Forbidden
-"""
+    Reject coach application
+    ---
+    tags:
+      - admin
+    parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          type: object
+          required: [application_id]
+          properties:
+            application_id:
+              type: integer
+            admin_action:
+              type: string
+    responses:
+      200:
+        description: Application rejected
+      400:
+        description: Invalid input
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+    """
     try:
         user_id = session.get("user_id")
 
@@ -166,12 +189,22 @@ responses:
         application_id = data.get("application_id")
         admin_action = data.get("admin_action")
 
-        application = reject_coach_application(user_id, application_id, admin_action)
+        application = reject_coach_application(
+            user_id=user_id,
+            application_id=application_id,
+            admin_action=admin_action,
+            user_timezone=_get_session_timezone(),
+        )
 
-        return jsonify({
-            "message": "success",
-            "application": application
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": "success",
+                    "application": application,
+                }
+            ),
+            200,
+        )
 
     except ValueError as e:
         return jsonify({"error": str(e)}), 400

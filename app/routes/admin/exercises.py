@@ -8,21 +8,25 @@ from app.services.admin.exercises import (
 )
 
 
+def _get_session_timezone():
+    return session.get("timezone") or "America/New_York"
+
+
 @admin_bp.route("/exercises", methods=["GET"])
 def admin_get_exercises():
     """
-Get all exercises (admin)
----
-tags:
-  - admin
-responses:
-  200:
-    description: List of exercises
-  401:
-    description: Unauthorized
-  403:
-    description: Forbidden
-"""
+    Get all exercises (admin)
+    ---
+    tags:
+      - admin
+    responses:
+      200:
+        description: List of exercises
+      401:
+        description: Unauthorized
+      403:
+        description: Forbidden
+    """
     try:
         user_id = session.get("user_id")
 
@@ -31,12 +35,20 @@ responses:
 
         user_id = int(user_id)
 
-        exercises = get_admin_exercises(user_id)
+        exercises = get_admin_exercises(
+            user_id=user_id,
+            user_timezone=_get_session_timezone(),
+        )
 
-        return jsonify({
-            "message": "success",
-            "exercises": exercises
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": "success",
+                    "exercises": exercises,
+                }
+            ),
+            200,
+        )
 
     except PermissionError:
         return jsonify({"error": "Forbidden"}), 403
@@ -48,28 +60,28 @@ responses:
 @admin_bp.route("/exercises", methods=["POST"])
 def admin_create_exercise():
     """
-Create exercise
----
-tags:
-  - admin
-parameters:
-  - name: body
-    in: body
-    schema:
-      type: object
-      properties:
-        exercise_name:
-          type: string
-        equipment:
-          type: string
-        video_url:
-          type: string
-responses:
-  201:
-    description: Exercise created
-  400:
-    description: Invalid input
-"""
+    Create exercise
+    ---
+    tags:
+      - admin
+    parameters:
+      - name: body
+        in: body
+        schema:
+          type: object
+          properties:
+            exercise_name:
+              type: string
+            equipment:
+              type: string
+            video_url:
+              type: string
+    responses:
+      201:
+        description: Exercise created
+      400:
+        description: Invalid input
+    """
     try:
         user_id = session.get("user_id")
 
@@ -89,13 +101,19 @@ responses:
             exercise_name=exercise_name,
             equipment=equipment,
             video_url=video_url,
-            created_by=created_by
+            created_by=created_by,
+            user_timezone=_get_session_timezone(),
         )
 
-        return jsonify({
-            "message": "success",
-            "exercise": exercise
-        }), 201
+        return (
+            jsonify(
+                {
+                    "message": "success",
+                    "exercise": exercise,
+                }
+            ),
+            201,
+        )
 
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -110,24 +128,24 @@ responses:
 @admin_bp.route("/exercises", methods=["PATCH"])
 def admin_update_exercise():
     """
-Update exercise
----
-tags:
-  - admin
-parameters:
-  - name: body
-    in: body
-    schema:
-      type: object
-      properties:
-        exercise_id:
-          type: integer
-        exercise_name:
-          type: string
-responses:
-  200:
-    description: Exercise updated
-"""
+    Update exercise
+    ---
+    tags:
+      - admin
+    parameters:
+      - name: body
+        in: body
+        schema:
+          type: object
+          properties:
+            exercise_id:
+              type: integer
+            exercise_name:
+              type: string
+    responses:
+      200:
+        description: Exercise updated
+    """
     try:
         user_id = session.get("user_id")
 
@@ -147,13 +165,19 @@ responses:
             exercise_id=exercise_id,
             exercise_name=exercise_name,
             equipment=equipment,
-            video_url=video_url
+            video_url=video_url,
+            user_timezone=_get_session_timezone(),
         )
 
-        return jsonify({
-            "message": "success",
-            "exercise": exercise
-        }), 200
+        return (
+            jsonify(
+                {
+                    "message": "success",
+                    "exercise": exercise,
+                }
+            ),
+            200,
+        )
 
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
@@ -168,22 +192,22 @@ responses:
 @admin_bp.route("/exercises", methods=["DELETE"])
 def admin_delete_exercise():
     """
-Delete exercise
----
-tags:
-  - admin
-parameters:
-  - name: body
-    in: body
-    schema:
-      type: object
-      properties:
-        exercise_id:
-          type: integer
-responses:
-  200:
-    description: Exercise deleted
-"""
+    Delete exercise
+    ---
+    tags:
+      - admin
+    parameters:
+      - name: body
+        in: body
+        schema:
+          type: object
+          properties:
+            exercise_id:
+              type: integer
+    responses:
+      200:
+        description: Exercise deleted
+    """
     try:
         user_id = session.get("user_id")
 
@@ -197,7 +221,7 @@ responses:
 
         result = delete_admin_exercise(
             user_id=user_id,
-            exercise_id=exercise_id
+            exercise_id=exercise_id,
         )
 
         return jsonify(result), 200
@@ -210,6 +234,9 @@ responses:
 
     except Exception as e:
         message = str(e)
-        if "Cannot delete or update a parent row" in message or "foreign key constraint fails" in message:
+        if (
+            "Cannot delete or update a parent row" in message
+            or "foreign key constraint fails" in message
+        ):
             return jsonify({"error": "Cannot delete exercise in use"}), 400
         return jsonify({"error": message}), 500

@@ -1,12 +1,25 @@
-from app.services import run_query
 from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+from app.services import run_query
 
 DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 
-def get_week_monday(date: datetime) -> datetime:
-    days_since_monday = date.weekday()
-    return date - timedelta(days=days_since_monday)
+def _get_valid_timezone(user_timezone: str | None):
+    if not user_timezone:
+        return "America/New_York"
+
+    try:
+        ZoneInfo(user_timezone)
+        return user_timezone
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
+
+
+def get_week_monday(date_value: datetime) -> datetime:
+    days_since_monday = date_value.weekday()
+    return date_value - timedelta(days=days_since_monday)
 
 
 def delete_meal_events_for_week(user_id: int, monday: datetime):
@@ -91,12 +104,15 @@ def assign_meal_plan(
     meal_plan_id: int,
     start_date: str = None,
     force: bool = False,
+    user_timezone: str | None = None,
 ):
     if start_date:
         parsed = datetime.strptime(start_date, "%Y-%m-%d")
         monday = get_week_monday(parsed)
     else:
-        monday = get_week_monday(datetime.now())
+        valid_timezone = _get_valid_timezone(user_timezone)
+        today_for_user = datetime.now(ZoneInfo(valid_timezone))
+        monday = get_week_monday(today_for_user)
 
     sunday = monday + timedelta(days=6)
 

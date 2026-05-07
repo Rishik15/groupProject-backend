@@ -1,45 +1,107 @@
-from datetime import datetime, time
+from datetime import datetime, time, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from app.services.nutrition import mealLogging
 from app.services.nutrition.getGoals import getNutritionGoals
 
 
-def _format_datetime(value):
+def _get_valid_timezone(user_timezone: str | None):
+    if not user_timezone:
+        return "America/New_York"
+
+    try:
+        ZoneInfo(user_timezone)
+        return user_timezone
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
+
+
+def _get_today_utc_range(user_timezone: str | None):
+    valid_timezone = _get_valid_timezone(user_timezone)
+    tz = ZoneInfo(valid_timezone)
+
+    today = datetime.now(tz).date()
+
+    start_local = datetime.combine(today, time.min, tzinfo=tz)
+    end_local = datetime.combine(today, time.max, tzinfo=tz)
+
+    start_utc = start_local.astimezone(timezone.utc).replace(tzinfo=None)
+    end_utc = end_local.astimezone(timezone.utc).replace(tzinfo=None)
+
+    return (
+        start_utc.strftime("%Y-%m-%d %H:%M:%S"),
+        end_utc.strftime("%Y-%m-%d %H:%M:%S"),
+    )
+
+
+def _format_datetime(value, user_timezone: str | None):
     if value is None:
         return None
 
     if isinstance(value, datetime):
-        return value.isoformat()
+        parsed_datetime = value
+    else:
+        try:
+            parsed_datetime = datetime.fromisoformat(str(value).replace(" ", "T"))
+        except (ValueError, TypeError):
+            return str(value)
 
-    return str(value)
+    if parsed_datetime.tzinfo is None:
+        parsed_datetime = parsed_datetime.replace(tzinfo=timezone.utc)
+
+    local_datetime = parsed_datetime.astimezone(
+        ZoneInfo(_get_valid_timezone(user_timezone))
+    )
+
+    return local_datetime.strftime("%Y-%m-%dT%H:%M:%S")
 
 
-def _get_meal_type(eaten_at):
-    if isinstance(eaten_at, str):
-        eaten_at = datetime.fromisoformat(eaten_at)
+def _to_local_datetime(value, user_timezone: str | None):
+    if value is None:
+        return None
 
-    hour = eaten_at.hour
+    if isinstance(value, datetime):
+        parsed_datetime = value
+    else:
+        parsed_datetime = datetime.fromisoformat(str(value).replace(" ", "T"))
+
+    if parsed_datetime.tzinfo is None:
+        parsed_datetime = parsed_datetime.replace(tzinfo=timezone.utc)
+
+    return parsed_datetime.astimezone(ZoneInfo(_get_valid_timezone(user_timezone)))
+
+
+def _get_meal_type(eaten_at, user_timezone: str | None):
+    local_eaten_at = _to_local_datetime(eaten_at, user_timezone)
+
+    if local_eaten_at is None:
+        return "Meal"
+
+    hour = local_eaten_at.hour
 
     if hour < 11:
         return "Breakfast"
+
     if hour < 15:
         return "Lunch"
+
     if hour < 18:
         return "Snack"
+
     return "Dinner"
 
 
-def _format_time_label(eaten_at):
-    if isinstance(eaten_at, str):
-        eaten_at = datetime.fromisoformat(eaten_at)
+def _format_time_label(eaten_at, user_timezone: str | None):
+    local_eaten_at = _to_local_datetime(eaten_at, user_timezone)
 
-    return eaten_at.strftime("%I:%M %p").lstrip("0")
+    if local_eaten_at is None:
+        return ""
+
+    return local_eaten_at.strftime("%I:%M %p").lstrip("0")
 
 
-def get_nutrition_today(user_id: int):
-    today = datetime.now().date()
-
-    start_dt = datetime.combine(today, time.min).isoformat()
-    end_dt = datetime.combine(today, time.max).isoformat()
+def get_nutrition_today(user_id: int, user_timezone: str | None = None):
+    start_dt, end_dt = _get_today_utc_range(user_timezone)
 
     meals = (
         mealLogging.getLoggedMeals(
@@ -90,10 +152,12 @@ def get_nutrition_today(user_id: int):
                 "log_id": meal.get("log_id"),
                 "meal_name": meal.get("meal_name") or "Meal",
                 "meal_type": (
-                    "Food" if meal.get("meal_id") is None else _get_meal_type(eaten_at)
+                    "Food"
+                    if meal.get("meal_id") is None
+                    else _get_meal_type(eaten_at, user_timezone)
                 ),
-                "eaten_at": _format_datetime(eaten_at),
-                "time_label": _format_time_label(eaten_at),
+                "eaten_at": _format_datetime(eaten_at, user_timezone),
+                "time_label": _format_time_label(eaten_at, user_timezone),
                 "servings": servings,
                 "notes": meal.get("notes"),
                 "photo_url": meal.get("photo_url"),

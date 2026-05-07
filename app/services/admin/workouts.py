@@ -1,8 +1,57 @@
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from app.services import run_query
 from app.services.admin.dashboard import _is_admin
 
 
-def _get_workout_row(plan_id: int):
+def _get_valid_timezone(user_timezone: str | None):
+    if not user_timezone:
+        return "America/New_York"
+
+    try:
+        ZoneInfo(user_timezone)
+        return user_timezone
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
+
+
+def _format_datetime(value, user_timezone: str | None):
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        parsed_datetime = value
+    else:
+        try:
+            parsed_datetime = datetime.fromisoformat(str(value).replace(" ", "T"))
+        except (ValueError, TypeError):
+            return str(value)
+
+    if parsed_datetime.tzinfo is None:
+        parsed_datetime = parsed_datetime.replace(tzinfo=timezone.utc)
+
+    local_datetime = parsed_datetime.astimezone(
+        ZoneInfo(_get_valid_timezone(user_timezone))
+    )
+
+    return local_datetime.strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def _shape_workout_row(row, user_timezone: str | None = None):
+    return {
+        "plan_id": row["plan_id"],
+        "plan_name": row["plan_name"],
+        "author_user_id": row["author_user_id"],
+        "is_public": int(row["is_public"]),
+        "description": row["description"],
+        "total_exercises": int(row["total_exercises"]),
+        "created_at": _format_datetime(row["created_at"], user_timezone),
+        "updated_at": _format_datetime(row["updated_at"], user_timezone),
+    }
+
+
+def _get_workout_row(plan_id: int, user_timezone: str | None = None):
     rows = run_query(
         """
         SELECT
@@ -33,24 +82,13 @@ def _get_workout_row(plan_id: int):
         """,
         params={"plan_id": int(plan_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     if not rows:
         raise ValueError("Workout not found")
 
-    row = rows[0]
-
-    return {
-        "plan_id": row["plan_id"],
-        "plan_name": row["plan_name"],
-        "author_user_id": row["author_user_id"],
-        "is_public": int(row["is_public"]),
-        "description": row["description"],
-        "total_exercises": int(row["total_exercises"]),
-        "created_at": row["created_at"].isoformat() if row["created_at"] is not None else None,
-        "updated_at": row["updated_at"].isoformat() if row["updated_at"] is not None else None,
-    }
+    return _shape_workout_row(rows[0], user_timezone)
 
 
 def _get_primary_day_id(plan_id: int):
@@ -64,7 +102,7 @@ def _get_primary_day_id(plan_id: int):
         """,
         params={"plan_id": int(plan_id)},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     if not rows:
@@ -73,7 +111,7 @@ def _get_primary_day_id(plan_id: int):
     return rows[0]["day_id"]
 
 
-def get_admin_workouts(user_id: int):
+def get_admin_workouts(user_id: int, user_timezone: str | None = None):
     if not _is_admin(user_id):
         raise PermissionError("Forbidden")
 
@@ -106,24 +144,10 @@ def get_admin_workouts(user_id: int):
         ORDER BY wp.plan_id ASC
         """,
         fetch=True,
-        commit=False
+        commit=False,
     )
 
-    workouts = []
-
-    for row in rows:
-        workouts.append({
-            "plan_id": row["plan_id"],
-            "plan_name": row["plan_name"],
-            "author_user_id": row["author_user_id"],
-            "is_public": int(row["is_public"]),
-            "description": row["description"],
-            "total_exercises": int(row["total_exercises"]),
-            "created_at": row["created_at"].isoformat() if row["created_at"] is not None else None,
-            "updated_at": row["updated_at"].isoformat() if row["updated_at"] is not None else None,
-        })
-
-    return workouts
+    return [_shape_workout_row(row, user_timezone) for row in rows]
 
 
 def create_admin_workout(
@@ -132,7 +156,8 @@ def create_admin_workout(
     description=None,
     author_user_id=None,
     is_public=0,
-    exercises=None
+    exercises=None,
+    user_timezone: str | None = None,
 ):
     if not _is_admin(user_id):
         raise PermissionError("Forbidden")
@@ -153,13 +178,15 @@ def create_admin_workout(
         """,
         params={"plan_name": plan_name},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     if existing_rows:
         raise ValueError("Workout with this name already exists")
 
-    final_author_user_id = int(author_user_id) if author_user_id is not None else user_id
+    final_author_user_id = (
+        int(author_user_id) if author_user_id is not None else user_id
+    )
     final_is_public = 1 if int(is_public) == 1 else 0
 
     author_rows = run_query(
@@ -170,7 +197,7 @@ def create_admin_workout(
         """,
         params={"user_id": final_author_user_id},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     if not author_rows:
@@ -178,6 +205,7 @@ def create_admin_workout(
 
     for ex in exercises:
         exercise_id = ex.get("exercise_id")
+
         if not exercise_id:
             raise ValueError("Each exercise must include exercise_id")
 
@@ -189,7 +217,7 @@ def create_admin_workout(
             """,
             params={"exercise_id": int(exercise_id)},
             fetch=True,
-            commit=False
+            commit=False,
         )
 
         if not exercise_rows:
@@ -202,7 +230,7 @@ def create_admin_workout(
         """,
         params={"plan_name": plan_name},
         fetch=False,
-        commit=True
+        commit=True,
     )
 
     plan_rows = run_query(
@@ -215,7 +243,7 @@ def create_admin_workout(
         """,
         params={"plan_name": plan_name},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     plan_id = plan_rows[0]["plan_id"]
@@ -239,10 +267,10 @@ def create_admin_workout(
             "plan_id": plan_id,
             "author_user_id": final_author_user_id,
             "is_public": final_is_public,
-            "description": description
+            "description": description,
         },
         fetch=False,
-        commit=True
+        commit=True,
     )
 
     run_query(
@@ -260,7 +288,7 @@ def create_admin_workout(
         """,
         params={"plan_id": plan_id},
         fetch=False,
-        commit=True
+        commit=True,
     )
 
     day_rows = run_query(
@@ -273,7 +301,7 @@ def create_admin_workout(
         """,
         params={"plan_id": plan_id},
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     day_id = day_rows[0]["day_id"]
@@ -301,13 +329,13 @@ def create_admin_workout(
                 "exercise_id": int(ex["exercise_id"]),
                 "order_in_workout": index + 1,
                 "sets_goal": ex.get("sets"),
-                "reps_goal": ex.get("reps")
+                "reps_goal": ex.get("reps"),
             },
             fetch=False,
-            commit=True
+            commit=True,
         )
 
-    return _get_workout_row(plan_id)
+    return _get_workout_row(plan_id, user_timezone)
 
 
 def update_admin_workout(
@@ -315,7 +343,8 @@ def update_admin_workout(
     plan_id,
     plan_name=None,
     description=None,
-    is_public=None
+    is_public=None,
+    user_timezone: str | None = None,
 ):
     if not _is_admin(user_id):
         raise PermissionError("Forbidden")
@@ -323,10 +352,12 @@ def update_admin_workout(
     if not plan_id:
         raise ValueError("plan_id is required")
 
-    current = _get_workout_row(int(plan_id))
+    current = _get_workout_row(int(plan_id), user_timezone)
 
     final_plan_name = plan_name if plan_name is not None else current["plan_name"]
-    final_description = description if description is not None else current["description"]
+    final_description = (
+        description if description is not None else current["description"]
+    )
     final_is_public = int(is_public) if is_public is not None else current["is_public"]
 
     duplicate_rows = run_query(
@@ -338,10 +369,10 @@ def update_admin_workout(
         """,
         params={
             "plan_name": final_plan_name,
-            "plan_id": int(plan_id)
+            "plan_id": int(plan_id),
         },
         fetch=True,
-        commit=False
+        commit=False,
     )
 
     if duplicate_rows:
@@ -356,10 +387,10 @@ def update_admin_workout(
         """,
         params={
             "plan_name": final_plan_name,
-            "plan_id": int(plan_id)
+            "plan_id": int(plan_id),
         },
         fetch=False,
-        commit=True
+        commit=True,
     )
 
     run_query(
@@ -373,13 +404,13 @@ def update_admin_workout(
         params={
             "description": final_description,
             "is_public": 1 if int(final_is_public) == 1 else 0,
-            "plan_id": int(plan_id)
+            "plan_id": int(plan_id),
         },
         fetch=False,
-        commit=True
+        commit=True,
     )
 
-    return _get_workout_row(int(plan_id))
+    return _get_workout_row(int(plan_id), user_timezone)
 
 
 def delete_admin_workout(user_id: int, plan_id):
@@ -398,13 +429,18 @@ def delete_admin_workout(user_id: int, plan_id):
         """,
         params={"plan_id": int(plan_id)},
         fetch=False,
-        commit=True
+        commit=True,
     )
 
     return {"message": "success"}
 
 
-def update_admin_workout_exercises(user_id: int, plan_id, exercises=None):
+def update_admin_workout_exercises(
+    user_id: int,
+    plan_id,
+    exercises=None,
+    user_timezone: str | None = None,
+):
     if not _is_admin(user_id):
         raise PermissionError("Forbidden")
 
@@ -416,11 +452,12 @@ def update_admin_workout_exercises(user_id: int, plan_id, exercises=None):
     if not exercises:
         raise ValueError("At least one exercise is required")
 
-    _get_workout_row(int(plan_id))
+    _get_workout_row(int(plan_id), user_timezone)
     day_id = _get_primary_day_id(int(plan_id))
 
     for ex in exercises:
         exercise_id = ex.get("exercise_id")
+
         if not exercise_id:
             raise ValueError("Each exercise must include exercise_id")
 
@@ -432,7 +469,7 @@ def update_admin_workout_exercises(user_id: int, plan_id, exercises=None):
             """,
             params={"exercise_id": int(exercise_id)},
             fetch=True,
-            commit=False
+            commit=False,
         )
 
         if not exercise_rows:
@@ -445,7 +482,7 @@ def update_admin_workout_exercises(user_id: int, plan_id, exercises=None):
         """,
         params={"day_id": int(day_id)},
         fetch=False,
-        commit=True
+        commit=True,
     )
 
     for index, ex in enumerate(exercises):
@@ -471,10 +508,10 @@ def update_admin_workout_exercises(user_id: int, plan_id, exercises=None):
                 "exercise_id": int(ex["exercise_id"]),
                 "order_in_workout": index + 1,
                 "sets_goal": ex.get("sets"),
-                "reps_goal": ex.get("reps")
+                "reps_goal": ex.get("reps"),
             },
             fetch=False,
-            commit=True
+            commit=True,
         )
 
-    return _get_workout_row(int(plan_id))
+    return _get_workout_row(int(plan_id), user_timezone)

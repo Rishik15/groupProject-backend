@@ -4,14 +4,19 @@ import app.services.contracts.coachContractActions as cca
 
 
 def _get_coach_id():
-    c_id = session.get("user_id")
-    if c_id is None:
+    coach_id = session.get("user_id")
+
+    if coach_id is None:
         return None
 
     try:
-        return int(c_id)
+        return int(coach_id)
     except (TypeError, ValueError):
         return None
+
+
+def _get_session_timezone():
+    return session.get("timezone") or "America/New_York"
 
 
 @contract_bp.route("/getAllCoachSideContracts", methods=["GET"])
@@ -27,15 +32,21 @@ def getAllCoachSideContracts():
       401:
         description: Unauthorized
     """
-    c_id = _get_coach_id()
+    coach_id = _get_coach_id()
 
-    if c_id is None:
+    if coach_id is None:
         return (
             jsonify({"error": "unauthorized access: no coach credential provided"}),
             401,
         )
 
-    contracts = cca.getCoachContractsService(c_id) or []
+    contracts = (
+        cca.getCoachContractsService(
+            coach_id=coach_id,
+            user_timezone=_get_session_timezone(),
+        )
+        or []
+    )
 
     return jsonify({"Response": contracts}), 200
 
@@ -53,15 +64,22 @@ def getCoachActiveContractsRoute():
       401:
         description: Unauthorized
     """
-    c_id = _get_coach_id()
+    coach_id = _get_coach_id()
 
-    if c_id is None:
+    if coach_id is None:
         return (
             jsonify({"error": "unauthorized access: no coach credential provided"}),
             401,
         )
 
-    active_contracts = cca.getCoachContractsByStatusService(c_id, 1) or []
+    active_contracts = (
+        cca.getCoachContractsByStatusService(
+            coach_id=coach_id,
+            active=1,
+            user_timezone=_get_session_timezone(),
+        )
+        or []
+    )
 
     return jsonify({"Response": active_contracts}), 200
 
@@ -79,15 +97,22 @@ def getCoachInactiveContractsRoute():
       401:
         description: Unauthorized
     """
-    c_id = _get_coach_id()
+    coach_id = _get_coach_id()
 
-    if c_id is None:
+    if coach_id is None:
         return (
             jsonify({"error": "unauthorized access: no coach credential provided"}),
             401,
         )
 
-    inactive_contracts = cca.getCoachContractsByStatusService(c_id, 0) or []
+    inactive_contracts = (
+        cca.getCoachContractsByStatusService(
+            coach_id=coach_id,
+            active=0,
+            user_timezone=_get_session_timezone(),
+        )
+        or []
+    )
 
     return jsonify({"Response": inactive_contracts}), 200
 
@@ -120,9 +145,9 @@ def coachAcceptContractRoute():
       404:
         description: Contract not found
     """
-    c_id = _get_coach_id()
+    coach_id = _get_coach_id()
 
-    if c_id is None:
+    if coach_id is None:
         return (
             jsonify({"error": "unauthorized access: no coach credential provided"}),
             401,
@@ -134,7 +159,11 @@ def coachAcceptContractRoute():
     if contract_id is None:
         return jsonify({"error": "no contract_id provided"}), 400
 
-    contract = cca.getSingleCoachContractService(c_id, contract_id)
+    contract = cca.getSingleCoachContractService(
+        coach_id=coach_id,
+        contract_id=int(contract_id),
+        user_timezone=_get_session_timezone(),
+    )
 
     if not contract:
         return jsonify({"error": "contract not found for this coach"}), 404
@@ -149,8 +178,9 @@ def coachAcceptContractRoute():
 
     cca.coachAcceptsContractService(
         contract_id=int(contract_id),
-        coach_id=c_id,
+        coach_id=coach_id,
         user_id=client_id,
+        user_timezone=_get_session_timezone(),
     )
 
     return jsonify({"message": f"successfully accepted contract: {contract_id}"}), 200
@@ -185,9 +215,9 @@ def coachRejectContractRoute():
       404:
         description: Contract not found
     """
-    c_id = _get_coach_id()
+    coach_id = _get_coach_id()
 
-    if c_id is None:
+    if coach_id is None:
         return (
             jsonify({"error": "unauthorized access: no coach credential provided"}),
             401,
@@ -199,7 +229,11 @@ def coachRejectContractRoute():
     if contract_id is None:
         return jsonify({"error": "no contract_id provided"}), 400
 
-    contract = cca.getSingleCoachContractService(c_id, contract_id)
+    contract = cca.getSingleCoachContractService(
+        coach_id=coach_id,
+        contract_id=int(contract_id),
+        user_timezone=_get_session_timezone(),
+    )
 
     if not contract:
         return jsonify({"error": "contract not found for this coach"}), 404
@@ -210,7 +244,10 @@ def coachRejectContractRoute():
     if contract.get("end_date"):
         return jsonify({"error": "contract request is already closed"}), 400
 
-    cca.coachRejectsContractService(int(contract_id))
+    cca.coachRejectsContractService(
+        contract_id=int(contract_id),
+        user_timezone=_get_session_timezone(),
+    )
 
     return jsonify({"message": f"successfully rejected contract: {contract_id}"}), 200
 
@@ -243,9 +280,9 @@ def coachTerminateContractRoute():
       404:
         description: Contract not found
     """
-    c_id = _get_coach_id()
+    coach_id = _get_coach_id()
 
-    if c_id is None:
+    if coach_id is None:
         return (
             jsonify({"error": "unauthorized access: no coach credential provided"}),
             401,
@@ -257,7 +294,11 @@ def coachTerminateContractRoute():
     if contract_id is None:
         return jsonify({"error": "no contract_id provided"}), 400
 
-    contract = cca.getSingleCoachContractService(c_id, contract_id)
+    contract = cca.getSingleCoachContractService(
+        coach_id=coach_id,
+        contract_id=int(contract_id),
+        user_timezone=_get_session_timezone(),
+    )
 
     if not contract:
         return jsonify({"error": "contract not found for this coach"}), 404
@@ -265,6 +306,9 @@ def coachTerminateContractRoute():
     if contract["active"] == 0:
         return jsonify({"error": "contract is already inactive"}), 400
 
-    cca.coachTerminatesContractService(int(contract_id))
+    cca.coachTerminatesContractService(
+        contract_id=int(contract_id),
+        user_timezone=_get_session_timezone(),
+    )
 
     return jsonify({"message": f"successfully terminated contract: {contract_id}"}), 200

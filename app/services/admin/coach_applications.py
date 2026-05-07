@@ -1,10 +1,52 @@
+import json
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from app.services import run_query
 from app.services.admin.dashboard import _is_admin
-import json
-from datetime import datetime
 from app.services.onboarding import onboardUser
 from app.sockets.notifications.notifications import send_notification
 from app.services.auth.getUserRoles import getUserRoles
+
+
+def _get_valid_timezone(user_timezone: str | None):
+    if not user_timezone:
+        return "America/New_York"
+
+    try:
+        ZoneInfo(user_timezone)
+        return user_timezone
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
+
+
+def _format_datetime(value, user_timezone: str | None):
+    if value is None:
+        return None
+
+    if isinstance(value, datetime):
+        parsed_datetime = value
+    else:
+        try:
+            parsed_datetime = datetime.fromisoformat(str(value).replace(" ", "T"))
+        except (ValueError, TypeError):
+            return str(value)
+
+    if parsed_datetime.tzinfo is None:
+        parsed_datetime = parsed_datetime.replace(tzinfo=timezone.utc)
+
+    local_datetime = parsed_datetime.astimezone(
+        ZoneInfo(_get_valid_timezone(user_timezone))
+    )
+
+    return local_datetime.strftime("%Y-%m-%dT%H:%M:%S")
+
+
+def _format_date(value):
+    if value is None:
+        return None
+
+    return value.isoformat() if hasattr(value, "isoformat") else str(value)
 
 
 def _validate_application_status_filter(status: str):
@@ -66,7 +108,7 @@ def _get_application_cert_rows(application_id: int):
     )
 
 
-def _shape_application(application_row, cert_rows):
+def _shape_application(application_row, cert_rows, user_timezone: str | None = None):
     name = f'{application_row["first_name"]} {application_row["last_name"]}'
 
     cert_names = []
@@ -79,16 +121,8 @@ def _shape_application(application_row, cert_rows):
                 "cert_name": cert["cert_name"],
                 "provider_name": cert["provider_name"],
                 "description": cert["description"],
-                "issued_date": (
-                    cert["issued_date"].isoformat()
-                    if cert["issued_date"] is not None
-                    else None
-                ),
-                "expires_date": (
-                    cert["expires_date"].isoformat()
-                    if cert["expires_date"] is not None
-                    else None
-                ),
+                "issued_date": _format_date(cert["issued_date"]),
+                "expires_date": _format_date(cert["expires_date"]),
             }
         )
 
@@ -98,10 +132,9 @@ def _shape_application(application_row, cert_rows):
         "user_id": application_row["user_id"],
         "name": name,
         "email": application_row["email"],
-        "appliedLabel": (
-            application_row["submitted_at"].isoformat()
-            if application_row["submitted_at"] is not None
-            else None
+        "appliedLabel": _format_datetime(
+            application_row["submitted_at"],
+            user_timezone,
         ),
         "avatarInitial": (
             application_row["first_name"][0] if application_row["first_name"] else None
@@ -114,10 +147,9 @@ def _shape_application(application_row, cert_rows):
             if application_row["desired_price"] is not None
             else None
         ),
-        "reviewed_at": (
-            application_row["reviewed_at"].isoformat()
-            if application_row["reviewed_at"] is not None
-            else None
+        "reviewed_at": _format_datetime(
+            application_row["reviewed_at"],
+            user_timezone,
         ),
         "reviewed_by_admin_id": application_row["reviewed_by_admin_id"],
         "admin_action": application_row["admin_action"],
@@ -126,7 +158,11 @@ def _shape_application(application_row, cert_rows):
     }
 
 
-def get_admin_coach_applications(user_id: int, status: str):
+def get_admin_coach_applications(
+    user_id: int,
+    status: str,
+    user_timezone: str | None = None,
+):
     if not _is_admin(user_id):
         raise PermissionError("Forbidden")
 
@@ -193,6 +229,7 @@ def get_admin_coach_applications(user_id: int, status: str):
             _shape_application(
                 row,
                 certs_by_application.get(row["application_id"], []),
+                user_timezone,
             )
         )
 
@@ -212,7 +249,12 @@ def _parse_metadata(metadata):
     return {}
 
 
-def approve_coach_application(user_id: int, application_id: int, admin_action=None):
+def approve_coach_application(
+    user_id: int,
+    application_id: int,
+    admin_action=None,
+    user_timezone: str | None = None,
+):
     if not _is_admin(user_id):
         raise PermissionError("Forbidden")
 
@@ -301,7 +343,7 @@ def approve_coach_application(user_id: int, application_id: int, admin_action=No
         UPDATE coach_application
         SET
             status = 'approved',
-            reviewed_at = NOW(),
+            reviewed_at = UTC_TIMESTAMP(),
             reviewed_by_admin_id = :admin_id,
             admin_action = :admin_action
         WHERE application_id = :application_id
@@ -339,10 +381,15 @@ def approve_coach_application(user_id: int, application_id: int, admin_action=No
     )
 
     updated_application = _get_application_row(int(application_id))
-    return _shape_application(updated_application, [])
+    return _shape_application(updated_application, [], user_timezone)
 
 
-def reject_coach_application(user_id: int, application_id: int, admin_action=None):
+def reject_coach_application(
+    user_id: int,
+    application_id: int,
+    admin_action=None,
+    user_timezone: str | None = None,
+):
     if not _is_admin(user_id):
         raise PermissionError("Forbidden")
 
@@ -361,7 +408,7 @@ def reject_coach_application(user_id: int, application_id: int, admin_action=Non
         UPDATE coach_application
         SET
             status = 'rejected',
-            reviewed_at = NOW(),
+            reviewed_at = UTC_TIMESTAMP(),
             reviewed_by_admin_id = :admin_id,
             admin_action = :admin_action
         WHERE application_id = :application_id
@@ -399,4 +446,4 @@ def reject_coach_application(user_id: int, application_id: int, admin_action=Non
     )
 
     updated_application = _get_application_row(int(application_id))
-    return _shape_application(updated_application, [])
+    return _shape_application(updated_application, [], user_timezone)

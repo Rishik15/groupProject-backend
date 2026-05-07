@@ -1,5 +1,18 @@
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timezone, timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from app.services import run_query
+
+
+def _get_valid_timezone(user_timezone: str | None):
+    if not user_timezone:
+        return "America/New_York"
+
+    try:
+        ZoneInfo(user_timezone)
+        return user_timezone
+    except ZoneInfoNotFoundError:
+        return "America/New_York"
 
 
 def _date_to_string(value):
@@ -15,26 +28,110 @@ def _date_to_string(value):
     return str(value)
 
 
+def _timedelta_to_time(value: timedelta):
+    total_seconds = int(value.total_seconds())
+
+    if total_seconds < 0:
+        total_seconds = 0
+
+    total_seconds = total_seconds % 86400
+
+    hours = total_seconds // 3600
+    minutes = (total_seconds % 3600) // 60
+    seconds = total_seconds % 60
+
+    return time(hour=hours, minute=minutes, second=seconds)
+
+
+def _coerce_time(value):
+    if value is None:
+        return None
+
+    if isinstance(value, time):
+        return value
+
+    if isinstance(value, datetime):
+        return value.time()
+
+    if isinstance(value, timedelta):
+        return _timedelta_to_time(value)
+
+    if isinstance(value, str):
+        cleaned_value = value.strip()
+
+        try:
+            return datetime.strptime(cleaned_value, "%H:%M:%S").time()
+        except ValueError:
+            try:
+                return datetime.strptime(cleaned_value, "%H:%M").time()
+            except ValueError:
+                return None
+
+    return None
+
+
 def _time_to_string(value):
+    coerced_time = _coerce_time(value)
+
+    if coerced_time is None:
+        return None
+
+    return coerced_time.strftime("%H:%M:%S")
+
+
+def _format_datetime(value, user_timezone: str | None):
     if value is None:
         return None
 
     if isinstance(value, datetime):
-        return value.strftime("%H:%M:%S")
+        parsed_datetime = value
+    else:
+        try:
+            parsed_datetime = datetime.fromisoformat(str(value).replace(" ", "T"))
+        except (ValueError, TypeError):
+            return str(value)
 
-    if isinstance(value, time):
-        return value.strftime("%H:%M:%S")
+    if parsed_datetime.tzinfo is None:
+        parsed_datetime = parsed_datetime.replace(tzinfo=timezone.utc)
 
-    return str(value)
+    local_datetime = parsed_datetime.astimezone(
+        ZoneInfo(_get_valid_timezone(user_timezone))
+    )
+
+    return local_datetime.strftime("%Y-%m-%dT%H:%M:%S")
 
 
-def _get_workout_status(row):
+def _get_event_local_datetime(row, user_timezone: str | None):
+    event_date = row.get("event_date")
+    end_time = _coerce_time(row.get("end_time"))
+
+    if event_date is None or end_time is None:
+        return None
+
+    if isinstance(event_date, datetime):
+        event_date = event_date.date()
+
+    if isinstance(event_date, str):
+        try:
+            event_date = datetime.strptime(event_date, "%Y-%m-%d").date()
+        except ValueError:
+            return None
+
+    if not isinstance(event_date, date):
+        return None
+
+    tz = ZoneInfo(_get_valid_timezone(user_timezone))
+
+    return datetime.combine(event_date, end_time, tzinfo=tz)
+
+
+def _get_workout_status(row, user_timezone: str | None):
     if row.get("event_type") != "workout":
         return None
 
     session_id = row.get("session_id")
     ended_at = row.get("session_ended_at")
-    event_datetime = row.get("event_datetime")
+    event_local_datetime = _get_event_local_datetime(row, user_timezone)
 
     if session_id and ended_at is not None:
         return "completed"
@@ -42,13 +139,15 @@ def _get_workout_status(row):
     if session_id and ended_at is None:
         return "active"
 
-    if event_datetime and event_datetime < datetime.now():
+    if event_local_datetime and event_local_datetime < datetime.now(
+        ZoneInfo(_get_valid_timezone(user_timezone))
+    ):
         return "missed"
 
     return "scheduled"
 
 
-def _serialize_event(row):
+def _serialize_event(row, user_timezone: str | None = None):
     if not row:
         return None
 
@@ -63,7 +162,7 @@ def _serialize_event(row):
     notes = row.get("notes") or ""
     workout_plan_name = row.get("workout_plan_name")
     workout_day_label = row.get("workout_day_label")
-    workout_status = _get_workout_status(row)
+    workout_status = _get_workout_status(row, user_timezone)
 
     title = description
 
@@ -94,13 +193,13 @@ def _serialize_event(row):
         "workoutDayLabel": workout_day_label,
         "workoutDayOrder": row.get("workout_day_order"),
         "sessionId": row.get("session_id"),
-        "sessionStartedAt": (
-            str(row.get("session_started_at"))
-            if row.get("session_started_at")
-            else None
+        "sessionStartedAt": _format_datetime(
+            row.get("session_started_at"),
+            user_timezone,
         ),
-        "sessionEndedAt": (
-            str(row.get("session_ended_at")) if row.get("session_ended_at") else None
+        "sessionEndedAt": _format_datetime(
+            row.get("session_ended_at"),
+            user_timezone,
         ),
         "workoutStatus": workout_status,
     }
@@ -142,7 +241,12 @@ def workout_day_belongs_to_plan(workout_plan_id: int, workout_day_id: int):
     return len(rows) > 0
 
 
-def get_events_for_user_range(user_id: int, start_date: date, end_date: date):
+def get_events_for_user_range(
+    user_id: int,
+    start_date: date,
+    end_date: date,
+    user_timezone: str | None = None,
+):
     rows = run_query(
         """
         SELECT
@@ -151,7 +255,6 @@ def get_events_for_user_range(user_id: int, start_date: date, end_date: date):
             e.event_date,
             e.start_time,
             e.end_time,
-            TIMESTAMP(e.event_date, e.end_time) AS event_datetime,
             e.event_type,
             e.description,
             e.notes,
@@ -187,7 +290,7 @@ def get_events_for_user_range(user_id: int, start_date: date, end_date: date):
     events = []
 
     for row in rows:
-        event = _serialize_event(row)
+        event = _serialize_event(row, user_timezone)
 
         if event is not None:
             events.append(event)
@@ -195,7 +298,11 @@ def get_events_for_user_range(user_id: int, start_date: date, end_date: date):
     return events
 
 
-def get_event_by_id_for_user(user_id: int, event_id: int):
+def get_event_by_id_for_user(
+    user_id: int,
+    event_id: int,
+    user_timezone: str | None = None,
+):
     rows = run_query(
         """
         SELECT
@@ -204,7 +311,6 @@ def get_event_by_id_for_user(user_id: int, event_id: int):
             e.event_date,
             e.start_time,
             e.end_time,
-            TIMESTAMP(e.event_date, e.end_time) AS event_datetime,
             e.event_type,
             e.description,
             e.notes,
@@ -236,7 +342,7 @@ def get_event_by_id_for_user(user_id: int, event_id: int):
         commit=False,
     )
 
-    return _serialize_event(rows[0]) if rows else None
+    return _serialize_event(rows[0], user_timezone) if rows else None
 
 
 def create_event(
@@ -249,6 +355,7 @@ def create_event(
     notes: str | None = None,
     workout_plan_id: int | None = None,
     workout_day_id: int | None = None,
+    user_timezone: str | None = None,
 ):
     event_id = run_query(
         """
@@ -293,7 +400,7 @@ def create_event(
         return_lastrowid=True,
     )
 
-    return get_event_by_id_for_user(user_id, event_id)
+    return get_event_by_id_for_user(user_id, event_id, user_timezone)
 
 
 def update_event(
@@ -307,8 +414,9 @@ def update_event(
     workout_plan_id: int | None = None,
     workout_day_id: int | None = None,
     clear_workout_fields: bool = False,
+    user_timezone: str | None = None,
 ):
-    existing = get_event_by_id_for_user(user_id, event_id)
+    existing = get_event_by_id_for_user(user_id, event_id, user_timezone)
 
     if not existing:
         return None
@@ -364,7 +472,7 @@ def update_event(
         commit=True,
     )
 
-    return get_event_by_id_for_user(user_id, event_id)
+    return get_event_by_id_for_user(user_id, event_id, user_timezone)
 
 
 def delete_event(user_id: int, event_id: int):
