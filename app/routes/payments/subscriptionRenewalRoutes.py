@@ -8,13 +8,6 @@ from app.services.payments.subscriptionRenewalService import (
 
 @payments_bp.route("/process-subscriptions", methods=["POST"])
 def process_subscriptions_route():
-    """
-    Process due recurring coach subscriptions.
-
-    This route is meant to be called by a cron job.
-    It checks all active recurring contracts whose next_billing_date is due,
-    creates completed payment history rows, and moves next_billing_date forward.
-    """
     cron_secret = current_app.config.get("CRON_SECRET")
     request_secret = request.headers.get("X-CRON-SECRET")
 
@@ -38,4 +31,5 @@ def process_subscriptions_route():
         )
 
     except Exception as e:
+        current_app.logger.exception("Subscription cron failed")
         return jsonify({"error": str(e)}), 500
