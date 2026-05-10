@@ -9,3 +9,4 @@ from . import deletePaymentMethod
 from . import setDefaultPaymentMethod
 from . import subscriptionRenewalRoutes
 from . import subscriptionManagementRoutes
+from . import directCoachPaymentRoutes

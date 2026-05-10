@@ -53,7 +53,7 @@ def payment_exists_for_billing_period(
         FROM payment
         WHERE user_id = :user_id
           AND coach_id = :coach_id
-          AND payment_type = 'subscription'
+          AND payment_type IN ('subscription', 'coaching_fee')
           AND status = 'completed'
           AND DATE(paid_at) >= :billing_start
           AND DATE(paid_at) < :billing_end
