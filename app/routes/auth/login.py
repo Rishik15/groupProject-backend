@@ -1,3 +1,4 @@
+import json
 from datetime import datetime, time, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -84,19 +85,65 @@ def get_daily_survey_notification_today(user_id: int, start_utc, end_utc):
     return rows[0]
 
 
+def clear_old_daily_survey_notifications(
+    user_id: int, keep_notification_id: int | None = None
+):
+    params = {
+        "user_id": user_id,
+        "keep_notification_id": keep_notification_id,
+    }
+
+    if keep_notification_id:
+        query = """
+            UPDATE notification
+            SET
+                is_read = TRUE,
+                updated_at = NOW()
+            WHERE user_id = :user_id
+              AND mode = 'client'
+              AND type = 'daily_survey'
+              AND notification_id != :keep_notification_id
+        """
+    else:
+        query = """
+            UPDATE notification
+            SET
+                is_read = TRUE,
+                updated_at = NOW()
+            WHERE user_id = :user_id
+              AND mode = 'client'
+              AND type = 'daily_survey'
+        """
+
+    run_query(
+        query,
+        params,
+        fetch=False,
+        commit=True,
+    )
+
+
 def update_daily_survey_notification(notification_id: int):
+    metadata = {
+        "route": "/client",
+        "points": 100,
+        "surveyType": "mental_wellness",
+    }
+
     run_query(
         """
         UPDATE notification
         SET
             title = 'Complete your daily check-in',
             body = 'Complete today''s wellness survey and earn 100 points.',
+            metadata = :metadata,
             is_read = FALSE,
             updated_at = NOW()
         WHERE notification_id = :notification_id
         """,
         {
             "notification_id": notification_id,
+            "metadata": json.dumps(metadata),
         },
         fetch=False,
         commit=True,
@@ -107,6 +154,7 @@ def maybe_send_daily_survey_notification(user_id: int, user_timezone: str):
     today, start_utc, end_utc = get_user_today_and_utc_bounds(user_timezone)
 
     if has_completed_daily_survey_today(user_id, today):
+        clear_old_daily_survey_notifications(user_id)
         return
 
     existing_notification = get_daily_survey_notification_today(
@@ -116,8 +164,14 @@ def maybe_send_daily_survey_notification(user_id: int, user_timezone: str):
     )
 
     if existing_notification:
-        update_daily_survey_notification(existing_notification["notification_id"])
+        notification_id = existing_notification["notification_id"]
+
+        update_daily_survey_notification(notification_id)
+        clear_old_daily_survey_notifications(user_id, notification_id)
+
         return
+
+    clear_old_daily_survey_notifications(user_id)
 
     send_notification(
         user_id=user_id,
@@ -125,6 +179,7 @@ def maybe_send_daily_survey_notification(user_id: int, user_timezone: str):
         notification_type="daily_survey",
         title="Complete your daily check-in",
         body="Complete today's wellness survey and earn 100 points.",
+        route="/client",
         metadata={
             "points": 100,
             "surveyType": "mental_wellness",
