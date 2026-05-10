@@ -187,6 +187,29 @@ def maybe_send_daily_survey_notification(user_id: int, user_timezone: str):
     )
 
 
+def get_blocked_account_response(user):
+    account_status = user.get("account_status")
+
+    if account_status == "suspended":
+        reason = user.get("suspension_reason")
+
+        return {
+            "error": "Account suspended",
+            "account_status": "suspended",
+            "message": reason
+            or "Your account has been suspended. Please contact support.",
+        }, 403
+
+    if account_status == "deactivated":
+        return {
+            "error": "Account deactivated",
+            "account_status": "deactivated",
+            "message": "Your account has been deactivated. Please contact support if this was a mistake.",
+        }, 403
+
+    return None
+
+
 @auth_bp.route("/login", methods=["POST"])
 def login():
     """
@@ -208,6 +231,11 @@ def login():
 
     if not bcrypt.check_password_hash(user["password_hash"], password):
         return {"error": "Invalid credentials"}, 401
+
+    blocked_response = get_blocked_account_response(user)
+
+    if blocked_response:
+        return blocked_response
 
     user_id = int(user["user_id"])
 

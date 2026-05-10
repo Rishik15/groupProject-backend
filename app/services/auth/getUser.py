@@ -2,23 +2,27 @@ from app.services import run_query
 
 
 def getUserCreds(email):
-
     result = run_query(
         """
         SELECT 
             uc.user_id,
             uc.password_hash,
+            ui.account_status,
+            ui.suspension_reason,
             CASE
                 WHEN a.admin_id IS NOT NULL THEN 'admin'
                 WHEN c.coach_id IS NOT NULL THEN 'coach'
                 ELSE 'client'
             END AS role
         FROM user_creds uc
+        INNER JOIN users_immutables ui
+            ON uc.user_id = ui.user_id
         LEFT JOIN coach c 
             ON uc.user_id = c.coach_id
         LEFT JOIN admin a
             ON uc.user_id = a.admin_id
         WHERE uc.email = :email
+        LIMIT 1
         """,
         {"email": email},
         fetch=True,
@@ -36,6 +40,8 @@ def getUserByEmail(email):
             ui.first_name,
             ui.last_name,
             ui.email,
+            ui.account_status,
+            ui.suspension_reason,
             CASE
                 WHEN a.admin_id IS NOT NULL THEN 'admin'
                 WHEN c.coach_id IS NOT NULL THEN 'coach'
@@ -65,6 +71,8 @@ def getUserByGoogleSub(google_sub):
             ui.first_name,
             ui.last_name,
             ui.email,
+            ui.account_status,
+            ui.suspension_reason,
             CASE
                 WHEN a.admin_id IS NOT NULL THEN 'admin'
                 WHEN c.coach_id IS NOT NULL THEN 'coach'
@@ -96,6 +104,8 @@ def getUserInfo(user_id):
                 ui.first_name,
                 ui.last_name,
                 ui.email,
+                ui.account_status,
+                ui.suspension_reason,
                 um.profile_picture
             FROM users_immutables ui
             LEFT JOIN user_mutables um
@@ -147,14 +157,16 @@ def getUserOnboardingStatus(user_id: int, role: str):
                 or str(row.get("coach_description")).strip() == ""
             )
 
-            needs_onboarding = any([
-                row.get("dob") is None,
-                row.get("weight") is None,
-                row.get("height") is None,
-                row.get("goal_weight") is None,
-                missing_description,
-                row.get("price") is None,
-            ])
+            needs_onboarding = any(
+                [
+                    row.get("dob") is None,
+                    row.get("weight") is None,
+                    row.get("height") is None,
+                    row.get("goal_weight") is None,
+                    missing_description,
+                    row.get("price") is None,
+                ]
+            )
 
             return needs_onboarding
 
@@ -182,12 +194,14 @@ def getUserOnboardingStatus(user_id: int, role: str):
 
             row = result[0]
 
-            needs_onboarding = any([
-                row.get("dob") is None,
-                row.get("weight") is None,
-                row.get("height") is None,
-                row.get("goal_weight") is None,
-            ])
+            needs_onboarding = any(
+                [
+                    row.get("dob") is None,
+                    row.get("weight") is None,
+                    row.get("height") is None,
+                    row.get("goal_weight") is None,
+                ]
+            )
 
             return needs_onboarding
 
