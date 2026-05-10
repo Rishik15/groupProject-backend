@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from app.services import run_query
@@ -23,11 +23,46 @@ def _utc_now_string():
     return datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
 
 
-def _format_time(value):
+def _normalize_time(value):
     if value is None:
         return None
 
-    return str(value)
+    if isinstance(value, time):
+        return value.replace(microsecond=0)
+
+    if isinstance(value, timedelta):
+        total_seconds = int(value.total_seconds())
+        hours = total_seconds // 3600
+        minutes = (total_seconds % 3600) // 60
+        seconds = total_seconds % 60
+
+        hours = hours % 24
+
+        return time(hour=hours, minute=minutes, second=seconds)
+
+    if isinstance(value, str):
+        cleaned = value.strip()
+
+        try:
+            return datetime.strptime(cleaned, "%H:%M:%S").time()
+        except ValueError:
+            pass
+
+        try:
+            return datetime.strptime(cleaned, "%H:%M").time()
+        except ValueError:
+            return None
+
+    return None
+
+
+def _format_time(value):
+    normalized_time = _normalize_time(value)
+
+    if normalized_time is None:
+        return None
+
+    return normalized_time.strftime("%H:%M:%S")
 
 
 def _format_datetime(value, user_timezone: str | None = None):
@@ -55,8 +90,8 @@ def _format_datetime(value, user_timezone: str | None = None):
 def _get_session_status(row):
     session_id = row.get("session_id")
     ended_at = row.get("ended_at")
-    end_time = row.get("end_time")
-    local_time = row.get("local_time")
+    end_time = _normalize_time(row.get("end_time"))
+    local_time = _normalize_time(row.get("local_time"))
 
     if session_id and ended_at is None:
         return "active"
