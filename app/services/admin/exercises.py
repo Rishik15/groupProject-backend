@@ -2,7 +2,14 @@ from app.services import run_query
 from app.services.admin.dashboard import _is_admin
 
 
-def _get_exercise_row(exercise_id: int):
+def _format_datetime(value):
+    if value is None:
+        return None
+
+    return value.isoformat()
+
+
+def _get_exercise_row(exercise_id: int, user_timezone=None):
     rows = run_query(
         """
         SELECT
@@ -38,16 +45,12 @@ def _get_exercise_row(exercise_id: int):
         "video_review_note": row["video_review_note"],
         "video_reviewed_by": row["video_reviewed_by"],
         "created_by": row["created_by"],
-        "created_at": (
-            row["created_at"].isoformat() if row["created_at"] is not None else None
-        ),
-        "updated_at": (
-            row["updated_at"].isoformat() if row["updated_at"] is not None else None
-        ),
+        "created_at": _format_datetime(row["created_at"]),
+        "updated_at": _format_datetime(row["updated_at"]),
     }
 
 
-def get_admin_exercises(user_id: int):
+def get_admin_exercises(user_id: int, user_timezone=None):
     if not _is_admin(user_id):
         raise PermissionError("Forbidden")
 
@@ -84,16 +87,8 @@ def get_admin_exercises(user_id: int):
                 "video_review_note": row["video_review_note"],
                 "video_reviewed_by": row["video_reviewed_by"],
                 "created_by": row["created_by"],
-                "created_at": (
-                    row["created_at"].isoformat()
-                    if row["created_at"] is not None
-                    else None
-                ),
-                "updated_at": (
-                    row["updated_at"].isoformat()
-                    if row["updated_at"] is not None
-                    else None
-                ),
+                "created_at": _format_datetime(row["created_at"]),
+                "updated_at": _format_datetime(row["updated_at"]),
             }
         )
 
@@ -101,7 +96,12 @@ def get_admin_exercises(user_id: int):
 
 
 def create_admin_exercise(
-    user_id: int, exercise_name: str, equipment=None, video_url=None, created_by=None
+    user_id: int,
+    exercise_name: str,
+    equipment=None,
+    video_url=None,
+    created_by=None,
+    user_timezone=None,
 ):
     if not _is_admin(user_id):
         raise PermissionError("Forbidden")
@@ -171,11 +171,19 @@ def create_admin_exercise(
         commit=False,
     )
 
-    return _get_exercise_row(created_rows[0]["exercise_id"])
+    return _get_exercise_row(
+        created_rows[0]["exercise_id"],
+        user_timezone=user_timezone,
+    )
 
 
 def update_admin_exercise(
-    user_id: int, exercise_id, exercise_name=None, equipment=None, video_url=None
+    user_id: int,
+    exercise_id,
+    exercise_name=None,
+    equipment=None,
+    video_url=None,
+    user_timezone=None,
 ):
     if not _is_admin(user_id):
         raise PermissionError("Forbidden")
@@ -183,7 +191,7 @@ def update_admin_exercise(
     if not exercise_id:
         raise ValueError("exercise_id is required")
 
-    current = _get_exercise_row(int(exercise_id))
+    current = _get_exercise_row(int(exercise_id), user_timezone=user_timezone)
 
     final_exercise_name = (
         exercise_name if exercise_name is not None else current["exercise_name"]
@@ -198,7 +206,10 @@ def update_admin_exercise(
         WHERE exercise_name = :exercise_name
           AND exercise_id != :exercise_id
         """,
-        params={"exercise_name": final_exercise_name, "exercise_id": int(exercise_id)},
+        params={
+            "exercise_name": final_exercise_name,
+            "exercise_id": int(exercise_id),
+        },
         fetch=True,
         commit=False,
     )
@@ -240,7 +251,7 @@ def update_admin_exercise(
         commit=True,
     )
 
-    return _get_exercise_row(int(exercise_id))
+    return _get_exercise_row(int(exercise_id), user_timezone=user_timezone)
 
 
 def delete_admin_exercise(user_id: int, exercise_id):
